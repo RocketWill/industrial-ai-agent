@@ -10,6 +10,8 @@ portfolio project.
 - FastAPI application factory;
 - environment-based application settings;
 - `GET /health` process-health contract;
+- synchronous SQLAlchemy and SQLite session foundation;
+- explicit Alembic migration workflow;
 - Pytest and Ruff verification; and
 - reproducible uv lockfile and package build.
 
@@ -20,6 +22,18 @@ From `apps/api`:
 ```bash
 uv sync --locked
 ```
+
+## Database migrations
+
+The default local database is `apps/api/industrial_agent.db` when commands are
+run from `apps/api`. Apply and reverse schema state explicitly:
+
+```bash
+uv run alembic upgrade head
+uv run alembic downgrade base
+```
+
+API startup does not run migrations or create schema objects.
 
 ## Run
 
@@ -61,5 +75,7 @@ records the resolved environment.
 
 ## Current limitations
 
-The API does not yet persist conversations, call an LLM, or expose
-manufacturing data. The health endpoint reports API-process availability only.
+The initial migration contains no business table, so the API does not yet
+persist conversations. It also does not call an LLM or expose manufacturing
+data. The health endpoint reports API-process availability only and does not
+check the database.

@@ -15,7 +15,7 @@ Current baseline:
 - [x] Establish minimal `apps/api` and `apps/web` boundaries.
 - [x] Add safe ignore rules and configuration placeholders.
 - [x] Create the FastAPI application and health endpoint.
-- [ ] Add settings, SQLite, SQLAlchemy, and schema migrations.
+- [x] Add settings, SQLite, SQLAlchemy, and schema migrations.
 - [ ] Implement conversation and message CRUD.
 - [ ] Add one OpenAI-compatible chat adapter.
 - [ ] Create the React, TypeScript, and Vite application.
