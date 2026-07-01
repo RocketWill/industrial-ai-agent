@@ -4,14 +4,15 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from industrial_agent.config.settings import Settings
-from industrial_agent.models import Conversation
+from industrial_agent.models import Conversation, Message
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = Conversation.metadata
+registered_models = (Conversation, Message)
+target_metadata = registered_models[0].metadata
 
 
 def get_database_url() -> str:

@@ -56,6 +56,22 @@ def read_table_columns(
     return {row[1]: (row[2], bool(row[3])) for row in rows}
 
 
+def read_foreign_keys(
+    database_path: Path,
+    table: str,
+) -> list[tuple[object, ...]]:
+    with sqlite3.connect(database_path) as connection:
+        return connection.execute(
+            f"PRAGMA foreign_key_list({table})"
+        ).fetchall()
+
+
+def read_indexes(database_path: Path, table: str) -> set[str]:
+    with sqlite3.connect(database_path) as connection:
+        rows = connection.execute(f"PRAGMA index_list({table})").fetchall()
+    return {row[1] for row in rows}
+
+
 def test_migration_upgrades_empty_database_to_head(
     tmp_path: Path,
 ) -> None:
@@ -67,10 +83,9 @@ def test_migration_upgrades_empty_database_to_head(
     assert read_database_tables(database_path) == {
         "alembic_version",
         "conversations",
+        "messages",
     }
-    assert read_alembic_versions(database_path) == [
-        "0002_create_conversations"
-    ]
+    assert read_alembic_versions(database_path) == ["0003_create_messages"]
 
 
 def test_conversation_migration_creates_required_schema(
@@ -98,7 +113,83 @@ def test_conversation_migration_creates_required_schema(
             )
 
 
-def test_conversation_migration_downgrades_to_foundation(
+def test_message_migration_creates_required_schema_and_constraints(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "migration.db"
+    result = run_alembic("upgrade", "head", database_path)
+    assert result.returncode == 0, result.stderr
+
+    assert read_table_columns(database_path, "messages") == {
+        "id": ("CHAR(32)", True),
+        "conversation_id": ("CHAR(32)", True),
+        "role": ("VARCHAR(9)", True),
+        "content": ("TEXT", True),
+        "created_at": ("DATETIME", True),
+    }
+    assert "ix_messages_conversation_id" in read_indexes(
+        database_path,
+        "messages",
+    )
+    assert any(
+        row[2] == "conversations"
+        and row[3] == "conversation_id"
+        and row[4] == "id"
+        and row[6] == "CASCADE"
+        for row in read_foreign_keys(database_path, "messages")
+    )
+
+    conversation_id = "a" * 32
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        connection.execute(
+            """
+            INSERT INTO conversations (id, title, created_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            """,
+            (conversation_id, "Constraint test"),
+        )
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                """
+                INSERT INTO messages (
+                    id, conversation_id, role, content, created_at
+                )
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                """,
+                ("1" * 32, conversation_id, "system", "content"),
+            )
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                """
+                INSERT INTO messages (
+                    id, conversation_id, role, content, created_at
+                )
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                """,
+                ("2" * 32, conversation_id, "user", "   "),
+            )
+        connection.execute(
+            """
+            INSERT INTO messages (
+                id, conversation_id, role, content, created_at
+            )
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            """,
+            ("3" * 32, conversation_id, "user", "Valid content"),
+        )
+        connection.execute(
+            "DELETE FROM conversations WHERE id = ?",
+            (conversation_id,),
+        )
+        remaining_messages = connection.execute(
+            "SELECT COUNT(*) FROM messages"
+        ).fetchone()
+
+    assert remaining_messages == (0,)
+
+
+def test_message_migration_downgrades_to_conversations(
     tmp_path: Path,
 ) -> None:
     database_path = tmp_path / "migration.db"
@@ -108,6 +199,31 @@ def test_conversation_migration_downgrades_to_foundation(
     downgrade_result = run_alembic("downgrade", "-1", database_path)
 
     assert downgrade_result.returncode == 0, downgrade_result.stderr
+    assert read_database_tables(database_path) == {
+        "alembic_version",
+        "conversations",
+    }
+    assert read_alembic_versions(database_path) == [
+        "0002_create_conversations"
+    ]
+
+
+def test_conversation_migration_downgrades_to_foundation(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "migration.db"
+    upgrade_result = run_alembic("upgrade", "head", database_path)
+    assert upgrade_result.returncode == 0, upgrade_result.stderr
+    message_downgrade = run_alembic("downgrade", "-1", database_path)
+    assert message_downgrade.returncode == 0, message_downgrade.stderr
+
+    conversation_downgrade = run_alembic(
+        "downgrade",
+        "-1",
+        database_path,
+    )
+
+    assert conversation_downgrade.returncode == 0
     assert read_database_tables(database_path) == {"alembic_version"}
     assert read_alembic_versions(database_path) == [
         "0001_initialize_database"

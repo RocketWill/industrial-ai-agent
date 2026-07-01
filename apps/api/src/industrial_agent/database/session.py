@@ -1,14 +1,28 @@
+import sqlite3
 from collections.abc import Generator
 from functools import lru_cache
+from typing import Any
 
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from industrial_agent.config.settings import Settings
 
 
+def enable_sqlite_foreign_keys(
+    database_connection: sqlite3.Connection,
+    _connection_record: Any,
+) -> None:
+    cursor = database_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
+
 def create_database_engine(database_url: str) -> Engine:
-    return create_engine(database_url)
+    engine = create_engine(database_url)
+    if engine.dialect.name == "sqlite":
+        event.listen(engine, "connect", enable_sqlite_foreign_keys)
+    return engine
 
 
 def create_session_factory(engine: Engine) -> sessionmaker[Session]:
