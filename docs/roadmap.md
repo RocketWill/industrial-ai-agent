@@ -14,7 +14,7 @@ Current baseline:
 - [x] Document milestone roadmap and v0.1 acceptance criteria.
 - [x] Establish minimal `apps/api` and `apps/web` boundaries.
 - [x] Add safe ignore rules and configuration placeholders.
-- [ ] Create the FastAPI application and health endpoint.
+- [x] Create the FastAPI application and health endpoint.
 - [ ] Add settings, SQLite, SQLAlchemy, and schema migrations.
 - [ ] Implement conversation and message CRUD.
 - [ ] Add one OpenAI-compatible chat adapter.

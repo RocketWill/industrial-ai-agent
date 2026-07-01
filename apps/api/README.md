@@ -2,7 +2,43 @@
 
 ## Purpose
 
-This directory will contain the FastAPI backend for v0.1.
+This application provides the HTTP backend for the Industrial AI Agent
+portfolio project.
+
+## Implemented
+
+- FastAPI application factory;
+- environment-based application settings;
+- `GET /health` process-health contract;
+- Pytest and Ruff verification; and
+- reproducible uv lockfile and package build.
+
+## Setup
+
+From `apps/api`:
+
+```bash
+uv sync --locked
+```
+
+## Run
+
+```bash
+uv run uvicorn industrial_agent.main:app \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --reload
+```
+
+The process-health endpoint is available at `http://127.0.0.1:8000/health`.
+
+## Verify
+
+```bash
+uv run pytest
+uv run ruff check .
+uv build
+```
 
 ## Planned v0.1 responsibilities
 
@@ -19,11 +55,11 @@ streaming, and distributed deployment are outside v0.1.
 
 ## Dependency management
 
-Backend metadata will live in this directory's `pyproject.toml`. Runtime and
-development dependencies will be declared separately when the first executable
-backend change is introduced. No Python package has been selected or installed
-in the repository baseline.
+Backend metadata and runtime dependencies are declared in `pyproject.toml`.
+Development tools are kept in a separate dependency group, and `uv.lock`
+records the resolved environment.
 
-## Current status
+## Current limitations
 
-**Planned** — no backend code or dependencies exist yet.
+The API does not yet persist conversations, call an LLM, or expose
+manufacturing data. The health endpoint reports API-process availability only.
