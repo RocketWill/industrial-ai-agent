@@ -12,6 +12,8 @@ portfolio project.
 - `GET /health` process-health contract;
 - synchronous SQLAlchemy and SQLite session foundation;
 - explicit Alembic migration workflow;
+- persisted Conversation model with UUID identifiers and UTC timestamps;
+- Conversation create, list, get, and permanent-delete endpoints;
 - Pytest and Ruff verification; and
 - reproducible uv lockfile and package build.
 
@@ -46,6 +48,28 @@ uv run uvicorn industrial_agent.main:app \
 
 The process-health endpoint is available at `http://127.0.0.1:8000/health`.
 
+## Conversation API
+
+Apply the latest migration before using these endpoints. A title is optional;
+when omitted, it defaults to `New conversation`. Supplied titles are trimmed
+and must contain between 1 and 200 characters.
+
+```bash
+curl -X POST http://127.0.0.1:8000/conversations \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Yield investigation"}'
+
+curl http://127.0.0.1:8000/conversations
+
+curl http://127.0.0.1:8000/conversations/<conversation-id>
+
+curl -X DELETE http://127.0.0.1:8000/conversations/<conversation-id>
+```
+
+The list returns every Conversation, with the newest records first. Deletion
+is permanent. There is currently no update, rename, archive, restore, or
+pagination operation.
+
 ## Verify
 
 ```bash
@@ -54,13 +78,12 @@ uv run ruff check .
 uv build
 ```
 
-## Planned v0.1 responsibilities
+## Remaining v0.1 responsibilities
 
-- conversation and message HTTP APIs;
-- SQLite persistence and migrations;
+- message HTTP APIs and persistence;
 - one OpenAI-compatible LLM adapter;
 - configuration validation and explicit error handling; and
-- backend tests.
+- tests for the remaining backend behavior.
 
 ## Non-responsibilities
 
@@ -75,7 +98,7 @@ records the resolved environment.
 
 ## Current limitations
 
-The initial migration contains no business table, so the API does not yet
-persist conversations. It also does not call an LLM or expose manufacturing
-data. The health endpoint reports API-process availability only and does not
-check the database.
+The API persists Conversation records, but does not yet persist messages,
+produce assistant responses, call an LLM, or expose manufacturing data. The
+health endpoint reports API-process availability only and does not check the
+database.
