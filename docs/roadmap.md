@@ -20,6 +20,7 @@ Current baseline:
 - [x] Add one OpenAI-compatible chat adapter.
 - [x] Create the React, TypeScript, and Vite application.
 - [x] Implement and test frontend API-process health connection states.
+- [x] Connect the frontend conversation navigation to the existing API.
 - [x] Implement persisted message interactions and assistant responses.
 - [ ] Connect frontend and backend with clear error states.
 - [x] Add backend API, persistence, migration, and adapter tests.

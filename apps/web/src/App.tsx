@@ -9,6 +9,7 @@ import {
 } from "antd";
 
 import { useHealth, type HealthStatus } from "./hooks/useHealth";
+import ConversationNavigation from "./components/ConversationNavigation";
 import "./App.css";
 
 const { Text, Title } = Typography;
@@ -83,6 +84,7 @@ export default function App() {
           <Text className="eyebrow">Foundation status</Text>
           <Title level={1}>Industrial AI Agent</Title>
         </header>
+        <ConversationNavigation />
         <Card className="health-card" title="API connection">
           <HealthStatusPanel
             status={status}
