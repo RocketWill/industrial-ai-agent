@@ -1,11 +1,19 @@
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from industrial_agent.llm.types import ChatMessage
 from industrial_agent.models.message import Message, MessageRole
 from industrial_agent.services.conversation import get_conversation
+
+
+@dataclass(frozen=True)
+class MessageExchange:
+    user_message: Message
+    assistant_message: Message
 
 
 def create_message(
@@ -38,6 +46,37 @@ def create_user_message(
         conversation_id=conversation_id,
         role="user",
         content=content,
+    )
+
+
+def create_message_exchange(
+    session: Session,
+    *,
+    conversation_id: UUID,
+    content: str,
+    complete: Callable[[Sequence[ChatMessage]], str],
+) -> MessageExchange:
+    user_message = create_user_message(
+        session,
+        conversation_id=conversation_id,
+        content=content,
+    )
+    history = list_messages(session, conversation_id)
+    assistant_content = complete(
+        [
+            ChatMessage(role=message.role, content=message.content)
+            for message in history
+        ]
+    )
+    assistant_message = create_message(
+        session,
+        conversation_id=conversation_id,
+        role="assistant",
+        content=assistant_content,
+    )
+    return MessageExchange(
+        user_message=user_message,
+        assistant_message=assistant_message,
     )
 
 

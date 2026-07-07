@@ -94,8 +94,38 @@ History is returned from oldest to newest. Messages are append-only, so the
 API does not expose individual get, update, or delete operations. Deleting the
 parent Conversation permanently removes its Messages.
 
-This endpoint stores the user's message only. It does not call an LLM or
-generate an assistant response.
+This endpoint stores the user's message, sends the complete chronological
+history for that Conversation to the configured adapter, then stores one
+assistant response. A successful request returns both new records:
+
+```json
+{
+  "user_message": {
+    "id": "uuid",
+    "conversation_id": "uuid",
+    "role": "user",
+    "content": "What caused the yield drop?",
+    "created_at": "2026-07-30T00:00:00Z"
+  },
+  "assistant_message": {
+    "id": "uuid",
+    "conversation_id": "uuid",
+    "role": "assistant",
+    "content": "...",
+    "created_at": "2026-07-30T00:00:01Z"
+  }
+}
+```
+
+When adapter configuration is missing or the compatible service cannot return
+a usable answer, the endpoint returns `503` with this fixed response:
+
+```json
+{"detail":"Assistant response is temporarily unavailable"}
+```
+
+The user Message remains in history after that failure; no assistant Message
+is created. This makes it possible to retry without losing the original input.
 
 ## OpenAI-compatible chat adapter
 
@@ -167,9 +197,8 @@ records the resolved environment.
 
 ## Current limitations
 
-The API persists Conversation and user Message records, but does not produce
-or persist assistant responses through its HTTP endpoints. The standalone
-adapter can call a configured compatible service, but has no streaming,
+The API persists Conversation, user Message, and assistant Message records.
+The adapter can call a configured compatible service, but has no streaming,
 retries, system prompts, tool calling, or model-discovery behavior. Message
 history has no pagination or individual mutation operations. The health
 endpoint reports API-process availability only and does not check the database
