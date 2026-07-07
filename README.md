@@ -10,11 +10,14 @@ fictional equipment documentation, and configurable external services.
 
 The FastAPI application foundation, environment-based settings, process health
 endpoint, and explicit SQLite/SQLAlchemy migration infrastructure are
-implemented and verified. The backend can now create, list, open, and
-permanently delete Conversation records. It can also store user Messages and
-reload each Conversation's history in chronological order. Assistant response
-generation, the React application, and LLM integration have not been
-implemented yet.
+implemented and verified. The backend can create, list, open, and permanently
+delete Conversation records, store user Messages, and reload each
+Conversation's history in chronological order. It also includes a standalone
+OpenAI-compatible chat adapter with a local Ollama default configuration.
+
+The adapter is not connected to the Message API yet: assistant response
+generation and persistence, plus the React application, remain to be
+implemented.
 
 ## Project goals
 
@@ -101,7 +104,9 @@ production data, or proprietary material.
 
 - Conversation and user Message records are persisted, but assistant
   responses are not generated.
-- LLM integration and the frontend remain planned.
+- The OpenAI-compatible adapter is implemented, but the Message API does not
+  invoke it or persist assistant responses.
+- The frontend remains planned.
 - The data directory contains documentation only; no synthetic dataset has
   been designed.
 

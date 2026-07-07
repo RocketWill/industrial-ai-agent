@@ -16,6 +16,8 @@ portfolio project.
 - Conversation create, list, get, and permanent-delete endpoints;
 - append-only user Message persistence and chronological history endpoints;
 - database-enforced Message role, content, and cascade-delete constraints;
+- standalone OpenAI-compatible chat adapter with configurable endpoint,
+  optional API key, model, and timeout;
 - Pytest and Ruff verification; and
 - reproducible uv lockfile and package build.
 
@@ -95,6 +97,50 @@ parent Conversation permanently removes its Messages.
 This endpoint stores the user's message only. It does not call an LLM or
 generate an assistant response.
 
+## OpenAI-compatible chat adapter
+
+The backend provides `OpenAICompatibleChatAdapter` as a standalone Python
+adapter. It sends non-streaming requests to the standard
+`/v1/chat/completions` endpoint and accepts only `user` and `assistant` chat
+messages. It is deliberately not wired into the HTTP Message API yet, so it
+does not create or persist assistant Messages.
+
+Configuration uses these environment variables:
+
+```bash
+# Default: http://127.0.0.1:11434/v1
+LLM_BASE_URL=http://127.0.0.1:11434/v1
+
+# Optional. Leave empty for a local service that does not require a key.
+LLM_API_KEY=
+
+# Required when constructing the adapter.
+LLM_MODEL=<installed-or-compatible-model>
+
+# Default: 60 seconds. Must be greater than zero.
+LLM_TIMEOUT_SECONDS=60
+```
+
+For example, with Ollama already running and a model already installed, this
+performs one local request without changing the database:
+
+```bash
+LLM_MODEL=<installed-model> uv run python - <<'PY'
+from industrial_agent.config.settings import Settings
+from industrial_agent.llm.openai_compatible import OpenAICompatibleChatAdapter
+from industrial_agent.llm.types import ChatMessage
+
+with OpenAICompatibleChatAdapter.from_settings(Settings()) as adapter:
+    print(adapter.complete([ChatMessage(role="user", content="Reply with OK.")]))
+PY
+```
+
+The adapter raises a configuration error for a missing model, a connection
+error for timeout or transport failures, a service error for non-success HTTP
+responses, and a response error for malformed or empty completion payloads.
+It does not start Ollama, download models, retry requests, stream responses,
+or inspect whether the configured model is installed.
+
 ## Verify
 
 ```bash
@@ -105,9 +151,7 @@ uv build
 
 ## Remaining v0.1 responsibilities
 
-- one OpenAI-compatible LLM adapter;
 - assistant response generation and persistence;
-- configuration validation and explicit error handling; and
 - tests for the remaining backend behavior.
 
 ## Non-responsibilities
@@ -124,7 +168,9 @@ records the resolved environment.
 ## Current limitations
 
 The API persists Conversation and user Message records, but does not produce
-assistant responses, call an LLM, or expose manufacturing data. Message
+or persist assistant responses through its HTTP endpoints. The standalone
+adapter can call a configured compatible service, but has no streaming,
+retries, system prompts, tool calling, or model-discovery behavior. Message
 history has no pagination or individual mutation operations. The health
-endpoint reports API-process availability only and does not check the
-database.
+endpoint reports API-process availability only and does not check the database
+or LLM service.

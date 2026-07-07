@@ -39,3 +39,15 @@ def test_health_does_not_create_or_require_database(
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
     assert not (tmp_path / "industrial_agent.db").exists()
+
+
+def test_health_does_not_require_llm_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("LLM_MODEL", raising=False)
+    client = TestClient(create_app())
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
