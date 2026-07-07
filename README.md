@@ -88,6 +88,10 @@ React conversation workflow is implemented and verified. That milestone will
 define the streaming transport, cancellation and disconnect behavior, and
 assistant-message persistence before changing the current API contract.
 
+The React shell now uses the Dithered dark UI foundation: shared Ant Design
+theme tokens, a wider responsive workspace, and semantic dark surfaces. This
+changes presentation only and does not change conversation or backend behavior.
+
 ## Development
 
 The backend can be installed, run, and verified from `apps/api`:

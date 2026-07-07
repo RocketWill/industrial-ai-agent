@@ -12,6 +12,7 @@ import { useHealth, type HealthStatus } from "./hooks/useHealth";
 import { useConversations } from "./hooks/useConversations";
 import ConversationNavigation from "./components/ConversationNavigation";
 import ConversationWorkspace from "./components/ConversationWorkspace";
+import { antdTheme } from "./theme/theme";
 import "./App.css";
 
 const { Text, Title } = Typography;
@@ -69,18 +70,7 @@ export default function App() {
 
   return (
     <ConfigProvider
-      theme={{
-        token: {
-          borderRadius: 8,
-          colorBgBase: "#f7f9fc",
-          colorError: "#c9362b",
-          colorPrimary: "#1677ff",
-          colorSuccess: "#16803c",
-          colorText: "#111827",
-          fontFamily:
-            '"Open Sans", Inter, ui-sans-serif, system-ui, -apple-system, sans-serif',
-        },
-      }}
+      theme={antdTheme}
     >
       <main className="application-shell">
         <header className="identity-area">

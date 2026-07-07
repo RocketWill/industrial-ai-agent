@@ -27,6 +27,8 @@ Current baseline:
 - [x] Add backend API, persistence, migration, and adapter tests.
 - [x] Add critical frontend conversation interaction tests.
 - [ ] Document clean-environment setup and verified limitations.
+- [x] Apply the Dithered dark UI foundation, shared Ant Design theme tokens,
+      and responsive conversation workspace layout.
 
 Acceptance criteria are defined in the root README. This milestone explicitly
 excludes LangGraph, RAG, MCP, manufacturing data/tools, authentication,

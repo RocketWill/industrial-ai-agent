@@ -3,9 +3,9 @@
   display: grid;
   gap: 24px;
   margin: 0 auto;
-  max-width: 680px;
   min-height: 100vh;
-  padding: 32px 16px;
+  padding: 32px 24px;
+  width: min(calc(100% - 48px), 1440px);
 }
 
 .identity-area {
@@ -13,11 +13,7 @@
 }
 
 .identity-area::after {
-  background-image: radial-gradient(
-    circle,
-    rgba(74, 103, 135, 0.22) 1px,
-    transparent 1px
-  );
+  background-image: radial-gradient(circle, rgba(167, 179, 209, 0.14) 1px, transparent 1px);
   background-size: 8px 8px;
   content: "";
   height: 64px;
@@ -28,53 +24,37 @@
   width: 96px;
 }
 
-.identity-area .ant-typography {
-  margin: 0;
-}
-
-.eyebrow {
-  color: #526577;
-  font-size: 14px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.health-card {
-  width: 100%;
-}
-
-.conversation-navigation { width: 100%; }
-.conversation-layout { display: grid; gap: 24px; grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.6fr); }
-.conversation-workspace { background: #fff; border: 1px solid #dbe4ef; border-radius: 8px; display: grid; gap: 16px; min-height: 420px; padding: 20px; }
+.identity-area .ant-typography { margin: 0; }
+.eyebrow { color: rgba(232, 235, 255, 0.65); font-size: 14px; letter-spacing: 0.04em; text-transform: uppercase; }
+.conversation-layout { display: grid; gap: 24px; grid-template-columns: 320px minmax(0, 1fr); min-width: 0; }
+.conversation-navigation { min-width: 0; }
+.conversation-workspace { background: #0b1028; border: 1px solid rgba(167, 179, 209, 0.18); border-radius: 8px; display: grid; gap: 16px; min-height: 520px; min-width: 0; padding: 24px; }
 .conversation-workspace .ant-typography { margin: 0; }
-.message-list { max-height: 420px; overflow-y: auto; }
+.message-list { max-height: 520px; min-width: 0; overflow-y: auto; }
 .message-item { border-radius: 8px; padding: 12px; }
-.message-item.user { background: #f3f7fc; }
-.message-item.assistant { background: #eef7f1; }
+.message-item.user { background: rgba(13, 70, 244, 0.14); }
+.message-item.assistant { background: rgba(194, 60, 228, 0.12); }
 .message-time { display: block; font-size: 12px; margin-top: 6px; }
 .message-composer { align-items: flex-end; display: flex; gap: 8px; }
 .message-composer .ant-input { flex: 1; }
 .conversation-heading { align-items: center; display: flex; gap: 16px; justify-content: space-between; margin-bottom: 16px; }
 .conversation-heading .ant-typography { margin: 0; }
-.conversation-item { cursor: pointer; padding: 12px 8px; }
-.conversation-item.selected { background: #eaf2ff; border-left: 3px solid #1677ff; padding-left: 5px; }
+.conversation-item { cursor: pointer; min-width: 0; padding: 12px 8px; }
+.conversation-item .ant-list-item-meta-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conversation-item.selected { background: rgba(13, 70, 244, 0.16); border-left: 3px solid #c23ce4; padding-left: 5px; }
+.health-card { width: 100%; }
+.health-status { align-items: flex-start; display: grid; gap: 16px; }
+.health-status .ant-btn { justify-self: start; }
 
-.health-status {
-  align-items: flex-start;
-  display: grid;
-  gap: 16px;
-}
-
-.health-status .ant-btn {
-  justify-self: start;
-}
-
-@media (min-width: 640px) {
-  .application-shell {
-    padding: 48px 24px;
-  }
-}
-
+@media (min-width: 900px) { .application-shell { padding: 48px 32px; } }
+@media (max-width: 899px) { .conversation-layout { grid-template-columns: 1fr; } }
 @media (max-width: 639px) {
-  .conversation-layout { grid-template-columns: 1fr; }
+  .application-shell { padding: 24px 16px; width: 100%; }
+  .conversation-layout { gap: 16px; }
+  .conversation-workspace { min-height: 440px; padding: 16px; }
+  .conversation-heading { align-items: flex-start; flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
 }
