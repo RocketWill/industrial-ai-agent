@@ -1,0 +1,60 @@
+.application-shell {
+  box-sizing: border-box;
+  display: grid;
+  gap: 24px;
+  margin: 0 auto;
+  max-width: 680px;
+  min-height: 100vh;
+  padding: 32px 16px;
+}
+
+.identity-area {
+  position: relative;
+}
+
+.identity-area::after {
+  background-image: radial-gradient(
+    circle,
+    rgba(74, 103, 135, 0.22) 1px,
+    transparent 1px
+  );
+  background-size: 8px 8px;
+  content: "";
+  height: 64px;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 96px;
+}
+
+.identity-area .ant-typography {
+  margin: 0;
+}
+
+.eyebrow {
+  color: #526577;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.health-card {
+  width: 100%;
+}
+
+.health-status {
+  align-items: flex-start;
+  display: grid;
+  gap: 16px;
+}
+
+.health-status .ant-btn {
+  justify-self: start;
+}
+
+@media (min-width: 640px) {
+  .application-shell {
+    padding: 48px 24px;
+  }
+}

@@ -61,15 +61,16 @@ belongs in deterministic domain code rather than an LLM.
 
 The active milestone is **v0.1 — Full-stack Foundation**.
 
-The current repository-baseline phase contains only:
+The current implementation includes the FastAPI application, explicit SQLite
+migrations, Conversation and Message persistence, and one synchronous
+OpenAI-compatible chat adapter. The Message API stores a user Message, requests
+one assistant response, and persists that response when the compatible service
+succeeds.
 
-- project scope and roadmap;
-- safe configuration placeholders;
-- minimal frontend/backend directory boundaries; and
-- explicit v0.1 acceptance criteria.
-
-FastAPI, React, SQLite persistence, and LLM integration are the next
-implementation phase and are not yet complete.
+The React application currently provides only the API-process health
+foundation. Conversation behavior and its critical interaction tests remain to
+be implemented before v0.1 can be accepted. Streaming will not be added to the
+initial frontend workflow.
 
 The following are deliberately excluded from v0.1:
 
@@ -81,6 +82,12 @@ The following are deliberately excluded from v0.1:
 - authentication, multi-tenancy, and complex authorization;
 - streaming, Redis, microservices, and high-availability deployment; and
 - Docker or cluster infrastructure.
+
+Streaming is planned for v0.1.1, after the synchronous React conversation
+workflow is implemented and verified. Keeping it in a separate milestone
+allows the transport contract, cancellation and disconnect behavior, partial
+response handling, and persistence boundary to be specified and tested
+together.
 
 ## Publication safety
 

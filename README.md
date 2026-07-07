@@ -16,7 +16,10 @@ Conversation's history in chronological order. It also includes a standalone
 OpenAI-compatible chat adapter with a local Ollama default configuration.
 
 The Message API now uses the adapter to generate and persist one assistant
-response for each successful user message. The React application remains to be
+response for each successful user message. The React application now provides
+the initial health foundation: it can check the API process through the local
+development proxy, show checking, connected, or unavailable states, and let a
+user run the check again. Conversation navigation and messaging remain to be
 implemented.
 
 ## Project goals
@@ -40,7 +43,7 @@ See [project scope](docs/project-scope.md) for explicit boundaries and
 industrial-ai-agent/
 ├── apps/
 │   ├── api/       # FastAPI backend with Conversation and Message persistence
-│   └── web/       # React + TypeScript frontend (planned for v0.1)
+│   └── web/       # React + TypeScript health foundation for v0.1
 ├── data/          # Synthetic project-owned data (not added yet)
 ├── docs/          # Scope, roadmap, architecture, and engineering notes
 └── scripts/       # Project automation added only when needed
@@ -80,6 +83,11 @@ v0.1 is complete only when all of the following are demonstrated:
 LangGraph, RAG, MCP, production tools, industrial datasets, authentication,
 streaming, Redis, and container deployment are outside v0.1.
 
+Streaming is planned as a separate v0.1.1 milestone after the synchronous
+React conversation workflow is implemented and verified. That milestone will
+define the streaming transport, cancellation and disconnect behavior, and
+assistant-message persistence before changing the current API contract.
+
 ## Development
 
 The backend can be installed, run, and verified from `apps/api`:
@@ -92,9 +100,22 @@ uv run ruff check .
 uv build
 ```
 
-See the [API guide](apps/api/README.md) for the implemented contract, explicit
-Alembic migration commands, and current limitations. Frontend setup commands
-will be added when that application is implemented.
+The browser health foundation can be installed, run, and verified from
+`apps/web`:
+
+```bash
+npm ci
+npm run dev
+npm test
+npm run typecheck
+npm run lint
+npm run build
+```
+
+The Vite development server proxies `/api` to `http://127.0.0.1:8000` by
+default. See the [API guide](apps/api/README.md) and
+[web guide](apps/web/README.md) for the implemented contracts and current
+limits.
 
 Copy `.env.example` to `.env` only when local application configuration is
 introduced. Never commit `.env`, credentials, private endpoints, real
@@ -106,7 +127,9 @@ production data, or proprietary material.
 - A Message request calls the configured OpenAI-compatible adapter. If that
   service is unavailable, the user Message remains stored and the API returns
   a safe `503` error.
-- The frontend remains planned.
+- The frontend currently reports API-process availability only; conversation
+  navigation, history, and messaging are not implemented yet.
+- Responses are synchronous and non-streaming in v0.1.
 - The data directory contains documentation only; no synthetic dataset has
   been designed.
 
