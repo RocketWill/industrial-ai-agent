@@ -21,10 +21,11 @@ Current baseline:
 - [x] Create the React, TypeScript, and Vite application.
 - [x] Implement and test frontend API-process health connection states.
 - [x] Connect the frontend conversation navigation to the existing API.
+- [x] Connect frontend message history and synchronous assistant responses.
 - [x] Implement persisted message interactions and assistant responses.
-- [ ] Connect frontend and backend with clear error states.
+- [x] Connect frontend and backend with clear error states.
 - [x] Add backend API, persistence, migration, and adapter tests.
-- [ ] Add critical frontend conversation interaction tests.
+- [x] Add critical frontend conversation interaction tests.
 - [ ] Document clean-environment setup and verified limitations.
 
 Acceptance criteria are defined in the root README. This milestone explicitly

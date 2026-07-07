@@ -44,6 +44,16 @@
 }
 
 .conversation-navigation { width: 100%; }
+.conversation-layout { display: grid; gap: 24px; grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.6fr); }
+.conversation-workspace { background: #fff; border: 1px solid #dbe4ef; border-radius: 8px; display: grid; gap: 16px; min-height: 420px; padding: 20px; }
+.conversation-workspace .ant-typography { margin: 0; }
+.message-list { max-height: 420px; overflow-y: auto; }
+.message-item { border-radius: 8px; padding: 12px; }
+.message-item.user { background: #f3f7fc; }
+.message-item.assistant { background: #eef7f1; }
+.message-time { display: block; font-size: 12px; margin-top: 6px; }
+.message-composer { align-items: flex-end; display: flex; gap: 8px; }
+.message-composer .ant-input { flex: 1; }
 .conversation-heading { align-items: center; display: flex; gap: 16px; justify-content: space-between; margin-bottom: 16px; }
 .conversation-heading .ant-typography { margin: 0; }
 .conversation-item { cursor: pointer; padding: 12px 8px; }
@@ -63,4 +73,8 @@
   .application-shell {
     padding: 48px 24px;
   }
+}
+
+@media (max-width: 639px) {
+  .conversation-layout { grid-template-columns: 1fr; }
 }

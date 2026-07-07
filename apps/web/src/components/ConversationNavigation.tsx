@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { Alert, Button, Form, Input, List, Modal, Skeleton, Typography } from "antd";
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
-import { useConversations, type ConversationState } from "../hooks/useConversations";
+import type { ConversationState } from "../hooks/useConversations";
 
-type Props = { state?: ConversationState };
+type Props = { state: ConversationState };
 
-export default function ConversationNavigation({ state: provided }: Props) {
-  const hookState = useConversations();
-  const state = provided ?? hookState;
+export default function ConversationNavigation({ state }: Props) {
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<{ title?: string }>();
   const submit = async () => { const values = await form.validateFields(); await state.createConversation(values.title); form.resetFields(); setOpen(false); };
