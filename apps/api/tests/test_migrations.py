@@ -85,7 +85,7 @@ def test_migration_upgrades_empty_database_to_head(
         "conversations",
         "messages",
     }
-    assert read_alembic_versions(database_path) == ["0003_create_messages"]
+    assert read_alembic_versions(database_path) == ["0004_add_workspace_context"]
 
 
 def test_conversation_migration_creates_required_schema(
@@ -100,6 +100,11 @@ def test_conversation_migration_creates_required_schema(
         "id": ("CHAR(32)", True),
         "title": ("VARCHAR(200)", True),
         "created_at": ("DATETIME", True),
+        "environment": ("VARCHAR(20)", True),
+        "device": ("VARCHAR(200)", False),
+        "lot": ("VARCHAR(200)", False),
+        "time_range": ("VARCHAR(100)", False),
+        "data_source": ("VARCHAR(30)", True),
     }
 
     with sqlite3.connect(database_path) as connection:
@@ -196,7 +201,7 @@ def test_message_migration_downgrades_to_conversations(
     upgrade_result = run_alembic("upgrade", "head", database_path)
     assert upgrade_result.returncode == 0, upgrade_result.stderr
 
-    downgrade_result = run_alembic("downgrade", "-1", database_path)
+    downgrade_result = run_alembic("downgrade", "-2", database_path)
 
     assert downgrade_result.returncode == 0, downgrade_result.stderr
     assert read_database_tables(database_path) == {
@@ -214,7 +219,7 @@ def test_conversation_migration_downgrades_to_foundation(
     database_path = tmp_path / "migration.db"
     upgrade_result = run_alembic("upgrade", "head", database_path)
     assert upgrade_result.returncode == 0, upgrade_result.stderr
-    message_downgrade = run_alembic("downgrade", "-1", database_path)
+    message_downgrade = run_alembic("downgrade", "-2", database_path)
     assert message_downgrade.returncode == 0, message_downgrade.stderr
 
     conversation_downgrade = run_alembic(

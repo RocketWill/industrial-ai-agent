@@ -5,6 +5,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from industrial_agent.models.conversation import Conversation
+from industrial_agent.schemas.context import (
+    WorkspaceContextRead,
+    WorkspaceContextUpdate,
+)
+from industrial_agent.services.device import (
+    SyntheticDeviceNotFoundError,
+    get_synthetic_device,
+)
 
 
 class ConversationNotFoundError(Exception):
@@ -48,3 +56,29 @@ def delete_conversation(
     conversation = get_conversation(session, conversation_id)
     session.delete(conversation)
     session.commit()
+
+
+def get_workspace_context(
+    session: Session, conversation_id: UUID
+) -> WorkspaceContextRead:
+    return WorkspaceContextRead.model_validate(
+        get_conversation(session, conversation_id)
+    )
+
+
+def update_workspace_context(
+    session: Session,
+    conversation_id: UUID,
+    update: WorkspaceContextUpdate,
+) -> WorkspaceContextRead:
+    conversation = get_conversation(session, conversation_id)
+    for field, value in update.model_dump(exclude_unset=True).items():
+        if field == "device" and value is not None:
+            try:
+                get_synthetic_device(value)
+            except SyntheticDeviceNotFoundError as error:
+                raise ValueError("Unknown synthetic device") from error
+        setattr(conversation, field, value)
+    session.commit()
+    session.refresh(conversation)
+    return WorkspaceContextRead.model_validate(conversation)

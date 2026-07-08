@@ -34,6 +34,18 @@ class Conversation(Base):
         nullable=False,
         default="New conversation",
     )
+    environment: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="synthetic", server_default="synthetic"
+    )
+    device: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    lot: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    time_range: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    data_source: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default="synthetic_demo",
+        server_default="synthetic_demo",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
