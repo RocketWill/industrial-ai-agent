@@ -51,4 +51,15 @@ describe("App", () => {
     ).toBeEnabled();
     expect(screen.queryByText("offline at 127.0.0.1")).not.toBeInTheDocument();
   });
+
+  it("presents the truthful semiconductor Agent workbench shell", () => {
+    vi.mocked(checkHealth).mockReturnValue(new Promise(() => undefined));
+
+    render(<App />);
+
+    expect(screen.getAllByText("Agent Workspace")).toHaveLength(2);
+    expect(screen.getByText("Synthetic Demo Data")).toBeInTheDocument();
+    expect(screen.getByText("Production Data")).toBeInTheDocument();
+    expect(screen.getAllByText("Planned")).toHaveLength(3);
+  });
 });
