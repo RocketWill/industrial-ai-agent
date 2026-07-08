@@ -239,3 +239,43 @@ def test_complete_rejects_invalid_response(
         adapter.complete([ChatMessage(role="user", content="Question")])
 
     adapter.close()
+
+
+def test_stream_yields_compatible_deltas() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert json.loads(request.content)["stream"] is True
+        return httpx.Response(
+            200,
+            text=(
+                "data: {\"choices\":[{\"delta\":{\"content\":\"Hel\"}}]}\n\n"
+                "data: {\"choices\":[{\"delta\":{\"content\":\"lo\"}}]}\n\n"
+                "data: [DONE]\n\n"
+            ),
+        )
+
+    adapter = OpenAICompatibleChatAdapter.from_settings(
+        Settings(LLM_MODEL="test-model"),
+        transport=httpx.MockTransport(handler),
+    )
+
+    with adapter:
+        assert list(adapter.stream([ChatMessage(role="user", content="Q")])) == [
+            "Hel",
+            "lo",
+        ]
+
+
+def test_stream_rejects_incomplete_or_malformed_response() -> None:
+    responses = [
+        "data: {\"choices\":[]}\n\ndata: [DONE]\n\n",
+        "data: {\"choices\":[{\"delta\":{}}]}\n\ndata: [DONE]\n\n",
+    ]
+    for body in responses:
+        adapter = OpenAICompatibleChatAdapter.from_settings(
+            Settings(LLM_MODEL="test-model"),
+            transport=httpx.MockTransport(
+                lambda _request, body=body: httpx.Response(200, text=body)
+            ),
+        )
+        with adapter, pytest.raises(LLMResponseError):
+            list(adapter.stream([ChatMessage(role="user", content="Q")]))

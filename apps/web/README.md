@@ -75,7 +75,10 @@ authentication, and administrative interfaces are outside v0.1.
 
 **In Progress** — the health, conversation-navigation, and synchronous message
 foundations and Dithered dark UI foundation are implemented and verified.
-Streaming remains planned.
+Streaming is available through the message composer. The client consumes SSE
+frames with `fetch` and `ReadableStream`, renders token deltas in memory, and
+offers a keyboard-accessible Stop action. Partial or cancelled assistant text
+is not persisted.
 
 The current shell presents these capabilities as a semiconductor Agent
 workbench. Its navigation marks Production Data, Knowledge Base, and Evaluations
