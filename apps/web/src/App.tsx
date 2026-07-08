@@ -3,9 +3,12 @@ import {
   Badge,
   Button,
   ConfigProvider,
+  Drawer,
   Spin,
   Typography,
 } from "antd";
+import { MenuOutlined } from "@ant-design/icons";
+import { useState } from "react";
 import type { CSSProperties } from "react";
 
 import { useHealth, type HealthStatus } from "./hooks/useHealth";
@@ -66,6 +69,7 @@ function HealthStatusPanel({
 }
 
 export default function App() {
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const { status, checkAgain } = useHealth();
   const conversations = useConversations();
 
@@ -92,6 +96,10 @@ export default function App() {
     "--color-border-subtle": colors.borderSubtle,
     "--color-primary": colors.primary,
     "--color-accent": colors.accent,
+    "--color-text-primary": colors.textPrimary,
+    "--color-text-secondary": colors.textSecondary,
+    "--color-text-muted": colors.textDescription,
+    "--color-description": colors.textDescription,
   } as CSSProperties;
 
   return (
@@ -100,15 +108,16 @@ export default function App() {
     >
       <main className="application-shell" style={workbenchStyle}>
         <div className="workbench-layout">
-          <ConversationNavigation state={conversations} footer={<HealthStatusPanel status={status} onCheckAgain={() => void checkAgain()} />} />
+          <div className="desktop-sidebar"><ConversationNavigation state={conversations} footer={<HealthStatusPanel status={status} onCheckAgain={() => void checkAgain()} />} /></div>
           <section className="workspace-column">
             <header className="workspace-bar">
-              <div><Text className="workspace-eyebrow">Current workspace</Text><Title level={2}>Agent Workspace</Title></div>
-              <Badge className="synthetic-data-badge" color="#37C6D0" text="Synthetic Demo Data" />
+              <div className="workspace-title"><Button className="mobile-menu-button" type="text" icon={<MenuOutlined />} aria-label="Open navigation" onClick={() => setMobileNavigationOpen(true)} /><Title level={2}>Agent Workspace</Title></div>
+              <Badge className="synthetic-data-badge" color="#37C6D0" text="Synthetic Demo" />
             </header>
             <ConversationWorkspace conversationId={conversations.selectedConversationId} />
           </section>
         </div>
+        <Drawer title="Navigation" placement="left" open={mobileNavigationOpen} onClose={() => setMobileNavigationOpen(false)} width={280}><ConversationNavigation state={conversations} footer={<HealthStatusPanel status={status} onCheckAgain={() => void checkAgain()} />} /></Drawer>
       </main>
     </ConfigProvider>
   );
