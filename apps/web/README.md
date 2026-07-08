@@ -10,6 +10,7 @@ This directory contains the React and TypeScript v0.1 conversation foundation.
 - a `GET /health` client with runtime response validation;
 - conversation loading, creation, selection, and deletion through the existing API;
 - persisted message history and synchronous user/assistant exchanges;
+- SSE streaming assistant responses with a keyboard-accessible Stop action;
 - local `/api` proxying to `http://127.0.0.1:8000` during Vite development;
 - checking, connected, and unavailable API-process states; and
 - a user-initiated `Check again` action that prevents duplicate in-flight
@@ -60,16 +61,17 @@ npm run build
 
 ## Remaining v0.1 responsibilities
 
-- add broader clean-environment documentation and verified limitations;
-- continue testing the synchronous workflow against local API configuration.
+- add broader clean-environment documentation and verified limitations.
 
-The current conversation workflow uses the synchronous Message API. It keeps
-draft text after failed submissions and introduces no streaming behavior.
+The conversation workflow keeps the synchronous Message API as a stable path
+and also supports the v0.1.1 streaming endpoint. It keeps draft text after
+failed submissions and does not persist partial assistant output.
 
 ## Non-responsibilities
 
-Streaming, agent traces, tool timelines, RAG sources, manufacturing charts,
-authentication, and administrative interfaces are outside v0.1.
+Agent traces, tool timelines, RAG sources, manufacturing charts, authentication,
+and administrative interfaces are outside v0.1. Streaming is implemented in
+the separate v0.1.1 milestone.
 
 ## Current status
 

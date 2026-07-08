@@ -67,10 +67,10 @@ OpenAI-compatible chat adapter. The Message API stores a user Message, requests
 one assistant response, and persists that response when the compatible service
 succeeds.
 
-The React application currently provides only the API-process health
-foundation. Conversation behavior and its critical interaction tests remain to
-be implemented before v0.1 can be accepted. Streaming will not be added to the
-initial frontend workflow.
+The React application provides API-process health, conversation navigation,
+message history, synchronous exchanges, and critical interaction tests.
+Streaming is implemented separately in v0.1.1 so its transport and persistence
+boundary can be tested without changing the v0.1 synchronous contract.
 
 The following are deliberately excluded from v0.1:
 
@@ -83,11 +83,10 @@ The following are deliberately excluded from v0.1:
 - streaming, Redis, microservices, and high-availability deployment; and
 - Docker or cluster infrastructure.
 
-Streaming is planned for v0.1.1, after the synchronous React conversation
-workflow is implemented and verified. Keeping it in a separate milestone
-allows the transport contract, cancellation and disconnect behavior, partial
-response handling, and persistence boundary to be specified and tested
-together.
+Streaming is implemented in v0.1.1 after the synchronous React conversation
+workflow was verified. Keeping it in a separate milestone allowed the
+transport contract, cancellation and disconnect behavior, partial response
+handling, and persistence boundary to be specified and tested together.
 
 ## Publication safety
 
