@@ -59,18 +59,19 @@ belongs in deterministic domain code rather than an LLM.
 
 ## Current milestone boundary
 
-The active milestone is **v0.1 — Full-stack Foundation**.
+The active milestone is the **v0.1 — Full-stack Foundation** closeout. The
+application behavior is implemented, but the clean-environment setup
+verification remains open.
 
-The current implementation includes the FastAPI application, explicit SQLite
-migrations, Conversation and Message persistence, and one synchronous
-OpenAI-compatible chat adapter. The Message API stores a user Message, requests
-one assistant response, and persists that response when the compatible service
-succeeds.
+The current backend includes explicit SQLite migrations, Conversation and
+Message persistence, synchronous and streaming OpenAI-compatible chat flows,
+conversation-bound workspace context, and a deterministic fictional device
+catalog. The React application provides API-process health, conversation and
+message workflows, streaming controls, responsive navigation, and context
+editing.
 
-The React application provides API-process health, conversation navigation,
-message history, synchronous exchanges, and critical interaction tests.
-Streaming is implemented separately in v0.1.1 so its transport and persistence
-boundary can be tested without changing the v0.1 synchronous contract.
+Streaming and the refined workspace are recorded as completed v0.1.1 and
+v0.1.2 extensions. They do not change the remaining v0.1 acceptance item.
 
 The following are deliberately excluded from v0.1:
 
@@ -80,13 +81,16 @@ The following are deliberately excluded from v0.1:
 - RAG and vector storage;
 - MCP;
 - authentication, multi-tenancy, and complex authorization;
-- streaming, Redis, microservices, and high-availability deployment; and
+- Redis, microservices, and high-availability deployment; and
 - Docker or cluster infrastructure.
 
-Streaming is implemented in v0.1.1 after the synchronous React conversation
-workflow was verified. Keeping it in a separate milestone allowed the
-transport contract, cancellation and disconnect behavior, partial response
-handling, and persistence boundary to be specified and tested together.
+Streaming is outside the original v0.1 contract but implemented in v0.1.1.
+Keeping it separate allowed client cancellation, partial-response handling,
+and the completed-response persistence boundary to be specified together.
+
+The next planned implementation milestone is v0.2. It introduces minimal
+LangGraph orchestration; it does not authorize manufacturing analytics, RAG,
+or tool claims ahead of their own milestones.
 
 ## Publication safety
 

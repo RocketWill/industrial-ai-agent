@@ -1,96 +1,69 @@
 # Roadmap
 
-Milestones are completed only when their documented behavior is runnable,
-tested, demonstrable, and accurately described. Planned items are not
-implemented features.
+Milestones are accepted only when their documented behavior is runnable,
+tested, demonstrable, and accurately described. Detailed implemented behavior
+is tracked in [implementation status](implementation-status.md).
 
 ## v0.1 — Full-stack Foundation
 
-**Status: Implemented**
+**Status: In Progress**
 
-Current baseline:
+Implemented:
 
 - [x] Define independent project scope and publication boundaries.
-- [x] Document milestone roadmap and v0.1 acceptance criteria.
-- [x] Establish minimal `apps/api` and `apps/web` boundaries.
-- [x] Add safe ignore rules and configuration placeholders.
-- [x] Create the FastAPI application and health endpoint.
-- [x] Add settings, SQLite, SQLAlchemy, and schema migrations.
+- [x] Establish `apps/api` and `apps/web` application boundaries.
+- [x] Add the FastAPI process-health endpoint and environment settings.
+- [x] Add SQLite, SQLAlchemy, foreign-key enforcement, and Alembic migrations.
 - [x] Implement conversation management and append-only message persistence.
-- [x] Add one OpenAI-compatible chat adapter.
-- [x] Create the React, TypeScript, and Vite application.
-- [x] Implement and test frontend API-process health connection states.
-- [x] Connect the frontend conversation navigation to the existing API.
-- [x] Connect frontend message history and synchronous assistant responses.
-- [x] Implement persisted message interactions and assistant responses.
-- [x] Connect frontend and backend with clear error states.
-- [x] Add backend API, persistence, migration, and adapter tests.
-- [x] Add critical frontend conversation interaction tests.
-- [ ] Document clean-environment setup and verified limitations.
-- [x] Apply the Dithered dark UI foundation, shared Ant Design theme tokens,
-      and responsive conversation workspace layout.
-- [x] Refine the Agent workbench information architecture with the two-column
-      navigation/workspace shell and shared spacing/layout tokens.
+- [x] Add one configurable OpenAI-compatible chat adapter.
+- [x] Implement the React conversation workflow and explicit failure states.
+- [x] Add focused backend and frontend tests.
+- [x] Document local setup, configuration, contracts, and known limitations.
 
-Acceptance criteria are defined in the root README. This milestone explicitly
-excludes LangGraph, RAG, MCP, manufacturing data/tools, authentication,
-streaming, Redis, and deployment infrastructure.
+Open acceptance item:
+
+- [ ] Verify the complete setup from a clean machine or equivalent clean
+      environment.
+
+This milestone excludes LangGraph, RAG, MCP, manufacturing datasets and tools,
+authentication, distributed infrastructure, and deployment orchestration.
+Streaming remains a separate v0.1.1 extension.
 
 ## v0.1.1 — Streaming Conversation
 
 **Status: Implemented**
 
-Add streaming only after the synchronous React conversation workflow is
-implemented and verified. The milestone now uses one browser-compatible SSE
-transport with incremental assistant rendering, cancellation and disconnect
-behavior, safe error reporting, and a persistence rule for complete or
-interrupted assistant responses. Focused backend and frontend tests cover these
-boundaries.
+The browser and API use one SSE transport for incremental assistant rendering.
+The browser can cancel its request, malformed responses produce safe errors,
+and the service persists an assistant message only after it consumes a
+non-empty completed response. Backend and frontend tests cover event parsing,
+error handling, and the completed-response persistence boundary.
 
 This milestone does not add LangGraph, tool calling, retries, manufacturing
-logic, RAG, or execution traces.
+logic, RAG, or execution traces. Client-disconnect persistence still needs a
+dedicated integration test.
 
 ## v0.1.2 — Industrial Chat Workspace UI
 
-**Status: In Progress**
+**Status: Implemented**
 
-Refine the existing React conversation workflow into a restrained Ant Design
-workbench before starting LangGraph. Reduce nested card framing, establish a
-readable user/assistant message layout, normalize internal reasoning tags,
-improve the sticky composer and empty states, and verify responsive overflow,
-keyboard behavior, focus visibility, and streaming states. Reuse the existing
-conversation and SSE data flows; do not add manufacturing data, tool activity,
-context drawers, or unsupported model/device controls in this milestone.
+The React application now provides:
 
-The remaining UI work is intentionally staged:
+- a restrained Dithered theme configured through shared Ant Design tokens;
+- desktop sidebar navigation and a mobile Drawer;
+- a viewport-bound application shell with fixed header and composer;
+- a single primary scrollbar for the conversation viewport;
+- readable user and assistant message widths;
+- assistant reasoning-tag suppression, copy actions, loading and empty states;
+- conversation-bound context display and editing;
+- a deterministic fictional device selector;
+- time-range presets, lot validation, and scroll-to-bottom behavior; and
+- explicit Synthetic Demo labeling.
 
-- **Slice A — workspace hierarchy:** finish the single-scroll desktop shell,
-  remove the large Conversation container treatment, narrow message reading
-  widths, simplify the workspace header, refine sidebar emphasis, and add a
-  truthful `Device: Not selected · Lot: — · Range: Last 4 hours · Source:
-  Synthetic Demo` context bar.
-- **Slice B — industrial content layer:** after supporting backend contracts
-  exist, add tool activity, metric summaries, source references, context drawer,
-  and long-conversation affordances such as scroll-to-bottom and new-response
-  notices. These are not complete yet.
-
-Ant Design X components may be evaluated after the baseline UI is stable. They
-are not a requirement for the first implementation slice, and no new package
-will be added without a verified need and compatibility check.
-
-The next UI feature after v0.1.2 is the **Industrial Context Layer**. It will
-make device, lot, time range, data source, and agent capability context visible
-through real backend-supported values, without inventing production data.
-
-The contract foundation is implemented: conversation-bound context defaults,
-GET/PATCH API endpoints, migration coverage, and a small context edit drawer
-are available. A deterministic synthetic device catalog and read-only device
-selection are now implemented; live status and production-backed values remain
-planned.
-
-The pre-LangGraph UI also includes time-range presets, lot validation, and a
-scroll-to-bottom affordance. Browser verification confirms the desktop and
-mobile shell, single-scroll hierarchy, and fixed composer/header behavior.
+Desktop and mobile browser checks confirm the shell and overflow hierarchy.
+The interface does not provide tool activity, metric summaries, sources,
+manufacturing charts, live equipment values, or production-backed analysis.
+Those surfaces remain tied to later backend milestones.
 
 ## v0.2 — Minimal LangGraph
 
@@ -98,7 +71,8 @@ mobile shell, single-scroll hierarchy, and fixed composer/header behavior.
 
 Replace or wrap direct chat orchestration with a minimal graph containing
 context loading, an LLM node, response persistence, execution events, and
-state-transition tests.
+state-transition tests. Define how stored workspace context enters graph state
+without treating synthetic metadata as production evidence.
 
 ## v0.3 — Manufacturing Domain
 
@@ -128,9 +102,9 @@ and alarm guides.
 
 **Status: Planned**
 
-Add structured intent/context extraction, conditional document/production/
-combined routing, evidence validation, timeouts, retries, empty-result
-handling, clarification, safe failure, and observable traces.
+Add structured intent and context extraction, conditional document,
+production, and combined routing, evidence validation, timeouts, retries,
+empty-result handling, clarification, safe failure, and observable traces.
 
 ## v0.7 — MCP
 
