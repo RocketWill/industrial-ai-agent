@@ -82,6 +82,23 @@ frames with `fetch` and `ReadableStream`, renders token deltas in memory, and
 offers a keyboard-accessible Stop action. Partial or cancelled assistant text
 is not persisted.
 
+The v0.1.2 UI milestone is implemented. Slice A's shell hierarchy, message
+widths, header/sidebar emphasis, and truthful context bar are browser-verified.
+Slice B will add tool activity, metric summaries, and sources only after their
+backend contracts exist.
+
+The next UI feature after this milestone is an Industrial Context Layer for
+verified device, lot, time-range, data-source, and agent-capability context.
+
+The current pre-LangGraph UI also includes time-range presets, lot length
+validation, and a scroll-to-bottom affordance for long conversations. Desktop
+and mobile browser checks confirm the single-scroll shell behavior.
+
+The Context Bar loads conversation-bound context from the API. Its edit drawer
+allows a device to be selected from the synthetic catalog and lot/time-range
+values to be saved through the PATCH contract; empty values remain explicitly
+`Not selected` or `—`, and the source remains read-only `Synthetic Demo`.
+
 The current shell presents these capabilities as a semiconductor Agent
 workbench. Its navigation marks Production Data, Knowledge Base, and Evaluations
 as planned, and it labels the current portfolio context as `Synthetic Demo

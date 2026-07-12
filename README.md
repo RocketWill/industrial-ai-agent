@@ -98,6 +98,26 @@ navigation/workspace shell, explicit `Synthetic Demo Data` context, and shared
 spacing and layout tokens. Future tool execution, manufacturing analytics, and
 source panels will be introduced only with their supporting backend contracts.
 
+The current UI milestone is v0.1.2, an Industrial Chat Workspace UI pass. Its
+single-scroll shell, message widths, header/sidebar emphasis, and truthful
+context bar are implemented and browser-verified. A later Slice B will add
+industrial content surfaces only when backend contracts exist.
+
+The next UI feature after v0.1.2 is an Industrial Context Layer for device, lot,
+time range, data source, and agent capability context. It will use verified
+values and will not create synthetic production results to fill the interface.
+
+The first context contract slice is available per conversation through typed
+GET/PATCH endpoints. The current UI reads and edits optional device, lot, and
+time-range values without presenting unsupported production controls.
+
+The device selector uses a deterministic fictional catalog from `GET /devices`.
+It exposes identity metadata only and does not imply live equipment status.
+
+The pre-LangGraph UI includes time-range presets, lot validation, and a
+scroll-to-bottom affordance for long conversations. Desktop and mobile browser
+checks confirm that only the conversation viewport scrolls.
+
 ## Development
 
 The backend can be installed, run, and verified from `apps/api`:
