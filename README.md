@@ -8,7 +8,7 @@ proprietary system material.
 
 ## Current status
 
-**Implemented — v0.1 foundation**
+**In Progress — v0.2 Minimal LangGraph**
 
 The conversation foundation is runnable and tested. It includes FastAPI,
 SQLite persistence, explicit Alembic migrations, an OpenAI-compatible chat
@@ -24,8 +24,9 @@ Two follow-up milestones are also implemented:
   responsive navigation, a single-scroll conversation layout, message states,
   and conversation-bound synthetic context.
 
-The clean-environment setup verification is complete. LangGraph remains planned
-for v0.2.
+The clean-environment setup verification is complete. v0.2 now routes both
+synchronous and SSE conversation execution through a typed LangGraph workflow.
+Manufacturing tools and evidence grounding remain planned.
 
 See the [implementation status](docs/implementation-status.md) for the
 code-backed feature matrix and the [roadmap](docs/roadmap.md) for milestone
@@ -36,6 +37,7 @@ boundaries.
 - conversation create, list, open, and permanent delete;
 - chronological user and assistant message persistence;
 - synchronous and SSE assistant-response endpoints;
+- typed LangGraph orchestration shared by synchronous and SSE flows;
 - conversation history passed to the configured model for continued dialogue;
 - conversation-bound device, lot, time-range, environment, and data-source
   context;
@@ -147,8 +149,8 @@ copy verification uses the committed lockfiles and migration workflow.
   client-disconnect persistence behavior still needs an integration test.
 - Context values and device identities are synthetic metadata. They do not
   represent live equipment or production state.
-- There is no LangGraph, tool calling, RAG, manufacturing dataset,
-  authentication, retry orchestration, or deployment stack.
+- There is no tool calling, RAG, manufacturing dataset, authentication, retry
+  orchestration, or deployment stack.
 - Conversation and message history are not paginated.
 
 ## License

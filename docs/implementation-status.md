@@ -31,7 +31,7 @@ matrix. Application README files own setup and contract usage.
 | Industrial workspace shell | Implemented | Dithered Ant Design theme, desktop sidebar, mobile Drawer, fixed workspace header and composer, one main message scrollbar, responsive reading widths, and scroll-to-bottom control. | Production Data, Knowledge Base, and Evaluations remain visibly marked as planned. |
 | Context editor | Implemented | Select a fictional device, enter an optional lot, choose a time-range preset, and save conversation context. | Source remains read-only Synthetic Demo; `Custom` does not provide start/end controls. |
 | Manufacturing analytics | Planned | None. | No yield, throughput, defect, alarm, or equipment-status calculation. |
-| LangGraph orchestration | Planned | None. | The Message API calls the adapter directly. |
+| LangGraph orchestration | Implemented | Typed graph state, context loading, shared synchronous/streaming runners, safe errors, and completed-response persistence. | No tool nodes, routing, retries, or graph visualization. |
 | RAG and sources | Planned | None. | No document ingestion, vector storage, retrieval, citation, or source viewer. |
 | MCP | Planned | None. | No MCP server or client integration. |
 | Evaluation and observability | Planned | None. | No scenario suite, tool trace, latency panel, or retry telemetry. |

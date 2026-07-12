@@ -66,12 +66,16 @@ Those surfaces remain tied to later backend milestones.
 
 ## v0.2 — Minimal LangGraph
 
-**Status: Planned**
+**Status: Implemented**
 
-Replace or wrap direct chat orchestration with a minimal graph containing
-context loading, an LLM node, response persistence, execution events, and
-state-transition tests. Define how stored workspace context enters graph state
-without treating synthetic metadata as production evidence.
+The Message API now routes synchronous and SSE execution through a typed graph
+with context loading, model execution, token events, safe errors, and completed
+assistant persistence. Both transports share the same orchestration boundary,
+while Workspace Context remains synthetic metadata and is not converted into a
+system prompt. Graph, API regression, and frontend compatibility tests pass.
+
+This milestone does not add tool nodes, manufacturing analytics, RAG, MCP,
+retry orchestration, or workflow visualization.
 
 ## v0.3 — Manufacturing Domain
 
