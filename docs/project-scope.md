@@ -59,9 +59,9 @@ belongs in deterministic domain code rather than an LLM.
 
 ## Current milestone boundary
 
-The active milestone is the **v0.1 — Full-stack Foundation** closeout. The
-application behavior is implemented, but the clean-environment setup
-verification remains open.
+The active milestone is **v0.2 — Minimal LangGraph** planning. The v0.1
+foundation and its v0.1.1 streaming and v0.1.2 workspace extensions are
+implemented, including clean-environment verification.
 
 The current backend includes explicit SQLite migrations, Conversation and
 Message persistence, synchronous and streaming OpenAI-compatible chat flows,
@@ -71,7 +71,7 @@ message workflows, streaming controls, responsive navigation, and context
 editing.
 
 Streaming and the refined workspace are recorded as completed v0.1.1 and
-v0.1.2 extensions. They do not change the remaining v0.1 acceptance item.
+v0.1.2 extensions.
 
 The following are deliberately excluded from v0.1:
 

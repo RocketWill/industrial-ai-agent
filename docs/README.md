@@ -19,10 +19,8 @@ contracts.
 
 ## Status
 
-The project is closing out the v0.1 foundation. Streaming v0.1.1 and the
-Industrial Chat Workspace UI v0.1.2 are implemented. A clean-environment setup
-verification remains before v0.1 is accepted; LangGraph is still planned for
-v0.2.
+The v0.1 foundation is implemented. Streaming v0.1.1 and the Industrial Chat
+Workspace UI v0.1.2 are also implemented. LangGraph is still planned for v0.2.
 
 Architecture notes and engineering decisions should be added only when the
 corresponding code or decision exists. Planned architecture belongs in the

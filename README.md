@@ -8,7 +8,7 @@ proprietary system material.
 
 ## Current status
 
-**In Progress — v0.1 foundation closeout**
+**Implemented — v0.1 foundation**
 
 The conversation foundation is runnable and tested. It includes FastAPI,
 SQLite persistence, explicit Alembic migrations, an OpenAI-compatible chat
@@ -24,8 +24,8 @@ Two follow-up milestones are also implemented:
   responsive navigation, a single-scroll conversation layout, message states,
   and conversation-bound synthetic context.
 
-The remaining v0.1 acceptance item is a clean-environment setup verification.
-LangGraph remains planned for v0.2.
+The clean-environment setup verification is complete. LangGraph remains planned
+for v0.2.
 
 See the [implementation status](docs/implementation-status.md) for the
 code-backed feature matrix and the [roadmap](docs/roadmap.md) for milestone
@@ -125,9 +125,8 @@ npm run build
 ```
 
 The latest recorded results are listed in
-[implementation status](docs/implementation-status.md). A successful local
-verification is not yet treated as proof of the remaining clean-environment
-acceptance item.
+[implementation status](docs/implementation-status.md). The recorded clean
+copy verification uses the committed lockfiles and migration workflow.
 
 ## Documentation
 

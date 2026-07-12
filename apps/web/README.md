@@ -66,10 +66,11 @@ npm run lint
 npm run build
 ```
 
-## Remaining v0.1 responsibility
+## Verification status
 
-- verify the documented workflow from a clean machine or equivalent clean
-  environment.
+The documented workflow has been verified from a clean git archive copy using
+the committed npm lockfile and frontend test, typecheck, lint, and build
+commands.
 
 The conversation workflow keeps the synchronous Message API as a stable path
 and also supports the v0.1.1 streaming endpoint. It keeps draft text after

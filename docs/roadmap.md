@@ -6,7 +6,7 @@ is tracked in [implementation status](implementation-status.md).
 
 ## v0.1 — Full-stack Foundation
 
-**Status: In Progress**
+**Status: Implemented**
 
 Implemented:
 
@@ -20,10 +20,9 @@ Implemented:
 - [x] Add focused backend and frontend tests.
 - [x] Document local setup, configuration, contracts, and known limitations.
 
-Open acceptance item:
-
-- [ ] Verify the complete setup from a clean machine or equivalent clean
-      environment.
+The clean-environment workflow was verified from a committed git archive copy:
+dependencies installed from both lockfiles, migrations reached head, and the
+API and Web test suites passed.
 
 This milestone excludes LangGraph, RAG, MCP, manufacturing datasets and tools,
 authentication, distributed infrastructure, and deployment orchestration.
