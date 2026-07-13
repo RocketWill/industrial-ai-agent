@@ -111,7 +111,7 @@ export default function App() {
           <div className="desktop-sidebar"><ConversationNavigation state={conversations} footer={<HealthStatusPanel status={status} onCheckAgain={() => void checkAgain()} />} /></div>
           <section className="workspace-column">
             <header className="workspace-bar">
-              <div className="workspace-title"><Button className="mobile-menu-button" type="text" icon={<MenuOutlined />} aria-label="Open navigation" onClick={() => setMobileNavigationOpen(true)} /><Title level={2}>Agent Workspace</Title></div>
+              <div className="workspace-title"><Button className="mobile-menu-button" type="text" icon={<MenuOutlined />} aria-label="Open navigation" onClick={() => setMobileNavigationOpen(true)} /><div><Text className="workspace-eyebrow">Industrial AI Agent</Text><Title level={2}>Analysis workspace</Title></div></div>
               <Badge className="synthetic-data-badge" color="#37C6D0" text="Synthetic Demo" />
             </header>
             <ConversationWorkspace conversationId={conversations.selectedConversationId} />

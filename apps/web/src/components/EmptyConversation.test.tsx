@@ -8,8 +8,8 @@ describe("EmptyConversation", () => {
     const onPromptSelect = vi.fn();
     const user = userEvent.setup();
     render(<EmptyConversation onPromptSelect={onPromptSelect} />);
-    expect(screen.getByText("What would you like to inspect?")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Analyze yield changes in the last shift" }));
-    expect(onPromptSelect).toHaveBeenCalledWith("Analyze yield changes in the last shift");
+    expect(screen.getByText("Start with a question")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Describe a manufacturing question" }));
+    expect(onPromptSelect).toHaveBeenCalledWith("Describe a manufacturing question");
   });
 });

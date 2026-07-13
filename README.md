@@ -8,7 +8,7 @@ proprietary system material.
 
 ## Current status
 
-**In Progress — v0.2 Minimal LangGraph**
+**Implemented — v0.2 Minimal LangGraph**
 
 The conversation foundation is runnable and tested. It includes FastAPI,
 SQLite persistence, explicit Alembic migrations, an OpenAI-compatible chat
@@ -24,9 +24,15 @@ Two follow-up milestones are also implemented:
   responsive navigation, a single-scroll conversation layout, message states,
   and conversation-bound synthetic context.
 
-The clean-environment setup verification is complete. v0.2 now routes both
-synchronous and SSE conversation execution through a typed LangGraph workflow.
-Manufacturing tools and evidence grounding remain planned.
+The clean-environment setup verification is complete. In v0.2, synchronous
+conversation execution uses a compiled typed LangGraph workflow. Streaming
+reuses the same graph state and execution-step boundaries while the runner
+emits token events directly. Manufacturing tools and evidence grounding remain
+planned.
+
+The v0.2 workspace UI has also received a focused usability refinement: the
+sidebar exposes only available navigation, the analysis context is easier to
+read, and assistant responses have a clearer analysis-oriented presentation.
 
 See the [implementation status](docs/implementation-status.md) for the
 code-backed feature matrix and the [roadmap](docs/roadmap.md) for milestone
@@ -37,7 +43,8 @@ boundaries.
 - conversation create, list, open, and permanent delete;
 - chronological user and assistant message persistence;
 - synchronous and SSE assistant-response endpoints;
-- typed LangGraph orchestration shared by synchronous and SSE flows;
+- typed LangGraph state and execution boundaries used by synchronous and SSE
+  flows;
 - conversation history passed to the configured model for continued dialogue;
 - conversation-bound device, lot, time-range, environment, and data-source
   context;
@@ -46,6 +53,9 @@ boundaries.
 - desktop and mobile conversation navigation;
 - loading, empty, unavailable, streaming, cancellation, and retry states; and
 - a dark Ant Design workbench with restrained Dithered accents.
+
+The interface refinement does not add manufacturing analytics, tool traces, or
+evidence views before their supporting backend milestones are implemented.
 
 The current assistant is still a general OpenAI-compatible chat flow. Device
 selection does not query equipment, and the project does not yet calculate

@@ -1,15 +1,9 @@
 import { useState, type ReactNode } from "react";
-import { Alert, Button, Form, Input, List, Modal, Skeleton, Tag, Typography } from "antd";
-import { AppstoreOutlined, BarChartOutlined, BookOutlined, CheckSquareOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import { Alert, Button, Form, Input, List, Modal, Skeleton, Typography } from "antd";
+import { AppstoreOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import type { ConversationState } from "../hooks/useConversations";
 
 type Props = { state: ConversationState; footer: ReactNode };
-
-const plannedItems = [
-  { label: "Production Data", icon: <BarChartOutlined /> },
-  { label: "Knowledge Base", icon: <BookOutlined /> },
-  { label: "Evaluations", icon: <CheckSquareOutlined /> },
-];
 
 export default function ConversationNavigation({ state, footer }: Props) {
   const [open, setOpen] = useState(false);
@@ -22,8 +16,7 @@ export default function ConversationNavigation({ state, footer }: Props) {
     </header>
     <Button className="new-analysis-button" type="default" icon={<PlusOutlined />} onClick={() => setOpen(true)}>New analysis</Button>
     <nav className="feature-navigation" aria-label="Workbench features">
-      <Button className="feature-item active" type="text" icon={<AppstoreOutlined />}>Agent Workspace</Button>
-      {plannedItems.map((item) => <Button key={item.label} className="feature-item planned-feature" type="text" icon={item.icon}><span>{item.label}</span><Tag bordered={false}>Soon</Tag></Button>)}
+      <Button className="feature-item active" type="text" icon={<AppstoreOutlined />}>Analysis workspace</Button>
     </nav>
     <div className="conversation-heading"><Typography.Title level={4}>Recent conversations</Typography.Title></div>
     {state.error && <Alert type="error" showIcon message={state.error} action={<Button size="small" onClick={() => void state.reload()}>Retry</Button>} />}

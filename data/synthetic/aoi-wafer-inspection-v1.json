@@ -1,0 +1,110 @@
+{
+  "scenario_id": "aoi-wafer-inspection-v1",
+  "equipment": {
+    "equipment_id": "AOI-WAFER-01"
+  },
+  "production_lot": {
+    "lot_id": "LOT-DEMO-001",
+    "unit": "wafer"
+  },
+  "inspection_records": [
+    {
+      "record_id": "inspection-0800",
+      "observed_at": "2026-01-15T08:00:00Z",
+      "inspected_wafers": 100,
+      "passed_wafers": 98,
+      "failed_wafers": 2,
+      "defect_counts": [{"category": "scratch", "count": 2}]
+    },
+    {
+      "record_id": "inspection-0900",
+      "observed_at": "2026-01-15T09:00:00Z",
+      "inspected_wafers": 100,
+      "passed_wafers": 97,
+      "failed_wafers": 3,
+      "defect_counts": [{"category": "scratch", "count": 3}]
+    },
+    {
+      "record_id": "inspection-1000",
+      "observed_at": "2026-01-15T10:00:00Z",
+      "inspected_wafers": 100,
+      "passed_wafers": 98,
+      "failed_wafers": 2,
+      "defect_counts": [{"category": "scratch", "count": 2}]
+    },
+    {
+      "record_id": "inspection-1100",
+      "observed_at": "2026-01-15T11:00:00Z",
+      "inspected_wafers": 100,
+      "passed_wafers": 99,
+      "failed_wafers": 1,
+      "defect_counts": [{"category": "scratch", "count": 1}]
+    },
+    {
+      "record_id": "inspection-1200",
+      "observed_at": "2026-01-15T12:00:00Z",
+      "inspected_wafers": 100,
+      "passed_wafers": 98,
+      "failed_wafers": 2,
+      "defect_counts": [{"category": "scratch", "count": 2}]
+    },
+    {
+      "record_id": "inspection-1300",
+      "observed_at": "2026-01-15T13:00:00Z",
+      "inspected_wafers": 100,
+      "passed_wafers": 97,
+      "failed_wafers": 3,
+      "defect_counts": [{"category": "scratch", "count": 3}]
+    },
+    {
+      "record_id": "inspection-1400",
+      "observed_at": "2026-01-15T14:00:00Z",
+      "inspected_wafers": 100,
+      "passed_wafers": 98,
+      "failed_wafers": 2,
+      "defect_counts": [{"category": "scratch", "count": 2}]
+    },
+    {
+      "record_id": "inspection-1500",
+      "observed_at": "2026-01-15T15:00:00Z",
+      "inspected_wafers": 100,
+      "passed_wafers": 90,
+      "failed_wafers": 10,
+      "defect_counts": [
+        {"category": "edge-chip", "count": 7},
+        {"category": "scratch", "count": 3}
+      ]
+    },
+    {
+      "record_id": "inspection-1600",
+      "observed_at": "2026-01-15T16:00:00Z",
+      "inspected_wafers": 100,
+      "passed_wafers": 85,
+      "failed_wafers": 15,
+      "defect_counts": [
+        {"category": "edge-chip", "count": 12},
+        {"category": "scratch", "count": 3}
+      ]
+    },
+    {
+      "record_id": "inspection-1700",
+      "observed_at": "2026-01-15T17:00:00Z",
+      "inspected_wafers": 100,
+      "passed_wafers": 82,
+      "failed_wafers": 18,
+      "defect_counts": [
+        {"category": "edge-chip", "count": 15},
+        {"category": "scratch", "count": 3}
+      ]
+    }
+  ],
+  "alarm_events": [
+    {
+      "event_id": "alarm-001",
+      "code": "OPTICAL-SIGNAL-LOW",
+      "started_at": "2026-01-15T15:00:00Z",
+      "ended_at": "2026-01-15T16:00:00Z"
+    }
+  ],
+  "causal_claim": null
+}
