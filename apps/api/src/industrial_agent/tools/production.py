@@ -1,6 +1,6 @@
 """Application boundary for deterministic production analysis."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -31,9 +31,9 @@ class ProductionSummaryRequest(BaseModel):
     @field_validator("start", "end")
     @classmethod
     def require_utc(cls, value: datetime) -> datetime:
-        if value.tzinfo is not UTC:
+        if value.utcoffset() != timedelta(0):
             raise ValueError("timestamps must use UTC")
-        return value
+        return value.replace(tzinfo=UTC)
 
     @field_validator("end")
     @classmethod

@@ -2,15 +2,46 @@ from collections.abc import Callable, Sequence
 from uuid import UUID
 
 from langgraph.graph import END, START, StateGraph
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from industrial_agent.graph.errors import GraphExecutionError
-from industrial_agent.graph.state import ExecutionEvent, GraphState
-from industrial_agent.llm.types import ChatMessage
+from industrial_agent.graph.state import (
+    EvidenceState,
+    ExecutionEvent,
+    GraphState,
+    ToolError,
+)
+from industrial_agent.llm.types import (
+    ChatMessage,
+    CompletionResult,
+    ToolDefinition,
+)
 from industrial_agent.services import conversation as conversation_service
 from industrial_agent.services import message as message_service
+from industrial_agent.tools.production import (
+    ProductionSummaryRequest,
+    ProductionToolError,
+    get_production_summary,
+)
 
 Complete = Callable[[Sequence[ChatMessage]], str]
+
+PRODUCTION_TOOL = ToolDefinition(
+    name="get_production_summary",
+    description="Read deterministic synthetic production evidence.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "equipment_id": {"type": "string"},
+            "lot_id": {"type": ["string", "null"]},
+            "start": {"type": "string", "format": "date-time"},
+            "end": {"type": "string", "format": "date-time"},
+        },
+        "required": ["equipment_id", "start", "end"],
+        "additionalProperties": False,
+    },
+)
 
 
 def load_context(
@@ -39,6 +70,59 @@ def load_context(
         "evidence": None,
         "execution_events": [
             ExecutionEvent(kind="node_completed", payload={"node": "load_context"})
+        ],
+    }
+
+
+def execute_production_tool(
+    state: GraphState,
+    result: CompletionResult,
+) -> GraphState:
+    """Execute one parsed production Tool Call into Evidence State."""
+    if len(result.tool_calls) != 1:
+        return {
+            **state,
+            "evidence": EvidenceState(
+                tool_error=ToolError(code="UNSUPPORTED_TOOL_CALL_PATTERN")
+            ),
+        }
+    call = result.tool_calls[0]
+    if call.name != PRODUCTION_TOOL.name:
+        return {
+            **state,
+            "evidence": EvidenceState(
+                tool_error=ToolError(code="UNSUPPORTED_TOOL_CALL_PATTERN")
+            ),
+        }
+    try:
+        request = ProductionSummaryRequest.model_validate(call.arguments)
+    except ValidationError:
+        return {
+            **state,
+            "evidence": EvidenceState(
+                tool_error=ToolError(code="INVALID_INPUT")
+            ),
+        }
+    try:
+        summary = get_production_summary(request)
+    except ProductionToolError as error:
+        code = (
+            "UNKNOWN_EQUIPMENT"
+            if "Equipment" in str(error)
+            else "UNKNOWN_PRODUCTION_LOT"
+        )
+        return {
+            **state,
+            "evidence": EvidenceState(tool_error=ToolError(code=code)),
+        }
+    return {
+        **state,
+        "evidence": EvidenceState(production_summary=summary),
+        "execution_events": [
+            *state["execution_events"],
+            ExecutionEvent(
+                kind="node_completed", payload={"node": "execute_production_tool"}
+            ),
         ],
     }
 
