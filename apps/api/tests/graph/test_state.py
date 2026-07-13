@@ -3,7 +3,12 @@ from uuid import uuid4
 import pytest
 
 from industrial_agent.graph.errors import GraphExecutionError
-from industrial_agent.graph.state import ExecutionEvent, GraphState
+from industrial_agent.graph.state import (
+    EvidenceState,
+    ExecutionEvent,
+    GraphState,
+    ToolError,
+)
 from industrial_agent.llm.types import ChatMessage
 from industrial_agent.schemas.context import WorkspaceContextRead
 
@@ -21,11 +26,25 @@ def test_graph_state_keeps_typed_conversation_inputs() -> None:
         ),
         assistant_content="",
         execution_events=[],
+        evidence=None,
     )
 
     assert state["assistant_content"] == ""
     assert state["execution_events"] == []
     assert state["messages"][0].content == "Check history"
+
+
+def test_evidence_state_contains_a_safe_tool_error() -> None:
+    evidence = EvidenceState(
+        tool_error=ToolError(
+            code="UNKNOWN_EQUIPMENT",
+        )
+    )
+
+    assert evidence.production_summary is None
+    assert evidence.tool_error is not None
+    assert evidence.tool_error.code == "UNKNOWN_EQUIPMENT"
+    assert "path" not in evidence.tool_error.message
 
 
 def test_execution_event_has_serializable_payload() -> None:
