@@ -20,7 +20,12 @@ from industrial_agent.llm.errors import (
 from industrial_agent.llm.openai_compatible import (
     OpenAICompatibleChatAdapter,
 )
-from industrial_agent.llm.types import ChatMessage
+from industrial_agent.llm.types import (
+    ChatMessage,
+    CompletionResult,
+    ToolDefinition,
+    ToolResult,
+)
 from industrial_agent.schemas.message import (
     MessageCreate,
     MessageExchangeRead,
@@ -62,12 +67,26 @@ def create_user_message(
         ) as adapter:
             return adapter.complete(messages)
 
+    def complete_with_tools(
+        messages: Sequence[ChatMessage],
+        tools: Sequence[ToolDefinition],
+        *,
+        tool_call: ToolResult | None = None,
+    ) -> CompletionResult:
+        with OpenAICompatibleChatAdapter.from_settings(Settings()) as adapter:
+            return adapter.complete_with_tools(
+                messages,
+                tools=tools,
+                tool_call=tool_call,
+            )
+
     try:
         exchange = run_sync_exchange(
             session,
             conversation_id=conversation_id,
             content=payload.content,
             complete=complete,
+            complete_with_tools=complete_with_tools,
         )
     except ConversationNotFoundError as error:
         raise HTTPException(

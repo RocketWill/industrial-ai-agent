@@ -194,3 +194,46 @@ def test_answer_with_evidence_persists_only_final_model_content(
     assert answered["assistant_content"] == "Yield is 85.67%."
     assert len(received) == 1
     assert received[0][2].content
+
+
+def test_sync_runner_executes_one_production_tool_then_persists_final_answer(
+    database_session,
+) -> None:
+    conversation = create_conversation(database_session, title="Production")
+    calls = []
+
+    def complete(messages):
+        raise AssertionError("production question should use tools")
+
+    def complete_with_tools(messages, tools, *, tool_call=None):
+        calls.append(tool_call)
+        if tool_call is None:
+            return CompletionResult(
+                content=None,
+                tool_calls=(
+                    ToolCall(
+                        call_id="call-001",
+                        name="get_production_summary",
+                        arguments={
+                            "equipment_id": "AOI-WAFER-01",
+                            "start": "2026-01-15T15:00:00Z",
+                            "end": "2026-01-15T18:00:00Z",
+                        },
+                    ),
+                ),
+            )
+        return CompletionResult(content="The synthetic Yield Rate is 85.67%.")
+
+    exchange = run_sync_exchange(
+        database_session,
+        conversation_id=conversation.id,
+        content="What is the production yield for AOI-WAFER-01?",
+        complete=complete,
+        complete_with_tools=complete_with_tools,
+    )
+
+    assert exchange.assistant_message.content == (
+        "The synthetic Yield Rate is 85.67%."
+    )
+    assert calls[0] is None
+    assert calls[1] is not None
