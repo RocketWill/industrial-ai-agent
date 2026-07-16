@@ -11,6 +11,8 @@ This directory contains the React and TypeScript v0.1 conversation foundation.
 - conversation loading, creation, selection, and deletion through the existing API;
 - persisted message history and synchronous user/assistant exchanges;
 - synchronous production-question fallback for a focused English keyword set;
+- compact deterministic production evidence summary for the current synchronous
+  exchange;
 - SSE streaming assistant responses with a keyboard-accessible Stop action;
 - conversation-bound context display and editing;
 - deterministic fictional device selection, lot validation, and time-range
@@ -101,7 +103,8 @@ time-range values to be saved. Empty values appear as `Not configured`, and the
 source remains read-only `Synthetic Demo`.
 
 The sidebar exposes only the implemented analysis workspace. Grounded
-production results currently appear as the final assistant text. The browser
-does not display structured tool evidence, tool activity, or manufacturing
-charts, and its keyword heuristic does not yet cover Chinese production terms
-or distinguish every conceptual question from a data query.
+production results appear as final assistant text with a compact structured
+summary for the current synchronous exchange. Evidence is not persisted across
+reloads, and the browser does not display tool activity or manufacturing charts.
+Its keyword heuristic does not yet cover Chinese production terms or distinguish
+every conceptual question from a data query.

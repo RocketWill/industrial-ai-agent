@@ -5,6 +5,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from industrial_agent.graph.state import EvidenceState
 from industrial_agent.llm.types import ChatMessage
 from industrial_agent.models.message import Message, MessageRole
 from industrial_agent.services.conversation import get_conversation
@@ -14,6 +15,7 @@ from industrial_agent.services.conversation import get_conversation
 class MessageExchange:
     user_message: Message
     assistant_message: Message
+    evidence: EvidenceState | None = None
 
 
 @dataclass(frozen=True)

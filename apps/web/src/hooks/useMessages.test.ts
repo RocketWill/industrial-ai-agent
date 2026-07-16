@@ -5,7 +5,7 @@ import { useMessages } from "./useMessages";
 
 const id = "11111111-1111-1111-8111-111111111111";
 const make = (role: "user" | "assistant", content: string): Message => ({ id, conversation_id: id, role, content, created_at: "2026-07-30T00:00:00Z" });
-const exchange: MessageExchange = { user_message: make("user", "Question"), assistant_message: make("assistant", "Answer") };
+const exchange: MessageExchange = { user_message: make("user", "Question"), assistant_message: make("assistant", "Answer"), evidence: null };
 
 describe("useMessages", () => {
   it("loads history and appends a successful exchange", async () => {

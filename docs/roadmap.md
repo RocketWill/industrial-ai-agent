@@ -140,10 +140,11 @@ Implemented first slice:
 - [x] Resolve explicit tool arguments and saved synthetic workspace context
   into complete production-tool arguments, with clarification when required
   values are missing.
+- [x] Expose optional synchronous production evidence through the message
+  contract and render a compact frontend summary card.
 
 Remaining slices:
 
-- [ ] Expose structured tool evidence through the message contract.
 - [ ] Add tool execution to the SSE path or define one consistent transport
   contract for production queries.
 - [ ] Add a focused UI result surface after backend behavior is stable.

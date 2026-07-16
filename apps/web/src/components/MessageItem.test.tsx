@@ -23,4 +23,11 @@ describe("MessageItem", () => {
     expect(screen.getByText("Generating response…")).toBeInTheDocument();
     expect(screen.queryByText("partial")).not.toBeInTheDocument();
   });
+
+  it("renders deterministic production evidence", () => {
+    render(<MessageItem message={message} evidence={{ production_summary: { equipment_id: "AOI-WAFER-01", lot_id: null, start: "2026-01-15T13:00:00Z", end: "2026-01-15T17:00:00Z", inspected_wafers: 300, passed_wafers: 257, failed_wafers: 43, yield_rate: 257 / 300, defect_counts: [], alarm_events: [], limitations: [] }, tool_error: null }} />);
+    expect(screen.getByText("Production summary")).toBeInTheDocument();
+    expect(screen.getByText("85.67%")).toBeInTheDocument();
+    expect(screen.getByText("Deterministic")).toBeInTheDocument();
+  });
 });

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as messageApi from "../api/messages";
-import type { Message, MessageExchange, MessageStreamEvent } from "../api/messages";
+import type { Message, MessageExchange, MessageStreamEvent, ProductionEvidence } from "../api/messages";
 
 export type MessageApi = {
   listMessages: (conversationId: string) => Promise<Message[]>;
@@ -8,7 +8,7 @@ export type MessageApi = {
   streamMessage?: (conversationId: string, content: string, signal: AbortSignal) => AsyncGenerator<MessageStreamEvent>;
 };
 export type MessageState = {
-  messages: Message[]; isLoading: boolean; isSending: boolean; isStreaming: boolean; error: string | null; draft: string;
+  messages: Message[]; evidence: ProductionEvidence | null; isLoading: boolean; isSending: boolean; isStreaming: boolean; error: string | null; draft: string;
   setDraft: (value: string) => void; reload: () => Promise<void>; send: () => Promise<boolean>; cancelStreaming: () => void;
 };
 
@@ -21,6 +21,7 @@ const defaultApi: MessageApi = { listMessages: (id) => messageApi.listMessages(i
 
 export function useMessages(conversationId: string | null, api: MessageApi = defaultApi): MessageState {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [evidence, setEvidence] = useState<ProductionEvidence | null>(null);
   const [isLoading, setLoading] = useState(false);
   const [isSending, setSending] = useState(false);
   const [isStreaming, setStreaming] = useState(false);
@@ -38,14 +39,14 @@ export function useMessages(conversationId: string | null, api: MessageApi = def
     catch { if (token === sequence.current) setError("Unable to load messages"); }
     finally { if (token === sequence.current) setLoading(false); busy.current = false; }
   }, [api, conversationId]);
-  useEffect(() => { setMessages([]); setError(null); if (conversationId) void reload(); }, [conversationId, reload]);
+  useEffect(() => { setMessages([]); setEvidence(null); setError(null); if (conversationId) void reload(); }, [conversationId, reload]);
   const send = useCallback(async () => {
     const id = conversationId; const content = draft.trim();
     if (!id || !content || busy.current) return false;
     busy.current = true; setSending(true); setError(null);
     try {
       if (!api.streamMessage || isProductionQuery(content)) {
-        const exchange = await api.sendMessage(id, content); setMessages((current) => [...current, exchange.user_message, exchange.assistant_message]); setDraft(""); return true;
+        const exchange = await api.sendMessage(id, content); setMessages((current) => [...current, exchange.user_message, exchange.assistant_message]); setEvidence(exchange.evidence); setDraft(""); return true;
       }
       const abortController = new AbortController(); controller.current = abortController; setStreaming(true);
       let assistantIndex = -1;
@@ -66,5 +67,5 @@ export function useMessages(conversationId: string | null, api: MessageApi = def
     finally { controller.current = null; busy.current = false; setSending(false); setStreaming(false); }
   }, [api, conversationId, draft]);
   const cancelStreaming = useCallback(() => { controller.current?.abort(); }, []);
-  return { messages, isLoading, isSending, isStreaming, error, draft, setDraft, reload, send, cancelStreaming };
+  return { messages, evidence, isLoading, isSending, isStreaming, error, draft, setDraft, reload, send, cancelStreaming };
 }

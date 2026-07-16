@@ -294,6 +294,9 @@ def test_sync_runner_executes_one_production_tool_then_persists_final_answer(
     assert exchange.assistant_message.content == (
         "The synthetic Yield Rate is 85.67%."
     )
+    assert exchange.evidence is not None
+    assert exchange.evidence.production_summary is not None
+    assert exchange.evidence.production_summary.inspected_wafers == 300
     assert calls[0] is None
     assert calls[1] is not None
     assert "Saved analysis context" in first_messages[-1].content

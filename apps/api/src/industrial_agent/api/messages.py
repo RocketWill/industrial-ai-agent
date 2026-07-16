@@ -27,6 +27,7 @@ from industrial_agent.llm.types import (
     ToolResult,
 )
 from industrial_agent.schemas.message import (
+    EvidenceRead,
     MessageCreate,
     MessageExchangeRead,
     MessageRead,
@@ -112,6 +113,11 @@ def create_user_message(
         user_message=MessageRead.model_validate(exchange.user_message),
         assistant_message=MessageRead.model_validate(
             exchange.assistant_message
+        ),
+        evidence=(
+            EvidenceRead.model_validate(exchange.evidence, from_attributes=True)
+            if exchange.evidence is not None
+            else None
         ),
     )
 
