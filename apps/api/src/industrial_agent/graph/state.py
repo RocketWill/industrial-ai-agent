@@ -12,6 +12,8 @@ ExecutionEventKind = Literal[
     "user_message",
     "token",
     "assistant_message",
+    "tool_call_started",
+    "tool_result",
     "error",
 ]
 ToolErrorCode = Literal[
