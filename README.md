@@ -8,7 +8,7 @@ proprietary system material.
 
 ## Current status
 
-**Implemented — v0.2 Minimal LangGraph**
+**In Progress — v0.4 Production Data Tools**
 
 The conversation foundation is runnable and tested. It includes FastAPI,
 SQLite persistence, explicit Alembic migrations, an OpenAI-compatible chat
@@ -24,11 +24,11 @@ Two follow-up milestones are also implemented:
   responsive navigation, a single-scroll conversation layout, message states,
   and conversation-bound synthetic context.
 
-The clean-environment setup verification is complete. In v0.2, synchronous
-conversation execution uses a compiled typed LangGraph workflow. Streaming
-reuses the same graph state and execution-step boundaries while the runner
-emits token events directly. Manufacturing tools and evidence grounding remain
-planned.
+The clean-environment setup verification is complete. Synchronous production
+questions can now use an OpenAI-compatible tool-call protocol to query the
+fictional AOI dataset, calculate a deterministic production summary, and pass
+that evidence back to the model for the final answer. General questions and
+SSE responses continue to use the existing chat path.
 
 The v0.2 workspace UI has also received a focused usability refinement: the
 sidebar exposes only available navigation, the analysis context is easier to
@@ -49,18 +49,22 @@ boundaries.
 - conversation-bound device, lot, time-range, environment, and data-source
   context;
 - a deterministic catalog of three fictional devices for context selection;
+- immutable manufacturing records and one reproducible fictional AOI dataset;
+- deterministic yield, defect, and overlapping-alarm aggregation;
+- a typed `get_production_summary` tool connected to the synchronous
+  LangGraph workflow;
 - API-process health reporting;
 - desktop and mobile conversation navigation;
 - loading, empty, unavailable, streaming, cancellation, and retry states; and
 - a dark Ant Design workbench with restrained Dithered accents.
 
-The interface refinement does not add manufacturing analytics, tool traces, or
-evidence views before their supporting backend milestones are implemented.
-
-The current assistant is still a general OpenAI-compatible chat flow. Device
-selection does not query equipment, and the project does not yet calculate
-yield, inspect alarms, retrieve documents, call manufacturing tools, or provide
-evidence-backed causal analysis.
+The browser uses the synchronous Message API for a small English keyword set
+covering production, yield, defect, alarm, and inspection questions. The
+backend can ground the final text answer in the synthetic production summary,
+but the UI does not yet expose the structured evidence or tool trace. Supported
+saved workspace presets can fill missing device, lot, and time-range
+arguments. Custom or unrecognized time ranges still require explicit UTC
+timestamps.
 
 ## Project direction
 
@@ -85,13 +89,13 @@ industrial-ai-agent/
 ├── apps/
 │   ├── api/       # FastAPI, SQLAlchemy, Alembic, and LLM adapter
 │   └── web/       # React, TypeScript, Vite, and Ant Design
-├── data/          # Documentation only; no dataset is implemented yet
+├── data/          # Independently created synthetic manufacturing data
 ├── docs/          # Scope, implementation status, and roadmap
 └── scripts/       # Added only when project automation is needed
 ```
 
-LangGraph, RAG, MCP, and manufacturing-domain packages will be introduced only
-when their milestones implement working behavior.
+LangGraph and the first manufacturing-domain and production-tool slices are
+implemented. RAG and MCP remain planned for later milestones.
 
 ## Local development
 
@@ -150,17 +154,20 @@ copy verification uses the committed lockfiles and migration workflow.
 ## Known limitations
 
 - Health reports API-process availability only. It does not check the database,
-  model service, or future manufacturing tools.
+  model service, or production tool.
 - The configured model receives conversation history, but workspace context is
   not yet injected into the model request.
 - A failed assistant request leaves the user message persisted.
 - Streaming depends on provider and proxy flushing behavior. The service
   creates an assistant record only after consuming a complete non-empty stream;
   client-disconnect persistence behavior still needs an integration test.
-- Context values and device identities are synthetic metadata. They do not
-  represent live equipment or production state.
-- There is no tool calling, RAG, manufacturing dataset, authentication, retry
-  orchestration, or deployment stack.
+- Context values, device identities, and production records are synthetic.
+  They do not represent live equipment or production state.
+- Production tool calling is limited to the synchronous path and requires a
+  compatible model. The frontend routes it with a small English keyword
+  heuristic; SSE tool execution and structured evidence rendering are not
+  implemented.
+- There is no RAG, authentication, retry orchestration, or deployment stack.
 - Conversation and message history are not paginated.
 
 ## License

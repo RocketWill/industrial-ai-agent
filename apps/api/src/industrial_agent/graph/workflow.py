@@ -1,4 +1,5 @@
 from collections.abc import Callable, Sequence
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from langgraph.graph import END, START, StateGraph
@@ -38,6 +39,35 @@ def _is_production_question(messages: Sequence[ChatMessage]) -> bool:
         for term in ("yield", "defect", "alarm", "production", "inspection")
     )
 
+
+def _messages_with_production_context(state: GraphState) -> list[ChatMessage]:
+    """Give the tool-selection model the saved context without persisting it."""
+    context = state["workspace_context"]
+    details = [
+        f"device={context.device or 'missing'}",
+        f"lot={context.lot or 'missing'}",
+        f"time_range={context.time_range or 'missing'}",
+    ]
+    if context.time_range in _DEMO_PRESET_HOURS:
+        hours = _DEMO_PRESET_HOURS[context.time_range]
+        start = _DEMO_SHIFT_END - timedelta(hours=hours)
+        details.append(
+            "resolved_utc="
+            f"{start.isoformat().replace('+00:00', 'Z')}/"
+            f"{_DEMO_SHIFT_END.isoformat().replace('+00:00', 'Z')}"
+        )
+    messages = list(state["messages"])
+    last = messages[-1]
+    messages[-1] = ChatMessage(
+        role=last.role,
+        content=(
+            f"{last.content}\n\nSaved analysis context: {', '.join(details)}. "
+            "Use this context to fill missing production tool arguments. "
+            "Ask for clarification only when the required context is missing."
+        ),
+    )
+    return messages
+
 PRODUCTION_TOOL = ToolDefinition(
     name="get_production_summary",
     description="Read deterministic synthetic production evidence.",
@@ -49,10 +79,62 @@ PRODUCTION_TOOL = ToolDefinition(
             "start": {"type": "string", "format": "date-time"},
             "end": {"type": "string", "format": "date-time"},
         },
-        "required": ["equipment_id", "start", "end"],
+        "required": [],
         "additionalProperties": False,
     },
 )
+
+_DEMO_SHIFT_END = datetime(2026, 1, 15, 17, tzinfo=UTC)
+_DEMO_PRESET_HOURS = {
+    "Last 1 hour": 1,
+    "Last 4 hours": 4,
+    "Last 8 hours": 8,
+    "Last 24 hours": 24,
+}
+
+
+def resolve_production_request(
+    state: GraphState,
+    call: ToolCall,
+) -> tuple[ProductionSummaryRequest | None, str | None]:
+    """Merge explicit tool arguments with saved synthetic workspace context."""
+    arguments = dict(call.arguments)
+    context = state["workspace_context"]
+    equipment_id = arguments.get("equipment_id") or context.device
+    lot_id = arguments.get("lot_id") or context.lot
+    start = arguments.get("start")
+    end = arguments.get("end")
+    if not start and not end and context.time_range in _DEMO_PRESET_HOURS:
+        end_datetime = _DEMO_SHIFT_END
+        start_datetime = end_datetime - timedelta(
+            hours=_DEMO_PRESET_HOURS[context.time_range]
+        )
+        start = start_datetime.isoformat().replace("+00:00", "Z")
+        end = end_datetime.isoformat().replace("+00:00", "Z")
+    if not equipment_id:
+        return None, (
+            "Please specify an equipment ID or select a device in the analysis "
+            "context."
+        )
+    if not start or not end:
+        return None, (
+            "Please specify a start and end time, or select a supported time "
+            "range in the analysis context."
+        )
+    try:
+        return ProductionSummaryRequest.model_validate(
+            {
+                "equipment_id": equipment_id,
+                "lot_id": lot_id,
+                "start": start,
+                "end": end,
+            }
+        ), None
+    except ValidationError:
+        return None, (
+            "Please provide a valid UTC start and end time for the production "
+            "query."
+        )
 
 
 def load_context(
@@ -106,9 +188,13 @@ def execute_production_tool(
                 tool_error=ToolError(code="UNSUPPORTED_TOOL_CALL_PATTERN")
             ),
         }
-    try:
-        request = ProductionSummaryRequest.model_validate(call.arguments)
-    except ValidationError:
+    request, clarification = resolve_production_request(state, call)
+    if clarification is not None:
+        return {
+            **state,
+            "assistant_content": clarification,
+        }
+    if request is None:
         return {
             **state,
             "evidence": EvidenceState(
@@ -195,11 +281,13 @@ def _call_llm(
 ) -> GraphState:
     if complete_with_tools is not None and _is_production_question(state["messages"]):
         first_result = complete_with_tools(
-            state["messages"],
+            _messages_with_production_context(state),
             (PRODUCTION_TOOL,),
         )
         if first_result.tool_calls:
             tool_state = execute_production_tool(state, first_result)
+            if tool_state["assistant_content"]:
+                return tool_state
             return answer_with_production_evidence(
                 tool_state,
                 complete_with_tools=complete_with_tools,

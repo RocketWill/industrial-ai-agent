@@ -21,9 +21,11 @@ contracts.
 
 The v0.1 foundation, streaming v0.1.1, Industrial Chat Workspace UI v0.1.2,
 and minimal LangGraph orchestration v0.2 are implemented. v0.3 Manufacturing
-Domain is in progress; its first deterministic AOI analysis slice is
-implemented. v0.4 Production Data Tools is also in progress with its first
-standalone tool contract implemented.
+Domain remains in progress with its deterministic AOI analysis slice
+implemented. v0.4 Production Data Tools is the active milestone: the first
+tool contract, OpenAI-compatible tool-call protocol, and synchronous grounded
+answer flow are implemented, while context resolution and structured evidence
+delivery remain open.
 
 Architecture notes and engineering decisions should be added only when the
 corresponding code or approved decision exists. Local PRDs, specs, and plans

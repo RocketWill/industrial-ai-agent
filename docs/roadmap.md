@@ -101,7 +101,7 @@ Define synthetic equipment, production, inspection, defect, yield, alarm,
 time-range, and status models. Specify numeric semantics and boundary behavior,
 then verify them with deterministic unit tests.
 
-Implemented first slice:
+Implemented slices:
 
 - [x] Define the shared manufacturing-analysis language.
 - [x] Add UTC Time Range, Equipment, Production Lot, Inspection Record, Defect
@@ -132,12 +132,20 @@ Implemented first slice:
   Production Lot.
 - [x] Preserve deterministic Yield Rate, Defect Counts, Alarm Events, and
   explicit empty-result limitations.
+- [x] Add an OpenAI-compatible single-tool-call request and response protocol.
+- [x] Integrate the production summary tool with the synchronous LangGraph
+  workflow and return a model-written answer grounded in tool evidence.
+- [x] Route a focused English production-query keyword set through the
+  synchronous browser path.
+- [x] Resolve explicit tool arguments and saved synthetic workspace context
+  into complete production-tool arguments, with clarification when required
+  values are missing.
 
 Remaining slices:
 
-- [ ] Integrate the production tool with LangGraph using a verified tool-call
-  protocol.
 - [ ] Expose structured tool evidence through the message contract.
+- [ ] Add tool execution to the SSE path or define one consistent transport
+  contract for production queries.
 - [ ] Add a focused UI result surface after backend behavior is stable.
 
 ## v0.5 — Self-built RAG
