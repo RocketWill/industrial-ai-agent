@@ -16,6 +16,7 @@ from industrial_agent.llm.types import (
     CompletionResult,
     ToolCall,
     ToolDefinition,
+    ToolResult,
 )
 
 
@@ -100,22 +101,51 @@ class OpenAICompatibleChatAdapter:
         messages: Sequence[ChatMessage],
         *,
         tools: Sequence[ToolDefinition],
+        tool_call: ToolResult | None = None,
     ) -> CompletionResult:
         """Return text or one parsed OpenAI-compatible tool call."""
         if not messages:
             raise ValueError("At least one chat message is required")
+        request_messages: list[dict[str, object]] = [
+            {
+                "role": message.role,
+                "content": message.content,
+            }
+            for message in messages
+        ]
+        if tool_call is not None:
+            request_messages.extend(
+                [
+                    {
+                        "role": "assistant",
+                        "content": None,
+                        "tool_calls": [
+                            {
+                                "id": tool_call.call_id,
+                                "type": "function",
+                                "function": {
+                                    "name": tool_call.name,
+                                    "arguments": json.dumps(
+                                        tool_call.arguments,
+                                        separators=(",", ":"),
+                                    ),
+                                },
+                            }
+                        ],
+                    },
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.call_id,
+                        "content": tool_call.content,
+                    },
+                ]
+            )
         try:
             response = self._client.post(
                 "chat/completions",
                 json={
                     "model": self._model,
-                    "messages": [
-                        {
-                            "role": message.role,
-                            "content": message.content,
-                        }
-                        for message in messages
-                    ],
+                    "messages": request_messages,
                     "tools": [tool.as_payload() for tool in tools],
                     "stream": False,
                 },

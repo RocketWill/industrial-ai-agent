@@ -14,6 +14,7 @@ from industrial_agent.llm.types import (
     CompletionResult,
     ToolCall,
     ToolDefinition,
+    ToolResult,
 )
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "OpenAICompatibleChatAdapter",
     "ToolCall",
     "ToolDefinition",
+    "ToolResult",
 ]

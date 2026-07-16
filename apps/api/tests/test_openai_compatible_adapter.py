@@ -13,7 +13,7 @@ from industrial_agent.llm.errors import (
 from industrial_agent.llm.openai_compatible import (
     OpenAICompatibleChatAdapter,
 )
-from industrial_agent.llm.types import ChatMessage, ToolDefinition
+from industrial_agent.llm.types import ChatMessage, ToolDefinition, ToolResult
 
 
 def test_complete_sends_compatible_request_and_returns_text() -> None:
@@ -195,6 +195,62 @@ def test_complete_with_tools_rejects_multiple_tool_calls() -> None:
             [ChatMessage(role="user", content="Question")],
             tools=(),
         )
+
+
+def test_complete_with_tools_sends_tool_result_for_final_answer() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.content)
+        assert payload["messages"][-2:] == [
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call-001",
+                        "type": "function",
+                        "function": {
+                            "name": "get_production_summary",
+                            "arguments": '{"equipment_id":"AOI-WAFER-01"}',
+                        },
+                    }
+                ],
+            },
+            {
+                "role": "tool",
+                "tool_call_id": "call-001",
+                "content": '{"yield_rate":0.9}',
+            },
+        ]
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": "Yield is 90%."}}]},
+        )
+
+    adapter = OpenAICompatibleChatAdapter.from_settings(
+        Settings(LLM_MODEL="test-model"),
+        transport=httpx.MockTransport(handler),
+    )
+
+    with adapter:
+        result = adapter.complete_with_tools(
+            [ChatMessage(role="user", content="What is yield?")],
+            tools=(
+                ToolDefinition(
+                    name="get_production_summary",
+                    description="Read production evidence",
+                    parameters={"type": "object"},
+                ),
+            ),
+            tool_call=ToolResult(
+                call_id="call-001",
+                name="get_production_summary",
+                arguments={"equipment_id": "AOI-WAFER-01"},
+                content='{"yield_rate":0.9}',
+            ),
+        )
+
+    assert result.content == "Yield is 90%."
+    assert result.tool_calls == ()
 
 
 def test_from_settings_rejects_missing_model() -> None:
