@@ -146,10 +146,13 @@ Implemented first slice:
   text, and completion events.
 - [x] Stream model tokens during the SSE production tool path after a
   successful tool result.
+- [x] Add a focused UI result surface for the current Production Summary,
+  Defect Counts, Alarm Events, provenance, and empty states.
 
 Remaining slices:
 
-- [ ] Add a focused UI result surface after backend behavior is stable.
+- [ ] Decide the next production-data tool slice after the v0.4 acceptance
+  review.
 
 ## v0.5 — Self-built RAG
 

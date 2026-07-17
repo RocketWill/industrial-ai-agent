@@ -11,7 +11,8 @@ This directory contains the React and TypeScript v0.1 conversation foundation.
 - conversation loading, creation, selection, and deletion through the existing API;
 - persisted message history and synchronous user/assistant exchanges;
 - synchronous production-question fallback for a focused English keyword set;
-- compact deterministic production evidence summary for the current exchange;
+- deterministic Production Summary result surface for the current exchange,
+  including Defect Counts, Alarm Events, provenance, and empty states;
 - SSE streaming assistant responses with a keyboard-accessible Stop action;
 - conversation-bound context display and editing;
 - deterministic fictional device selection, lot validation, and time-range
