@@ -53,4 +53,25 @@ describe("useMessages", () => {
     expect(result.current.messages).toEqual([exchange.user_message, exchange.assistant_message]);
     expect(result.current.toolStatus).toBe("Production evidence received");
   });
+
+  it("clears previous production evidence for a new general question", async () => {
+    const api = {
+      listMessages: vi.fn().mockResolvedValue([]),
+      sendMessage: vi.fn(),
+      streamMessage: vi.fn(async function* (_id, content) {
+        yield { type: "message_started" as const, user_message: exchange.user_message };
+        if (content.includes("production")) yield { type: "tool_result" as const, evidence: { production_summary: null, tool_error: { code: "NO_DATA", message: "No data" } } };
+        yield { type: "token" as const, text: "Answer" };
+        yield { type: "message_completed" as const, assistant_message: exchange.assistant_message };
+      }),
+    };
+    const { result } = renderHook(() => useMessages(id, api));
+    await waitFor(() => expect(api.listMessages).toHaveBeenCalled());
+    act(() => result.current.setDraft("What is the production yield?"));
+    await act(async () => { await result.current.send(); });
+    expect(result.current.evidence?.tool_error?.code).toBe("NO_DATA");
+    act(() => result.current.setDraft("hello"));
+    await act(async () => { await result.current.send(); });
+    expect(result.current.evidence).toBeNull();
+  });
 });
