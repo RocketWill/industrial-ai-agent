@@ -11,8 +11,7 @@ This directory contains the React and TypeScript v0.1 conversation foundation.
 - conversation loading, creation, selection, and deletion through the existing API;
 - persisted message history and synchronous user/assistant exchanges;
 - synchronous production-question fallback for a focused English keyword set;
-- compact deterministic production evidence summary for the current synchronous
-  exchange;
+- compact deterministic production evidence summary for the current exchange;
 - SSE streaming assistant responses with a keyboard-accessible Stop action;
 - conversation-bound context display and editing;
 - deterministic fictional device selection, lot validation, and time-range
@@ -76,14 +75,10 @@ the committed npm lockfile and frontend test, typecheck, lint, and build
 commands.
 
 The conversation workflow keeps the synchronous Message API as a stable path
-and also supports the v0.1.1 streaming endpoint. The backend SSE contract now
-has production tool-stage events, although the browser continues to route
-production keywords through the synchronous path until token streaming for
-that branch is complete. Questions containing the
-current English production, yield, defect, alarm, or inspection terms use the
-synchronous path so the backend can execute its production-summary tool. Other
-questions use streaming. The browser keeps draft text after failed submissions
-and does not persist partial assistant output.
+and uses the v0.1.1 streaming endpoint in the browser. Production questions
+receive tool-stage and evidence events before the completed answer. General
+questions retain provider token streaming. The browser keeps draft text after
+failed submissions and does not persist partial assistant output.
 
 ## Non-responsibilities
 
@@ -107,7 +102,7 @@ source remains read-only `Synthetic Demo`.
 
 The sidebar exposes only the implemented analysis workspace. Grounded
 production results appear as final assistant text with a compact structured
-summary for the current synchronous exchange. Evidence is not persisted across
+summary for the current exchange. Evidence is not persisted across
 reloads, and the browser does not display tool activity or manufacturing charts.
 Its keyword heuristic does not yet cover Chinese production terms or distinguish
 every conceptual question from a data query.

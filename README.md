@@ -58,13 +58,11 @@ boundaries.
 - loading, empty, unavailable, streaming, cancellation, and retry states; and
 - a dark Ant Design workbench with restrained Dithered accents.
 
-The browser uses the synchronous Message API for a small English keyword set
-covering production, yield, defect, alarm, and inspection questions. The
-backend can ground the final text answer in the synthetic production summary,
-but the UI does not yet expose the structured evidence or tool trace. Supported
-saved workspace presets can fill missing device, lot, and time-range
-arguments. Custom or unrecognized time ranges still require explicit UTC
-timestamps.
+The browser uses SSE for general and production questions. Production requests
+emit tool-call and tool-result events, and the current exchange can display a
+compact deterministic evidence summary below the assistant answer. Supported
+saved workspace presets can fill missing device, lot, and time-range arguments.
+Custom or unrecognized time ranges still require explicit UTC timestamps.
 
 ## Project direction
 
@@ -163,10 +161,12 @@ copy verification uses the committed lockfiles and migration workflow.
   client-disconnect persistence behavior still needs an integration test.
 - Context values, device identities, and production records are synthetic.
   They do not represent live equipment or production state.
-- Production tool calling is limited to the synchronous path and requires a
-  compatible model. The frontend routes it with a small English keyword
-  heuristic; SSE tool execution and structured evidence rendering are not
-  implemented.
+- Production tool calling requires a compatible model and still uses a small
+  English keyword heuristic. Both synchronous and SSE production paths can
+  execute the tool; the SSE path emits the completed model answer as one text
+  event rather than provider token deltas.
+- Structured evidence is available for the current exchange but is not
+  persisted with Message history.
 - There is no RAG, authentication, retry orchestration, or deployment stack.
 - Conversation and message history are not paginated.
 
