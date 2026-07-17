@@ -11,7 +11,10 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
-    "antd": "5.22.7",
+    "@ant-design/icons": "6.3.2",
+    "@ant-design/x": "2.9.0",
+    "@ant-design/x-markdown": "2.9.0",
+    "antd": "6.1.1",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
@@ -32,7 +35,7 @@
     "globals": "15.9.0",
     "jsdom": "22.1.0",
     "typescript": "5.4.5",
-    "vite": "4.5.5",
+    "vite": "4.5.14",
     "vitest": "0.34.6"
   }
 }
