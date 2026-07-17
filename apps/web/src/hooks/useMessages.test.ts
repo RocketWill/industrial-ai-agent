@@ -31,12 +31,16 @@ describe("useMessages", () => {
     expect(selected.result.current.error).toBe("Unable to send message");
   });
 
-  it("uses synchronous API for production queries even when streaming is available", async () => {
+  it("uses SSE for production queries when streaming is available", async () => {
     const api = {
       listMessages: vi.fn().mockResolvedValue([]),
       sendMessage: vi.fn().mockResolvedValue(exchange),
       streamMessage: vi.fn(async function* () {
-        yield { type: "error" as const, code: "unexpected", message: "not used" };
+        yield { type: "message_started" as const, user_message: exchange.user_message };
+        yield { type: "tool_call_started" as const, name: "get_production_summary", arguments: {} };
+        yield { type: "tool_result" as const, evidence: { production_summary: null, tool_error: { code: "NO_DATA", message: "No data" } } };
+        yield { type: "token" as const, text: "Answer" };
+        yield { type: "message_completed" as const, assistant_message: exchange.assistant_message };
       }),
     };
     const { result } = renderHook(() => useMessages(id, api));
@@ -44,8 +48,9 @@ describe("useMessages", () => {
     act(() => result.current.setDraft("What is the production yield?"));
     await act(async () => { await result.current.send(); });
 
-    expect(api.sendMessage).toHaveBeenCalledWith(id, "What is the production yield?");
-    expect(api.streamMessage).not.toHaveBeenCalled();
+    expect(api.sendMessage).not.toHaveBeenCalled();
+    expect(api.streamMessage).toHaveBeenCalled();
     expect(result.current.messages).toEqual([exchange.user_message, exchange.assistant_message]);
+    expect(result.current.toolStatus).toBe("Production evidence received");
   });
 });
