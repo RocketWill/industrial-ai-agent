@@ -5,16 +5,19 @@ from sqlalchemy.orm import Session
 
 from industrial_agent.graph.state import ExecutionEvent, GraphState
 from industrial_agent.graph.workflow import (
+    PRODUCTION_TOOL,
     Complete,
     CompleteWithTools,
+    _messages_with_production_context,
     build_workflow,
+    execute_production_tool,
     load_context,
     persist_response,
 )
 from industrial_agent.llm.types import (
     ChatMessage,
     CompletionResult,
-    ToolDefinition,
+    ToolResult,
 )
 from industrial_agent.services import message as message_service
 from industrial_agent.services.message import MessageExchange
@@ -48,6 +51,7 @@ def run_sync_exchange(
 
 Stream = Callable[[Sequence[ChatMessage]], Iterator[str]]
 ToolComplete = Callable[..., CompletionResult]
+ToolStream = Callable[[Sequence[ChatMessage], ToolResult], Iterator[str]]
 
 
 def run_stream_tool_exchange(
@@ -56,41 +60,67 @@ def run_stream_tool_exchange(
     conversation_id: UUID,
     content: str,
     complete_with_tools: ToolComplete,
-    tool_definition: ToolDefinition,
+    stream_with_tool_result: ToolStream,
 ) -> Iterator[ExecutionEvent]:
     """Run one production tool exchange and expose its stages as SSE events."""
-    calls: list[CompletionResult] = []
-
-    def instrumented_complete(*args, **kwargs):
-        result = complete_with_tools(*args, **kwargs)
-        calls.append(result)
-        return result
-
-    exchange = run_sync_exchange(
+    state = load_context(
         session,
         conversation_id=conversation_id,
         content=content,
-        complete=lambda _: "",
-        complete_with_tools=instrumented_complete,
     )
-    user_message = message_service.list_messages(session, conversation_id)[-2]
+    user_message = message_service.list_messages(session, conversation_id)[-1]
     yield ExecutionEvent(kind="user_message", payload=user_message)
-    first = calls[0] if calls else None
-    if first and first.tool_calls:
-        call = first.tool_calls[0]
-        yield ExecutionEvent(
-            kind="tool_call_started",
-            payload={"name": call.name, "arguments": call.arguments},
-        )
-        if exchange.evidence is not None:
-            yield ExecutionEvent(
-                kind="tool_result",
-                payload=exchange.evidence,
-            )
-    yield ExecutionEvent(
-        kind="token", payload={"text": exchange.assistant_message.content}
+    first = complete_with_tools(
+        _messages_with_production_context(state), (PRODUCTION_TOOL,)
     )
-    yield ExecutionEvent(kind="assistant_message", payload=exchange.assistant_message)
+    if not first.tool_calls:
+        content = first.content or ""
+        completed = persist_response(session, {**state, "assistant_content": content})
+        assistant_message = message_service.list_messages(session, conversation_id)[-1]
+        yield ExecutionEvent(
+            kind="token", payload={"text": completed["assistant_content"]}
+        )
+        yield ExecutionEvent(kind="assistant_message", payload=assistant_message)
+        return
+    tool_state = execute_production_tool(state, first)
+    call = first.tool_calls[0]
+    yield ExecutionEvent(
+        kind="tool_call_started",
+        payload={"name": call.name, "arguments": call.arguments},
+    )
+    if tool_state["evidence"] is not None:
+        yield ExecutionEvent(kind="tool_result", payload=tool_state["evidence"])
+    evidence = tool_state["evidence"]
+    if evidence is None or evidence.tool_error is not None:
+        assistant_content = (
+            evidence.tool_error.message
+            if evidence is not None and evidence.tool_error is not None
+            else tool_state["assistant_content"]
+        )
+        completed = persist_response(
+            session, {**tool_state, "assistant_content": assistant_content}
+        )
+        assistant_message = message_service.list_messages(session, conversation_id)[-1]
+        yield ExecutionEvent(
+            kind="token", payload={"text": completed["assistant_content"]}
+        )
+        yield ExecutionEvent(kind="assistant_message", payload=assistant_message)
+        return
+    tool_result = ToolResult(
+        call_id=call.call_id,
+        name=call.name,
+        arguments=call.arguments,
+        content=evidence.production_summary.model_dump_json(),
+    )
+    parts: list[str] = []
+    for delta in stream_with_tool_result(tool_state["messages"], tool_result):
+        parts.append(delta)
+        yield ExecutionEvent(kind="token", payload={"text": delta})
+    completed = persist_response(
+        session, {**tool_state, "assistant_content": "".join(parts)}
+    )
+    assistant_message = message_service.list_messages(session, conversation_id)[-1]
+    yield ExecutionEvent(kind="assistant_message", payload=assistant_message)
 
 
 def run_stream_exchange(

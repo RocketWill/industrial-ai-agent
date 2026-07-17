@@ -163,8 +163,8 @@ copy verification uses the committed lockfiles and migration workflow.
   They do not represent live equipment or production state.
 - Production tool calling requires a compatible model and still uses a small
   English keyword heuristic. Both synchronous and SSE production paths can
-  execute the tool; the SSE path emits the completed model answer as one text
-  event rather than provider token deltas.
+  execute the tool; after a successful SSE tool result, the final model answer
+  is forwarded as provider token deltas.
 - Structured evidence is available for the current exchange but is not
   persisted with Message history.
 - There is no RAG, authentication, retry orchestration, or deployment stack.

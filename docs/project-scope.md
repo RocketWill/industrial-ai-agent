@@ -95,9 +95,10 @@ and the completed-response persistence boundary to be specified together.
 
 The active implementation milestone is v0.4. It connects the first typed
 production tool to synchronous and SSE execution without moving numeric logic
-into the model. Workspace-context resolution and current-exchange structured
-evidence delivery are implemented. Broader intent handling, persisted evidence,
-and provider token streaming after tool execution remain outside the boundary.
+into the model. Workspace-context resolution, current-exchange structured
+evidence delivery, and provider token streaming after tool execution are
+implemented. Broader intent handling and persisted evidence remain outside the
+boundary.
 
 ## Publication safety
 

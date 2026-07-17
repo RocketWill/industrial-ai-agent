@@ -435,6 +435,38 @@ def test_stream_yields_compatible_deltas() -> None:
         ]
 
 
+def test_stream_with_tool_result_sends_tool_messages_and_deltas() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.content)
+        assert payload["stream"] is True
+        assert payload["messages"][-1]["role"] == "tool"
+        return httpx.Response(
+            200,
+            text=(
+                "data: {\"choices\":[{\"delta\":{\"content\":\"Grounded\"}}]}\n\n"
+                "data: [DONE]\n\n"
+            ),
+        )
+
+    adapter = OpenAICompatibleChatAdapter.from_settings(
+        Settings(LLM_MODEL="test-model"),
+        transport=httpx.MockTransport(handler),
+    )
+    with adapter:
+        assert list(
+            adapter.stream_with_tool_result(
+                [ChatMessage(role="user", content="Q")],
+                tools=(),
+                tool_call=ToolResult(
+                    call_id="call-001",
+                    name="get_production_summary",
+                    arguments={},
+                    content="{}",
+                ),
+            )
+        ) == ["Grounded"]
+
+
 def test_stream_rejects_incomplete_or_malformed_response() -> None:
     responses = [
         "data: {\"choices\":[]}\n\ndata: [DONE]\n\n",

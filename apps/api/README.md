@@ -242,8 +242,8 @@ behavior. The configured model must implement the compatible tool-call
 protocol. LangGraph provides a compiled synchronous workflow with focused
 production-query detection and production-summary execution. The SSE endpoint
 also executes that production tool and emits `tool_call_started`, `tool_result`,
-final text, and completion events. Its production answer is currently one
-completed text event rather than provider token deltas. Message history
+final text, and completion events. Its production answer is forwarded as a
+provider-token stream after a successful tool result. Message history
 has no pagination or individual mutation operations. The health
 endpoint reports API-process availability only and does not check the database
 or LLM service. The synchronous endpoint remains available. The v0.1.1

@@ -144,11 +144,11 @@ Implemented first slice:
   contract and render a compact frontend summary card.
 - [x] Add an SSE production tool event contract for tool call, result, final
   text, and completion events.
+- [x] Stream model tokens during the SSE production tool path after a
+  successful tool result.
 
 Remaining slices:
 
-- [ ] Stream model tokens during the SSE production tool path instead of
-  emitting the completed answer as one text event.
 - [ ] Add a focused UI result surface after backend behavior is stable.
 
 ## v0.5 — Self-built RAG
