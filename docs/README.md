@@ -26,7 +26,9 @@ implemented. v0.4 Production Data Tools is the active milestone: the first
 tool contract, OpenAI-compatible tool-call protocol, workspace-context
 resolution, synchronous grounded answers, SSE tool events, and current-exchange
 structured evidence display and provider token streaming after tool execution
-are implemented. Persisted evidence remains open.
+are implemented. The frontend now uses Ant Design 6.1.1, Ant Design X 2.9.0,
+and XMarkdown 2.9.0 for a responsive three-surface analysis workbench.
+Persisted evidence remains open.
 
 Architecture notes and engineering decisions should be added only when the
 corresponding code or approved decision exists. Local PRDs, specs, and plans

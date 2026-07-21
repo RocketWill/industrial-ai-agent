@@ -24,7 +24,7 @@ portfolio project.
 - typed OpenAI-compatible tool-call support for one
   `get_production_summary` call;
 - deterministic production-summary execution over a fictional AOI dataset and
-  evidence handoff for the final synchronous model response;
+  evidence handoff for final synchronous and SSE model responses;
 - conversation-bound Workspace Context `GET` and `PATCH` endpoints;
 - deterministic fictional device catalog and device-ID validation;
 - Pytest and Ruff verification; and
@@ -224,8 +224,8 @@ the committed uv lockfile, migrations, and backend test suite.
 
 RAG, MCP, authentication, and distributed deployment remain outside the
 implemented scope. The first manufacturing summary tool is an in-progress
-v0.4 capability. Streaming is implemented in v0.1.1 but does not execute that
-tool.
+v0.4 capability. Both Message endpoints can execute it for requests matched by
+the focused production-question heuristic.
 
 ## Dependency management
 
@@ -248,8 +248,10 @@ has no pagination or individual mutation operations. The health
 endpoint reports API-process availability only and does not check the database
 or LLM service. The synchronous endpoint remains available. The v0.1.1
 streaming endpoint is `POST /conversations/{conversation_id}/messages/stream`
-and returns SSE events for `message_started`, `token`, `message_completed`,
-and `error`. Only a non-empty completed assistant response is persisted.
+and returns SSE events for `message_started`, `token`, `message_completed`, and
+`error`. A matched production request can additionally emit
+`tool_call_started` and `tool_result`. Only a non-empty completed assistant
+response is persisted.
 
 The conversation-bound Workspace Context contract provides `GET` and `PATCH`
 endpoints at `/conversations/{conversation_id}/context`. It stores optional

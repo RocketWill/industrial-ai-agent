@@ -24,15 +24,16 @@ Two follow-up milestones are also implemented:
   responsive navigation, a single-scroll conversation layout, message states,
   and conversation-bound synthetic context.
 
-The clean-environment setup verification is complete. Synchronous production
-questions can now use an OpenAI-compatible tool-call protocol to query the
-fictional AOI dataset, calculate a deterministic production summary, and pass
-that evidence back to the model for the final answer. General questions and
-SSE responses continue to use the existing chat path.
+The clean-environment setup verification is complete. Production questions can
+use an OpenAI-compatible tool-call protocol over the synchronous or SSE message
+path to query the fictional AOI dataset, calculate a deterministic production
+summary, and pass that evidence back to the model for the final answer. General
+questions use the same SSE transport without manufacturing evidence.
 
-The v0.2 workspace UI has also received a focused usability refinement: the
-sidebar exposes only available navigation, the analysis context is easier to
-read, and assistant responses have a clearer analysis-oriented presentation.
+The workbench now uses Ant Design 6.1.1, Ant Design X 2.9.0, and XMarkdown
+2.9.0. Its dark-first responsive layout separates conversation navigation,
+the message stream, and editable analysis context without adding unsupported
+manufacturing dashboards or charts.
 
 See the [implementation status](docs/implementation-status.md) for the
 code-backed feature matrix and the [roadmap](docs/roadmap.md) for milestone
@@ -51,12 +52,13 @@ boundaries.
 - a deterministic catalog of three fictional devices for context selection;
 - immutable manufacturing records and one reproducible fictional AOI dataset;
 - deterministic yield, defect, and overlapping-alarm aggregation;
-- a typed `get_production_summary` tool connected to the synchronous
-  LangGraph workflow;
+- a typed `get_production_summary` tool connected to synchronous and SSE
+  production-question workflows;
 - API-process health reporting;
-- desktop and mobile conversation navigation;
-- loading, empty, unavailable, streaming, cancellation, and retry states; and
-- a dark Ant Design workbench with restrained Dithered accents.
+- grouped conversation navigation with desktop and mobile Drawers;
+- loading, empty, unavailable, streaming, cancellation, and reload states; and
+- a dark Ant Design X workbench with responsive context editing, Markdown
+  assistant responses, and restrained Dithered accents.
 
 The browser uses SSE for general and production questions. Production requests
 emit tool-call and tool-result events, and the current exchange can display a
@@ -111,7 +113,7 @@ The API process can start without an LLM model. Message requests require an
 OpenAI-compatible service and `LLM_MODEL`; the default base URL targets a local
 Ollama-compatible endpoint.
 
-From `apps/web`, using a compatible Node.js environment:
+From `apps/web`, using a currently supported Node.js environment:
 
 ```bash
 npm ci

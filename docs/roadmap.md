@@ -60,9 +60,10 @@ The React application now provides:
 - explicit Synthetic Demo labeling.
 
 Desktop and mobile browser checks confirm the shell and overflow hierarchy.
-The interface does not provide tool activity, metric summaries, sources,
-manufacturing charts, live equipment values, or production-backed analysis.
-Those surfaces remain tied to later backend milestones.
+The original v0.1.2 interface did not provide tool activity, metric summaries,
+sources, manufacturing charts, live equipment values, or production-backed
+analysis. The current workbench adds only the tool stages and structured
+evidence supported by the later v0.4 contracts.
 
 ## v0.2 — Minimal LangGraph
 
@@ -92,6 +93,21 @@ responses have a distinct analysis block treatment.
 This refinement does not claim manufacturing analytics, source evidence, tool
 activity, or evaluation views. Those remain tied to the later milestones that
 implement their backend behavior.
+
+### Responsive analysis workbench modernization
+
+**Status: Implemented**
+
+The frontend now uses Ant Design 6.1.1, Ant Design X 2.9.0, and XMarkdown
+2.9.0. The desktop layout separates conversation navigation, the message
+stream, and the analysis context inspector. Tablet and mobile layouts move the
+secondary surfaces into focused Drawers. Conversations are grouped by recency,
+context edits use an explicit draft and Save workflow, and assistant streaming,
+tool stages, Markdown, and current-exchange evidence share one message surface.
+
+This modernization does not add routes, manufacturing charts, persistent
+evidence, arbitrary UTC time entry, RAG sources, attachments, or a complete
+tool execution timeline. Those capabilities still depend on later contracts.
 
 ## v0.3 — Manufacturing Domain
 
@@ -136,7 +152,7 @@ Implemented first slice:
 - [x] Integrate the production summary tool with the synchronous LangGraph
   workflow and return a model-written answer grounded in tool evidence.
 - [x] Route a focused English production-query keyword set through the
-  synchronous browser path.
+  supported synchronous and SSE production execution paths.
 - [x] Resolve explicit tool arguments and saved synthetic workspace context
   into complete production-tool arguments, with clarification when required
   values are missing.
