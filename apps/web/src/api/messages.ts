@@ -15,6 +15,13 @@ export type ProductionEvidence = {
     alarm_events: { event_id: string; code: string; started_at: string; ended_at: string }[];
     limitations: string[];
   } | null;
+  equipment_status?: {
+    equipment_id: string; observed_at: string;
+    status: "running" | "idle" | "warning" | "down" | "maintenance" | "unknown";
+    effective_start: string | null; effective_end: string | null;
+    source_event_id: string | null; reason_code: string | null;
+    limitations: string[];
+  } | null;
   tool_error: { code: string; message: string } | null;
 };
 
@@ -46,9 +53,11 @@ function isEvidence(value: unknown): value is ProductionEvidence | null {
   if (typeof value !== "object") return false;
   const item = value as ProductionEvidence;
   if (item.tool_error !== null && (typeof item.tool_error !== "object" || typeof item.tool_error.code !== "string" || typeof item.tool_error.message !== "string")) return false;
-  if (item.production_summary === null) return item.tool_error !== null;
   const summary = item.production_summary;
-  return typeof summary === "object" && typeof summary.equipment_id === "string" && (summary.lot_id === null || typeof summary.lot_id === "string") && typeof summary.start === "string" && typeof summary.end === "string" && Number.isInteger(summary.inspected_wafers) && Number.isInteger(summary.passed_wafers) && Number.isInteger(summary.failed_wafers) && (summary.yield_rate === null || typeof summary.yield_rate === "number") && Array.isArray(summary.defect_counts) && Array.isArray(summary.alarm_events) && Array.isArray(summary.limitations) && summary.limitations.every((item) => typeof item === "string");
+  const validSummary = summary !== null && typeof summary === "object" && typeof summary.equipment_id === "string" && (summary.lot_id === null || typeof summary.lot_id === "string") && typeof summary.start === "string" && typeof summary.end === "string" && Number.isInteger(summary.inspected_wafers) && Number.isInteger(summary.passed_wafers) && Number.isInteger(summary.failed_wafers) && (summary.yield_rate === null || typeof summary.yield_rate === "number") && Array.isArray(summary.defect_counts) && Array.isArray(summary.alarm_events) && Array.isArray(summary.limitations) && summary.limitations.every((item) => typeof item === "string");
+  const status = item.equipment_status;
+  const validStatus = status !== null && status !== undefined && typeof status === "object" && typeof status.equipment_id === "string" && typeof status.observed_at === "string" && ["running", "idle", "warning", "down", "maintenance", "unknown"].includes(status.status) && (status.effective_start === null || typeof status.effective_start === "string") && (status.effective_end === null || typeof status.effective_end === "string") && (status.source_event_id === null || typeof status.source_event_id === "string") && (status.reason_code === null || typeof status.reason_code === "string") && Array.isArray(status.limitations) && status.limitations.every((limitation) => typeof limitation === "string");
+  return validSummary || validStatus || item.tool_error !== null;
 }
 function parseStreamEvent(event: string, data: string): MessageStreamEvent {
   const value: unknown = JSON.parse(data);
