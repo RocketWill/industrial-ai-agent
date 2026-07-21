@@ -2,8 +2,10 @@ from industrial_agent.graph.runner import run_sync_exchange
 from industrial_agent.graph.state import EvidenceState
 from industrial_agent.graph.workflow import (
     answer_with_production_evidence,
+    execute_equipment_status_tool,
     execute_production_tool,
     load_context,
+    resolve_equipment_status_request,
     resolve_production_request,
 )
 from industrial_agent.llm.types import (
@@ -131,6 +133,38 @@ def test_execute_production_tool_puts_summary_in_evidence_state(
     assert result["assistant_content"] == ""
 
 
+def test_execute_equipment_status_tool_puts_recorded_state_in_evidence(
+    database_session,
+) -> None:
+    conversation = create_conversation(database_session, title="Status")
+    state = load_context(
+        database_session,
+        conversation_id=conversation.id,
+        content="Is AOI-WAFER-01 down?",
+    )
+
+    result = execute_equipment_status_tool(
+        state,
+        CompletionResult(
+            content=None,
+            tool_calls=(
+                ToolCall(
+                    call_id="call-status",
+                    name="get_equipment_status",
+                    arguments={
+                        "equipment_id": "AOI-WAFER-01",
+                        "at": "2026-01-15T15:30:00Z",
+                    },
+                ),
+            ),
+        ),
+    )
+
+    assert result["evidence"].equipment_status is not None
+    assert result["evidence"].equipment_status.status == "warning"
+    assert result["assistant_content"] == ""
+
+
 def test_resolve_production_request_fills_missing_values_from_context(
     database_session,
 ) -> None:
@@ -178,6 +212,34 @@ def test_resolve_production_request_asks_for_missing_context(database_session) -
     assert clarification == (
         "Please specify an equipment ID or select a device in the analysis context."
     )
+
+
+def test_resolve_equipment_status_request_uses_context_range_end(
+    database_session,
+) -> None:
+    conversation = create_conversation(database_session, title="Status")
+    update_workspace_context(
+        database_session,
+        conversation.id,
+        update=WorkspaceContextUpdate(
+            device="AOI-WAFER-01", time_range="Last 4 hours"
+        ),
+    )
+    state = load_context(
+        database_session,
+        conversation_id=conversation.id,
+        content="What is the equipment status?",
+    )
+
+    request, clarification = resolve_equipment_status_request(
+        state,
+        ToolCall(call_id="call-status", name="get_equipment_status", arguments={}),
+    )
+
+    assert clarification is None
+    assert request is not None
+    assert request.equipment_id == "AOI-WAFER-01"
+    assert request.at.isoformat() == "2026-01-15T17:00:00+00:00"
 
 
 def test_execute_production_tool_rejects_unknown_tool_without_execution(
@@ -301,3 +363,54 @@ def test_sync_runner_executes_one_production_tool_then_persists_final_answer(
     assert calls[1] is not None
     assert "Saved analysis context" in first_messages[-1].content
     assert "2026-01-15T13:00:00Z/2026-01-15T17:00:00Z" in first_messages[-1].content
+
+
+def test_sync_runner_executes_equipment_status_tool_with_context(
+    database_session,
+) -> None:
+    conversation = create_conversation(database_session, title="Status")
+    update_workspace_context(
+        database_session,
+        conversation.id,
+        update=WorkspaceContextUpdate(
+            device="AOI-WAFER-01", time_range="Last 4 hours"
+        ),
+    )
+    calls = []
+
+    def complete(messages):
+        raise AssertionError("equipment-status question should use tools")
+
+    def complete_with_tools(messages, tools, *, tool_call=None):
+        calls.append((tools, tool_call))
+        if tool_call is None:
+            return CompletionResult(
+                content=None,
+                tool_calls=(
+                    ToolCall(
+                        call_id="call-status",
+                        name="get_equipment_status",
+                        arguments={},
+                    ),
+                ),
+            )
+        assert tool_call.name == "get_equipment_status"
+        assert '"status":"running"' in tool_call.content
+        return CompletionResult(content="The recorded equipment status is running.")
+
+    exchange = run_sync_exchange(
+        database_session,
+        conversation_id=conversation.id,
+        content="Is AOI-WAFER-01 down?",
+        complete=complete,
+        complete_with_tools=complete_with_tools,
+    )
+
+    assert exchange.assistant_message.content == (
+        "The recorded equipment status is running."
+    )
+    assert exchange.evidence is not None
+    assert exchange.evidence.equipment_status is not None
+    assert exchange.evidence.equipment_status.status == "running"
+    assert calls[0][1] is None
+    assert calls[1][1] is not None

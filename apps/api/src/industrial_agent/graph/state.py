@@ -4,6 +4,7 @@ from uuid import UUID
 
 from industrial_agent.llm.types import ChatMessage, ToolCall
 from industrial_agent.schemas.context import WorkspaceContextRead
+from industrial_agent.tools.equipment_status import EquipmentStatusResult
 from industrial_agent.tools.production import ProductionSummaryResult
 
 ExecutionEventKind = Literal[
@@ -26,13 +27,13 @@ ToolErrorCode = Literal[
 ]
 
 _TOOL_ERROR_MESSAGES: dict[ToolErrorCode, str] = {
-    "INVALID_INPUT": "The production query is invalid.",
+    "INVALID_INPUT": "The manufacturing query is invalid.",
     "UNKNOWN_EQUIPMENT": "The requested Equipment is not available.",
     "UNKNOWN_PRODUCTION_LOT": "The requested Production Lot is not available.",
     "NO_DATA": "No Inspection Records match the requested query.",
-    "TOOL_UNAVAILABLE": "Production data is temporarily unavailable.",
+    "TOOL_UNAVAILABLE": "Manufacturing data is temporarily unavailable.",
     "UNSUPPORTED_TOOL_CALL_PATTERN": (
-        "This production request pattern is not supported."
+        "This manufacturing request pattern is not supported."
     ),
 }
 
@@ -53,11 +54,20 @@ class EvidenceState:
     """One production result or error for the current graph run."""
 
     production_summary: ProductionSummaryResult | None = None
+    equipment_status: EquipmentStatusResult | None = None
     tool_error: ToolError | None = None
 
     def __post_init__(self) -> None:
-        if self.production_summary is not None and self.tool_error is not None:
-            raise ValueError("Evidence State cannot contain both result and error")
+        populated = sum(
+            item is not None
+            for item in (
+                self.production_summary,
+                self.equipment_status,
+                self.tool_error,
+            )
+        )
+        if populated > 1:
+            raise ValueError("Evidence State can contain only one result or error")
 
 
 

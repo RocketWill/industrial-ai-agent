@@ -191,6 +191,69 @@ def test_stream_production_message_emits_tool_events(
     assert 'data: {"text":"92.5%."}' in response.text
 
 
+def test_stream_equipment_status_message_emits_recorded_status_evidence(
+    conversation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conversation = create_conversation(conversation_client)
+    conversation_client.patch(
+        f"/conversations/{conversation['id']}/context",
+        json={"device": "AOI-WAFER-01", "time_range": "Last 4 hours"},
+    )
+
+    class FakeAdapter:
+        def __enter__(self) -> "FakeAdapter":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def complete_with_tools(self, messages, *, tools, tool_call=None):
+            from industrial_agent.llm.types import CompletionResult, ToolCall
+
+            assert tools[0].name == "get_equipment_status"
+            if tool_call is None:
+                return CompletionResult(
+                    content=None,
+                    tool_calls=(
+                        ToolCall(
+                            call_id="call-status",
+                            name="get_equipment_status",
+                            arguments={},
+                        ),
+                    ),
+                )
+            return CompletionResult(content="The recorded status is running.")
+
+        def stream_with_tool_result(self, messages, *, tools, tool_call):
+            assert tools[0].name == "get_equipment_status"
+            assert '"status":"running"' in tool_call.content
+            yield "The recorded status is "
+            yield "running."
+
+    monkeypatch.setattr(
+        OpenAICompatibleChatAdapter,
+        "from_settings",
+        classmethod(lambda cls, settings: FakeAdapter()),
+    )
+    response = conversation_client.post(
+        f"/conversations/{conversation['id']}/messages/stream",
+        json={"content": "What is the equipment status?"},
+    )
+
+    assert response.status_code == 200
+    events = [line for line in response.text.splitlines() if line.startswith("event:")]
+    assert events == [
+        "event: message_started",
+        "event: tool_call_started",
+        "event: tool_result",
+        "event: token",
+        "event: token",
+        "event: message_completed",
+    ]
+    assert '"equipment_status":{"equipment_id":"AOI-WAFER-01"' in response.text
+
+
 def test_stream_production_tool_error_persists_safe_response(
     conversation_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,

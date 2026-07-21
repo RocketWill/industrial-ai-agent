@@ -3,13 +3,17 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from industrial_agent.graph.errors import GraphExecutionError
 from industrial_agent.graph.state import ExecutionEvent, GraphState
 from industrial_agent.graph.workflow import (
+    EQUIPMENT_STATUS_TOOL,
     PRODUCTION_TOOL,
     Complete,
     CompleteWithTools,
+    _is_equipment_status_question,
     _messages_with_production_context,
     build_workflow,
+    execute_equipment_status_tool,
     execute_production_tool,
     load_context,
     persist_response,
@@ -70,8 +74,10 @@ def run_stream_tool_exchange(
     )
     user_message = message_service.list_messages(session, conversation_id)[-1]
     yield ExecutionEvent(kind="user_message", payload=user_message)
+    is_equipment_status = _is_equipment_status_question(state["messages"])
+    selected_tool = EQUIPMENT_STATUS_TOOL if is_equipment_status else PRODUCTION_TOOL
     first = complete_with_tools(
-        _messages_with_production_context(state), (PRODUCTION_TOOL,)
+        _messages_with_production_context(state), (selected_tool,)
     )
     if not first.tool_calls:
         content = first.content or ""
@@ -82,7 +88,11 @@ def run_stream_tool_exchange(
         )
         yield ExecutionEvent(kind="assistant_message", payload=assistant_message)
         return
-    tool_state = execute_production_tool(state, first)
+    tool_state = (
+        execute_equipment_status_tool(state, first)
+        if is_equipment_status
+        else execute_production_tool(state, first)
+    )
     call = first.tool_calls[0]
     yield ExecutionEvent(
         kind="tool_call_started",
@@ -106,11 +116,18 @@ def run_stream_tool_exchange(
         )
         yield ExecutionEvent(kind="assistant_message", payload=assistant_message)
         return
+    result_payload = (
+        evidence.equipment_status
+        if is_equipment_status
+        else evidence.production_summary
+    )
+    if result_payload is None:
+        raise GraphExecutionError(code="empty_response")
     tool_result = ToolResult(
         call_id=call.call_id,
         name=call.name,
         arguments=call.arguments,
-        content=evidence.production_summary.model_dump_json(),
+        content=result_payload.model_dump_json(),
     )
     parts: list[str] = []
     for delta in stream_with_tool_result(tool_state["messages"], tool_result):
