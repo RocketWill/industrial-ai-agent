@@ -54,16 +54,19 @@ boundaries.
 - deterministic yield, defect, and overlapping-alarm aggregation;
 - a typed `get_production_summary` tool connected to synchronous and SSE
   production-question workflows;
+- a typed `get_equipment_status` tool that reads explicit synthetic state
+  intervals without inferring status from yield or alarms;
 - API-process health reporting;
 - grouped conversation navigation with desktop and mobile Drawers;
 - loading, empty, unavailable, streaming, cancellation, and reload states; and
 - a dark Ant Design X workbench with responsive context editing, Markdown
   assistant responses, and restrained Dithered accents.
 
-The browser uses SSE for general and production questions. Production requests
+The browser uses SSE for general and supported manufacturing questions. Tool requests
 emit tool-call and tool-result events, and the current exchange can display a
 deterministic Production Summary result surface below the assistant answer,
-including Defect Counts and Alarm Events. Supported
+including Defect Counts and Alarm Events, or a recorded Equipment Status card.
+Supported
 saved workspace presets can fill missing device, lot, and time-range arguments.
 Custom or unrecognized time ranges still require explicit UTC timestamps.
 
