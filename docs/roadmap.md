@@ -98,7 +98,7 @@ implement their backend behavior.
 
 **Status: Implemented**
 
-The frontend now uses Ant Design 6.1.1, Ant Design X 2.9.0, and XMarkdown
+The frontend now uses Ant Design 6.5.1, Ant Design X 2.9.0, and XMarkdown
 2.9.0. The desktop layout separates conversation navigation, the message
 stream, and the analysis context inspector. Tablet and mobile layouts move the
 secondary surfaces into focused Drawers. Conversations are grouped by recency,

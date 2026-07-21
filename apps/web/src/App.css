@@ -123,6 +123,15 @@
   position: absolute;
   right: 0;
 }
+.assistant-bubble-streaming::after { opacity: 0; }
+.assistant-beam-host {
+  border-radius: inherit;
+  box-sizing: border-box;
+  min-height: 100%;
+  padding: 12px 16px 14px;
+  position: relative;
+  width: 100%;
+}
 .thinking-status { align-items: center; display: flex; gap: 10px; min-height: 28px; }
 .thinking-dots { align-items: center; display: inline-flex; gap: 5px; height: 18px; }
 .thinking-dots > span {
@@ -139,6 +148,7 @@
   0%, 60%, 100% { opacity: 0.46; transform: translateY(0); }
   30% { opacity: 1; transform: translateY(-4px); }
 }
+
 .assistant-markdown { white-space: normal; }
 .assistant-markdown > :first-child { margin-top: 0; }
 .assistant-markdown > :last-child { margin-bottom: 0; }

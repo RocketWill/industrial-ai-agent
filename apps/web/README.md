@@ -7,7 +7,7 @@ workbench implemented across the frontend milestones.
 
 ## Implemented
 
-- Vite, React, TypeScript, Ant Design 6.1.1, Ant Design X 2.9.0, XMarkdown
+- Vite, React, TypeScript, Ant Design 6.5.1, Ant Design X 2.9.0, XMarkdown
   2.9.0, Vitest, and React Testing Library;
 - a `GET /health` client with runtime response validation;
 - conversation loading, creation, selection, and deletion through the existing API;
@@ -111,9 +111,10 @@ navigation. The source and environment metadata remain read-only.
 
 Grounded production results appear as final assistant text with a compact
 structured summary attached to the assistant bubble that produced it. Pending
-assistant bubbles use an accessible three-dot processing indicator, while all
-assistant bubbles retain a static multicolor accent. Generating and
-production-tool stages remain distinguishable through text and ARIA state.
+assistant bubbles use an accessible three-dot processing indicator and an
+Ant Design BorderBeam while a response is active. Completed bubbles retain a
+static multicolor bottom accent. Generating and production-tool stages remain
+distinguishable through text and ARIA state.
 Evidence is not persisted across reloads, and the browser does not display a
 full tool timeline or manufacturing charts. Its keyword heuristic does not yet
 cover Chinese production terms or distinguish every conceptual question from
