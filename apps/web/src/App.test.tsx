@@ -57,8 +57,10 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(screen.getAllByText("Analysis workspace")).toHaveLength(2);
-    expect(screen.getAllByText("Synthetic Demo")).toHaveLength(2);
+    expect(screen.getByText("Recent conversations")).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Analysis context" })).toBeInTheDocument();
+    expect(screen.getAllByText("Synthetic Demo").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Analysis workspace")).not.toBeInTheDocument();
     expect(screen.queryByText("Production Data")).not.toBeInTheDocument();
     expect(screen.queryByText("Knowledge Base")).not.toBeInTheDocument();
     expect(screen.queryByText("Evaluations")).not.toBeInTheDocument();

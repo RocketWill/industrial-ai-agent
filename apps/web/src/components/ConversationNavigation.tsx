@@ -1,27 +1,102 @@
-import { useState, type ReactNode } from "react";
-import { Alert, Button, Form, Input, List, Modal, Skeleton, Typography } from "antd";
-import { AppstoreOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import { useMemo, useState, type ReactNode } from "react";
+import { Alert, Form, Input, Modal, Skeleton, Typography } from "antd";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import { Conversations } from "@ant-design/x";
+import type { ConversationItemType } from "@ant-design/x";
+
+import type { Conversation } from "../api/conversations";
 import type { ConversationState } from "../hooks/useConversations";
 
-type Props = { state: ConversationState; footer: ReactNode };
+type Props = {
+  state: ConversationState;
+  footer: ReactNode;
+  onSelectConversation: (id: string) => void;
+};
 
-export default function ConversationNavigation({ state, footer }: Props) {
+function conversationGroup(createdAt: string): string {
+  const created = new Date(createdAt);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const age = today.getTime() - new Date(created.getFullYear(), created.getMonth(), created.getDate()).getTime();
+  if (age <= 0) return "Today";
+  if (age <= 7 * 24 * 60 * 60 * 1000) return "Previous 7 days";
+  return "Older";
+}
+
+export default function ConversationNavigation({ state, footer, onSelectConversation }: Props) {
+  const [modal, modalContextHolder] = Modal.useModal();
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<{ title?: string }>();
-  const submit = async () => { const values = await form.validateFields(); await state.createConversation(values.title); form.resetFields(); setOpen(false); };
-  return <aside className="conversation-navigation" aria-label="Conversation navigation">
-    <header className="sidebar-brand">
-      <div className="brand-mark" aria-hidden="true" />
-      <div><Typography.Title level={3}>Industrial AI Agent</Typography.Title><Typography.Text type="secondary">Semiconductor Manufacturing</Typography.Text></div>
-    </header>
-    <Button className="new-analysis-button" type="default" icon={<PlusOutlined />} onClick={() => setOpen(true)}>New analysis</Button>
-    <nav className="feature-navigation" aria-label="Workbench features">
-      <Button className="feature-item active" type="text" icon={<AppstoreOutlined />}>Analysis workspace</Button>
-    </nav>
-    <div className="conversation-heading"><Typography.Title level={4}>Recent conversations</Typography.Title></div>
-    {state.error && <Alert type="error" showIcon message={state.error} action={<Button size="small" onClick={() => void state.reload()}>Retry</Button>} />}
-    {state.isLoading ? <Skeleton active paragraph={{ rows: 4 }} /> : state.conversations.length === 0 ? <Typography.Text type="secondary">No conversations yet.</Typography.Text> : <List dataSource={state.conversations} renderItem={(item) => <List.Item className={item.id === state.selectedConversationId ? "conversation-item selected" : "conversation-item"} aria-selected={item.id === state.selectedConversationId} onClick={() => state.selectConversation(item.id)} actions={[<Button aria-label={`Delete ${item.title}`} className="conversation-delete" type="text" danger icon={<DeleteOutlined />} disabled={state.isMutating} onClick={(event) => { event.stopPropagation(); Modal.confirm({ title: "Delete conversation?", content: "This conversation will be permanently deleted.", okText: "Delete", okButtonProps: { danger: true }, onOk: () => state.deleteConversation(item.id) }); }} />]}><List.Item.Meta title={item.title} description={new Date(item.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })} /></List.Item>} />}
-    <footer className="sidebar-footer">{footer}</footer>
-    <Modal title="New conversation" open={open} onCancel={() => setOpen(false)} onOk={() => void submit()} confirmLoading={state.isMutating}><Form form={form} layout="vertical"><Form.Item name="title" label="Title" rules={[{ max: 200, message: "Title must be 200 characters or fewer." }]}><Input autoFocus placeholder="New conversation" /></Form.Item></Form></Modal>
-  </aside>;
+  const items = useMemo<ConversationItemType[]>(() => state.conversations.map((item: Conversation) => ({
+    key: item.id,
+    label: item.title,
+    group: conversationGroup(item.created_at),
+  })), [state.conversations]);
+
+  const submit = async () => {
+    const values = await form.validateFields();
+    await state.createConversation(values.title);
+    form.resetFields();
+    setOpen(false);
+  };
+
+  return (
+    <aside className="conversation-navigation" aria-label="Conversation navigation">
+      {modalContextHolder}
+      <header className="sidebar-brand">
+        <div className="brand-mark" aria-hidden="true" />
+        <div>
+          <Typography.Title level={3}>Industrial AI Agent</Typography.Title>
+          <Typography.Text type="secondary">Semiconductor analysis</Typography.Text>
+        </div>
+      </header>
+      <Typography.Text className="section-label">Recent conversations</Typography.Text>
+      {state.error && <Alert type="error" showIcon title={state.error} action={<button className="text-action" onClick={() => void state.reload()}>Retry</button>} />}
+      {state.isLoading ? (
+        <Skeleton active paragraph={{ rows: 5 }} />
+      ) : (
+        <Conversations
+          className="conversation-list"
+          items={items}
+          activeKey={state.selectedConversationId ?? undefined}
+          onActiveChange={onSelectConversation}
+          groupable={{ collapsible: false }}
+          creation={{
+            label: "New analysis",
+            icon: <PlusOutlined />,
+            disabled: state.isMutating,
+            onClick: () => setOpen(true),
+          }}
+          menu={(item) => ({
+            items: [{ key: "delete", label: "Delete", danger: true, icon: <DeleteOutlined /> }],
+            onClick: ({ domEvent }) => {
+              domEvent.stopPropagation();
+              modal.confirm({
+                title: "Delete conversation?",
+                content: "This conversation will be permanently deleted.",
+                okText: "Delete",
+                okButtonProps: { color: "danger", variant: "solid" },
+                onOk: () => state.deleteConversation(item.key),
+              });
+            },
+          })}
+        />
+      )}
+      {!state.isLoading && state.conversations.length === 0 && <Typography.Text type="secondary" className="conversation-empty">No conversations yet.</Typography.Text>}
+      <footer className="sidebar-footer">{footer}</footer>
+      <Modal
+        title="New conversation"
+        open={open}
+        onCancel={() => setOpen(false)}
+        onOk={() => void submit()}
+        confirmLoading={state.isMutating}
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item name="title" label="Title" rules={[{ max: 200, message: "Title must be 200 characters or fewer." }]}>
+            <Input autoFocus placeholder="New conversation" />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </aside>
+  );
 }

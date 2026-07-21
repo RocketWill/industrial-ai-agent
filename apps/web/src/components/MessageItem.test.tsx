@@ -18,10 +18,32 @@ describe("MessageItem", () => {
     expect(screen.queryByText("private")).not.toBeInTheDocument();
   });
 
+  it("renders assistant Markdown while escaping raw HTML", async () => {
+    const { container } = render(
+      <MessageItem
+        message={{
+          ...message,
+          content: "**Grounded result** <script>unsafe()</script>",
+        }}
+      />,
+    );
+
+    expect((await screen.findByText("Grounded result")).tagName).toBe("STRONG");
+    expect(container.querySelector("script")).toBeNull();
+    expect(screen.getByText(/<script>unsafe\(\)<\/script>/)).toBeInTheDocument();
+  });
+
   it("shows a streaming placeholder without exposing partial reasoning", () => {
     render(<MessageItem message={{ ...message, content: "<think>partial" }} isStreaming />);
-    expect(screen.getByText("Generating response…")).toBeInTheDocument();
+    const status = screen.getByRole("status", { name: "Generating response" });
+    expect(status.querySelectorAll(".thinking-dots > span")).toHaveLength(3);
     expect(screen.queryByText("partial")).not.toBeInTheDocument();
+  });
+
+  it("keeps tool progress accessible while using the same thinking indicator", () => {
+    render(<MessageItem message={{ ...message, content: "" }} isStreaming runLabel="Calling get_production_summary" />);
+    const status = screen.getByRole("status", { name: "Calling get_production_summary" });
+    expect(status.querySelectorAll(".thinking-dots > span")).toHaveLength(3);
   });
 
   it("renders deterministic production evidence", () => {

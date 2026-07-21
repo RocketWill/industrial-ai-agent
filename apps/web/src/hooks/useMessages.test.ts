@@ -19,7 +19,7 @@ describe("useMessages", () => {
   });
 
   it("does not request without a selected conversation and preserves failed drafts", async () => {
-    const api = { listMessages: vi.fn(), sendMessage: vi.fn().mockRejectedValue(new Error("offline")) };
+    const api = { listMessages: vi.fn().mockResolvedValue([]), sendMessage: vi.fn().mockRejectedValue(new Error("offline")) };
     const { result } = renderHook(() => useMessages(null, api));
     expect(api.listMessages).not.toHaveBeenCalled();
     act(() => result.current.setDraft("Question"));
@@ -51,7 +51,8 @@ describe("useMessages", () => {
     expect(api.sendMessage).not.toHaveBeenCalled();
     expect(api.streamMessage).toHaveBeenCalled();
     expect(result.current.messages).toEqual([exchange.user_message, exchange.assistant_message]);
-    expect(result.current.toolStatus).toBe("Production evidence received");
+    expect(result.current.runState.phase).toBe("success");
+    expect(result.current.evidence?.tool_error?.code).toBe("NO_DATA");
   });
 
   it("clears previous production evidence for a new general question", async () => {
@@ -73,5 +74,28 @@ describe("useMessages", () => {
     act(() => result.current.setDraft("hello"));
     await act(async () => { await result.current.send(); });
     expect(result.current.evidence).toBeNull();
+  });
+
+  it("marks the active assistant bubble as cancelled without clearing the draft", async () => {
+    const api = {
+      listMessages: vi.fn().mockResolvedValue([]),
+      sendMessage: vi.fn(),
+      streamMessage: vi.fn(async function* (_id: string, _content: string, signal: AbortSignal) {
+        yield { type: "message_started" as const, user_message: exchange.user_message };
+        await new Promise((_, reject) => signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true }));
+      }),
+    };
+    const { result } = renderHook(() => useMessages(id, api));
+    await waitFor(() => expect(api.listMessages).toHaveBeenCalled());
+    act(() => result.current.setDraft("Question"));
+    let request!: Promise<boolean>;
+    act(() => { request = result.current.send(); });
+    await waitFor(() => expect(result.current.isStreaming).toBe(true));
+    act(() => result.current.cancelStreaming());
+    await act(async () => { await request; });
+
+    expect(result.current.runState.phase).toBe("cancelled");
+    expect(result.current.messages[result.current.messages.length - 1]?.content).toBe("Generation stopped.");
+    expect(result.current.draft).toBe("Question");
   });
 });
