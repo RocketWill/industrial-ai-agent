@@ -318,6 +318,49 @@ def test_stream_defect_distribution_message_emits_ranked_evidence(
     assert '"category":"edge-chip","count":19' in response.text
 
 
+def test_stream_document_question_emits_retrieved_source_evidence(
+    conversation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conversation = create_conversation(conversation_client)
+
+    class FakeAdapter:
+        def __enter__(self) -> "FakeAdapter":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def complete_with_tools(self, messages, *, tools, tool_call=None):
+            raise AssertionError("document routing must not ask the model for args")
+
+        def stream_with_tool_result(self, messages, *, tools, tool_call):
+            assert tools[0].name == "search_documents"
+            assert '"section":"OPTICAL-SIGNAL-LOW"' in tool_call.content
+            yield "Check the fictional optical lens cover."
+
+    monkeypatch.setattr(
+        OpenAICompatibleChatAdapter,
+        "from_settings",
+        classmethod(lambda cls, settings: FakeAdapter()),
+    )
+    response = conversation_client.post(
+        f"/conversations/{conversation['id']}/messages/stream",
+        json={
+            "content": (
+                "What should an operator check when OPTICAL-SIGNAL-LOW occurs?"
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    assert (
+        '"document_search":{"query":"What should an operator check when '
+        'OPTICAL-SIGNAL-LOW occurs?"'
+    ) in response.text
+    assert '"section":"OPTICAL-SIGNAL-LOW"' in response.text
+
+
 def test_stream_production_tool_error_persists_safe_response(
     conversation_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,

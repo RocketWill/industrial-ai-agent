@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from industrial_agent.models.message import MessageRole
 from industrial_agent.tools.defect_distribution import DefectDistributionResult
+from industrial_agent.tools.document_search import DocumentSearchResult
 from industrial_agent.tools.equipment_status import EquipmentStatusResult
 from industrial_agent.tools.production import ProductionSummaryResult
 
@@ -44,6 +45,7 @@ class EvidenceRead(BaseModel):
     production_summary: ProductionSummaryResult | None = None
     equipment_status: EquipmentStatusResult | None = None
     defect_distribution: DefectDistributionResult | None = None
+    document_search: DocumentSearchResult | None = None
     tool_error: ToolErrorRead | None = None
 
 
