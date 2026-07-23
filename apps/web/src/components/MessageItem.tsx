@@ -1,4 +1,4 @@
-import { Button, Descriptions, Tag, Typography } from "antd";
+import { Button, Descriptions, Progress, Tag, Typography } from "antd";
 import { CopyOutlined } from "@ant-design/icons";
 import { lazy, Suspense } from "react";
 import type { Message, ProductionEvidence } from "../api/messages";
@@ -145,6 +145,62 @@ function EquipmentStatusCard({ evidence }: { evidence: ProductionEvidence }) {
   );
 }
 
+function DefectDistributionCard({ evidence }: { evidence: ProductionEvidence }) {
+  const distribution = evidence.defect_distribution;
+  if (!distribution) return null;
+
+  return (
+    <section className="evidence-card defect-distribution-card" aria-label="Defect distribution evidence">
+      <div className="evidence-heading">
+        <Typography.Text strong>Defect distribution</Typography.Text>
+        <div className="evidence-tags">
+          <Tag color="cyan">Deterministic</Tag>
+          <Tag>Synthetic Demo</Tag>
+        </div>
+      </div>
+      <Descriptions
+        size="small"
+        column={2}
+        className="evidence-summary"
+        items={[
+          { key: "equipment", label: "Equipment", children: distribution.equipment_id },
+          { key: "lot", label: "Lot", children: distribution.lot_id ?? "All lots" },
+          { key: "range", label: "Time range", span: 2, children: `${displayTime(distribution.start)} - ${displayTime(distribution.end)}` },
+          { key: "failed", label: "Failed wafers", children: distribution.failed_wafers },
+          { key: "classified", label: "Classified defects", children: distribution.classified_defect_count },
+          { key: "unclassified", label: "Unclassified failures", span: 2, children: distribution.unclassified_failed_wafers },
+        ]}
+      />
+      <div className="defect-distribution-list">
+        {distribution.items.length === 0 ? (
+          <Typography.Text type="secondary">No classified defects returned.</Typography.Text>
+        ) : distribution.items.map((item) => {
+          const percent = item.share === null ? 0 : item.share * 100;
+          return (
+            <div className="defect-distribution-item" key={item.category}>
+              <div className="defect-distribution-label">
+                <Typography.Text>{item.category}</Typography.Text>
+                <div>
+                  <Tag className="defect-rank-tag">Rank {item.rank}</Tag>
+                  <Typography.Text className="defect-distribution-value">
+                    {item.count} · {item.share === null ? "No share" : `${percent.toFixed(1)}%`}
+                  </Typography.Text>
+                </div>
+              </div>
+              <Progress percent={percent} showInfo={false} size="small" strokeColor="#37c6d0" />
+            </div>
+          );
+        })}
+      </div>
+      {distribution.limitations.length > 0 && (
+        <Typography.Text className="evidence-limitations" type="secondary">
+          {distribution.limitations.join(" ")}
+        </Typography.Text>
+      )}
+    </section>
+  );
+}
+
 export default function MessageItem({
   message,
   isStreaming = false,
@@ -204,6 +260,9 @@ export default function MessageItem({
         )}
         {!isUser && !isStreaming && evidence?.equipment_status && (
           <EquipmentStatusCard evidence={evidence} />
+        )}
+        {!isUser && !isStreaming && evidence?.defect_distribution && (
+          <DefectDistributionCard evidence={evidence} />
         )}
       </div>
     </article>
