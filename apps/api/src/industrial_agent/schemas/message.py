@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from industrial_agent.models.message import MessageRole
+from industrial_agent.tools.defect_distribution import DefectDistributionResult
 from industrial_agent.tools.equipment_status import EquipmentStatusResult
 from industrial_agent.tools.production import ProductionSummaryResult
 
@@ -42,6 +43,7 @@ class ToolErrorRead(BaseModel):
 class EvidenceRead(BaseModel):
     production_summary: ProductionSummaryResult | None = None
     equipment_status: EquipmentStatusResult | None = None
+    defect_distribution: DefectDistributionResult | None = None
     tool_error: ToolErrorRead | None = None
 
 

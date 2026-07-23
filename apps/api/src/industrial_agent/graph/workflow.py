@@ -22,6 +22,11 @@ from industrial_agent.llm.types import (
 )
 from industrial_agent.services import conversation as conversation_service
 from industrial_agent.services import message as message_service
+from industrial_agent.tools.defect_distribution import (
+    DefectDistributionRequest,
+    DefectDistributionToolError,
+    get_defect_distribution,
+)
 from industrial_agent.tools.equipment_status import (
     EquipmentStatusRequest,
     EquipmentStatusToolError,
@@ -66,6 +71,19 @@ def _is_equipment_status_question(messages: Sequence[ChatMessage]) -> bool:
         and any(term in question for term in ("equipment", "machine", "aoi-wafer"))
     )
     return explicit_status_term or state_about_named_equipment
+
+
+def _is_defect_distribution_question(messages: Sequence[ChatMessage]) -> bool:
+    question = messages[-1].content.lower()
+    return any(
+        term in question
+        for term in (
+            "defect distribution",
+            "defect breakdown",
+            "defect categories",
+            "top defect",
+        )
+    )
 
 
 def _messages_with_production_context(state: GraphState) -> list[ChatMessage]:
@@ -120,6 +138,22 @@ EQUIPMENT_STATUS_TOOL = ToolDefinition(
         "properties": {
             "equipment_id": {"type": "string"},
             "at": {"type": "string", "format": "date-time"},
+        },
+        "required": [],
+        "additionalProperties": False,
+    },
+)
+
+DEFECT_DISTRIBUTION_TOOL = ToolDefinition(
+    name="get_defect_distribution",
+    description="Read deterministic synthetic defect distribution evidence.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "equipment_id": {"type": "string"},
+            "lot_id": {"type": ["string", "null"]},
+            "start": {"type": "string", "format": "date-time"},
+            "end": {"type": "string", "format": "date-time"},
         },
         "required": [],
         "additionalProperties": False,
@@ -206,6 +240,17 @@ def resolve_equipment_status_request(
         ), None
     except ValidationError:
         return None, "Please provide a valid UTC equipment-status time."
+
+
+def resolve_defect_distribution_request(
+    state: GraphState,
+    call: ToolCall,
+) -> tuple[DefectDistributionRequest | None, str | None]:
+    """Resolve defect-distribution arguments through production context rules."""
+    request, clarification = resolve_production_request(state, call)
+    if request is None:
+        return None, clarification
+    return DefectDistributionRequest.model_validate(request.model_dump()), None
 
 
 def load_context(
@@ -348,6 +393,57 @@ def execute_equipment_status_tool(
     }
 
 
+def execute_defect_distribution_tool(
+    state: GraphState,
+    result: CompletionResult,
+) -> GraphState:
+    """Execute one parsed defect-distribution Tool Call into Evidence State."""
+    if len(result.tool_calls) != 1:
+        return {
+            **state,
+            "evidence": EvidenceState(
+                tool_error=ToolError(code="UNSUPPORTED_TOOL_CALL_PATTERN")
+            ),
+        }
+    call = result.tool_calls[0]
+    if call.name != DEFECT_DISTRIBUTION_TOOL.name:
+        return {
+            **state,
+            "evidence": EvidenceState(
+                tool_error=ToolError(code="UNSUPPORTED_TOOL_CALL_PATTERN")
+            ),
+        }
+    request, clarification = resolve_defect_distribution_request(state, call)
+    if clarification is not None:
+        return {**state, "assistant_content": clarification}
+    if request is None:
+        return {
+            **state,
+            "evidence": EvidenceState(tool_error=ToolError(code="INVALID_INPUT")),
+        }
+    try:
+        distribution = get_defect_distribution(request)
+    except DefectDistributionToolError as error:
+        code = (
+            "UNKNOWN_EQUIPMENT"
+            if "Equipment" in str(error)
+            else "UNKNOWN_PRODUCTION_LOT"
+        )
+        return {**state, "evidence": EvidenceState(tool_error=ToolError(code=code))}
+    return {
+        **state,
+        "evidence": EvidenceState(defect_distribution=distribution),
+        "tool_call": call,
+        "execution_events": [
+            *state["execution_events"],
+            ExecutionEvent(
+                kind="node_completed",
+                payload={"node": "execute_defect_distribution_tool"},
+            ),
+        ],
+    }
+
+
 def answer_with_production_evidence(
     state: GraphState,
     *,
@@ -440,6 +536,51 @@ def answer_with_equipment_status_evidence(
     }
 
 
+def answer_with_defect_distribution_evidence(
+    state: GraphState,
+    *,
+    complete_with_tools: CompleteWithTools,
+    tool_call: ToolCall,
+) -> GraphState:
+    """Ask the model for a final answer using defect distribution evidence."""
+    evidence = state["evidence"]
+    if evidence is None:
+        raise GraphExecutionError(code="empty_response")
+    if evidence.tool_error is not None:
+        return {
+            **state,
+            "assistant_content": evidence.tool_error.message,
+            "execution_events": [
+                *state["execution_events"],
+                ExecutionEvent(kind="node_completed", payload={"node": "tool_error"}),
+            ],
+        }
+    if evidence.defect_distribution is None:
+        raise GraphExecutionError(code="empty_response")
+    result = complete_with_tools(
+        state["messages"],
+        (DEFECT_DISTRIBUTION_TOOL,),
+        tool_call=ToolResult(
+            call_id=tool_call.call_id,
+            name=tool_call.name,
+            arguments=tool_call.arguments,
+            content=evidence.defect_distribution.model_dump_json(),
+        ),
+    )
+    if result.tool_calls or not result.content or not result.content.strip():
+        raise GraphExecutionError(code="empty_response")
+    return {
+        **state,
+        "assistant_content": result.content.strip(),
+        "execution_events": [
+            *state["execution_events"],
+            ExecutionEvent(
+                kind="node_completed", payload={"node": "answer_with_evidence"}
+            ),
+        ],
+    }
+
+
 def _call_llm(
     state: GraphState,
     *,
@@ -458,6 +599,34 @@ def _call_llm(
             if tool_state["assistant_content"]:
                 return tool_state
             return answer_with_equipment_status_evidence(
+                tool_state,
+                complete_with_tools=complete_with_tools,
+                tool_call=first_result.tool_calls[0],
+            )
+        if first_result.content and first_result.content.strip():
+            return {
+                **state,
+                "assistant_content": first_result.content.strip(),
+                "execution_events": [
+                    *state["execution_events"],
+                    ExecutionEvent(
+                        kind="node_completed", payload={"node": "call_llm"}
+                    ),
+                ],
+            }
+        raise GraphExecutionError(code="empty_response")
+    if complete_with_tools is not None and _is_defect_distribution_question(
+        state["messages"]
+    ):
+        first_result = complete_with_tools(
+            _messages_with_production_context(state),
+            (DEFECT_DISTRIBUTION_TOOL,),
+        )
+        if first_result.tool_calls:
+            tool_state = execute_defect_distribution_tool(state, first_result)
+            if tool_state["assistant_content"]:
+                return tool_state
+            return answer_with_defect_distribution_evidence(
                 tool_state,
                 complete_with_tools=complete_with_tools,
                 tool_call=first_result.tool_calls[0],
