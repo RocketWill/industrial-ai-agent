@@ -111,7 +111,7 @@ tool execution timeline. Those capabilities still depend on later contracts.
 
 ## v0.3 — Manufacturing Domain
 
-**Status: In Progress**
+**Status: Implemented**
 
 Define synthetic equipment, production, inspection, defect, yield, alarm,
 time-range, and status models. Specify numeric semantics and boundary behavior,
@@ -129,14 +129,13 @@ Implemented slices:
 - [x] Define explicit UTC equipment-state intervals and deterministic
   point-in-time lookup with an `unknown` result when no state is recorded.
 
-Remaining milestone work:
-
-- [ ] Decide whether throughput belongs in this milestone's domain contract.
-- [ ] Complete milestone documentation and acceptance review.
+Throughput is deferred until a later milestone defines a dataset and unit
+contract that can support it. It is not implied by inspection counts or the
+current time-window summaries.
 
 ## v0.4 — Production Data Tools
 
-**Status: In Progress**
+**Status: Implemented**
 
 Implement a small set of schema-driven tools for equipment status, yield
 summary, and defect distribution. Keep domain logic independent of LangGraph
@@ -172,11 +171,15 @@ Implemented slices:
   when no recorded interval covers the timestamp.
 - [x] Render current-exchange Equipment Status evidence with effective
   boundaries, reason code, provenance, and limitations.
+- [x] Add a typed `get_defect_distribution` contract that ranks recorded
+  categories and reports shares against classified defect counts.
+- [x] Route focused defect-distribution questions through synchronous and SSE
+  execution before the broader production-summary route.
+- [x] Render current-exchange Defect Distribution evidence with counts, ranks,
+  shares, provenance, empty states, and explicit limitations.
 
-Remaining slices:
-
-- [ ] Complete the v0.4 acceptance review and decide whether defect
-  distribution should become the next production-data tool.
+The milestone excludes throughput, trend analysis, causal diagnosis,
+multi-tool turns, and persisted evidence history.
 
 ## v0.5 — Self-built RAG
 

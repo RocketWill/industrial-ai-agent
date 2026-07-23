@@ -224,7 +224,8 @@ the committed uv lockfile, migrations, and backend test suite.
 
 RAG, MCP, authentication, and distributed deployment remain outside the
 implemented scope. The v0.4 tool slice supports deterministic production
-summaries and recorded synthetic equipment status. Both Message endpoints can
+summaries, ranked defect distributions, and recorded synthetic equipment
+status. Both Message endpoints can
 execute one selected tool for requests matched by the focused English
 heuristics.
 
@@ -242,7 +243,8 @@ tool-call exchange, but has no retries, system prompts, or model-discovery
 behavior. The configured model must implement the compatible tool-call
 protocol. LangGraph provides a compiled synchronous workflow with focused
 manufacturing-query detection and one selected tool execution. The SSE endpoint
-supports production summaries and recorded equipment status, emitting
+supports production summaries, ranked defect distributions, and recorded
+equipment status, emitting
 `tool_call_started`, `tool_result`, final text, and completion events. Its
 grounded answer is forwarded as a
 provider-token stream after a successful tool result. Message history

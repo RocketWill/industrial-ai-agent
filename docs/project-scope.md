@@ -62,21 +62,24 @@ belongs in deterministic domain code rather than an LLM.
 The active milestone is **v0.4 — Production Data Tools**. The v0.1 foundation,
 v0.1.1 streaming extension, v0.1.2 workspace extension, and v0.2 minimal
 LangGraph orchestration are implemented, including clean-environment
-verification. v0.3 Manufacturing Domain remains in progress because throughput
-semantics and milestone acceptance are still undecided. Its implemented slices
-provide deterministic production summaries, explicit equipment-state
+verification. v0.3 Manufacturing Domain is implemented; throughput is
+explicitly deferred until a later dataset and unit contract can support it. Its
+domain slices provide deterministic production summaries and defect
+distributions, explicit equipment-state
 intervals, point-in-time status lookup, and one fictional AOI wafer-inspection
 dataset.
 
 The current backend includes explicit SQLite migrations, Conversation and
 Message persistence, synchronous and streaming OpenAI-compatible chat flows,
 conversation-bound workspace context, a deterministic fictional device
-catalog, and synchronous plus SSE production-summary and equipment-status tool
+catalog, and synchronous plus SSE production-summary, defect-distribution, and
+equipment-status tool
 flows. The React
 application provides API-process health, conversation and message workflows,
 streaming controls, responsive conversation navigation, draft-based context
 editing, Markdown assistant rendering, and current-exchange tool stages and
-evidence for focused English production-summary and equipment-status terms.
+evidence for focused English production-summary, defect-distribution, and
+equipment-status terms.
 
 Streaming and the refined workspace are recorded as completed v0.1.1 and
 v0.1.2 extensions.
@@ -97,7 +100,8 @@ Keeping it separate allowed client cancellation, partial-response handling,
 and the completed-response persistence boundary to be specified together.
 
 The active implementation milestone is v0.4. It connects the first typed
-production-summary and equipment-status tools to synchronous and SSE execution
+production-summary, defect-distribution, and equipment-status tools to
+synchronous and SSE execution
 without moving numeric or state semantics into the model. Workspace-context
 resolution, current-exchange structured evidence delivery, and provider token
 streaming after tool execution are implemented. Broader intent handling,

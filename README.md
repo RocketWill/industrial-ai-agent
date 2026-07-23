@@ -8,7 +8,7 @@ proprietary system material.
 
 ## Current status
 
-**In Progress — v0.4 Production Data Tools**
+**Implemented — v0.4 Production Data Tools**
 
 The conversation foundation is runnable and tested. It includes FastAPI,
 SQLite persistence, explicit Alembic migrations, an OpenAI-compatible chat
@@ -29,6 +29,9 @@ use an OpenAI-compatible tool-call protocol over the synchronous or SSE message
 path to query the fictional AOI dataset, calculate a deterministic production
 summary, and pass that evidence back to the model for the final answer. General
 questions use the same SSE transport without manufacturing evidence.
+Focused defect-distribution questions use a separate deterministic tool that
+ranks recorded categories and reports each category's share of classified
+defects.
 
 The workbench now uses Ant Design 6.5.1, Ant Design X 2.9.0, and XMarkdown
 2.9.0. Its dark-first responsive layout separates conversation navigation,
@@ -56,6 +59,8 @@ boundaries.
   production-question workflows;
 - a typed `get_equipment_status` tool that reads explicit synthetic state
   intervals without inferring status from yield or alarms;
+- a typed `get_defect_distribution` tool that ranks recorded defect categories
+  without adding causal interpretation;
 - API-process health reporting;
 - grouped conversation navigation with desktop and mobile Drawers;
 - loading, empty, unavailable, streaming, cancellation, and reload states; and
@@ -65,7 +70,8 @@ boundaries.
 The browser uses SSE for general and supported manufacturing questions. Tool requests
 emit tool-call and tool-result events, and the current exchange can display a
 deterministic Production Summary result surface below the assistant answer,
-including Defect Counts and Alarm Events, or a recorded Equipment Status card.
+including Defect Counts and Alarm Events, a recorded Equipment Status card, or
+a ranked Defect Distribution card.
 Supported
 saved workspace presets can fill missing device, lot, and time-range arguments.
 Custom or unrecognized time ranges still require explicit UTC timestamps.
@@ -159,8 +165,9 @@ copy verification uses the committed lockfiles and migration workflow.
 
 - Health reports API-process availability only. It does not check the database,
   model service, or production tool.
-- The configured model receives conversation history, but workspace context is
-  not yet injected into the model request.
+- The configured model receives conversation history. Supported manufacturing
+  tool requests also receive saved workspace context for missing arguments;
+  general model requests do not receive that metadata.
 - A failed assistant request leaves the user message persisted.
 - Streaming depends on provider and proxy flushing behavior. The service
   creates an assistant record only after consuming a complete non-empty stream;
