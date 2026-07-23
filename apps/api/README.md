@@ -222,12 +222,17 @@ the committed uv lockfile, migrations, and backend test suite.
 
 ## Non-responsibilities
 
-RAG, MCP, authentication, and distributed deployment remain outside the
-implemented scope. The v0.4 tool slice supports deterministic production
+MCP, authentication, and distributed deployment remain outside the implemented
+scope. The v0.4 tool slice supports deterministic production
 summaries, ranked defect distributions, and recorded synthetic equipment
 status. Both Message endpoints can
 execute one selected tool for requests matched by the focused English
 heuristics.
+
+The first v0.5 slice adds `search_documents` for focused procedural questions.
+It parses one fictional Markdown guide and uses deterministic local
+feature-hashing vectors. It does not call an embedding service or persist an
+index.
 
 ## Dependency management
 
@@ -244,7 +249,8 @@ behavior. The configured model must implement the compatible tool-call
 protocol. LangGraph provides a compiled synchronous workflow with focused
 manufacturing-query detection and one selected tool execution. The SSE endpoint
 supports production summaries, ranked defect distributions, and recorded
-equipment status, emitting
+equipment status. Focused document questions use the same flow with retrieved
+source evidence, emitting
 `tool_call_started`, `tool_result`, final text, and completion events. Its
 grounded answer is forwarded as a
 provider-token stream after a successful tool result. Message history

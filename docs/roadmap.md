@@ -183,11 +183,29 @@ multi-tool turns, and persisted evidence history.
 
 ## v0.5 — Self-built RAG
 
-**Status: Planned**
+**Status: In Progress**
 
 Add ingestion, parsing, chunking, embedding, vector storage, retrieval,
 citations, source viewing, and retrieval tests using fictional manuals, SOPs,
 and alarm guides.
+
+Implemented first slice:
+
+- [x] Add one independently written fictional AOI alarm guide.
+- [x] Parse heading-aware Markdown chunks with stable citation identifiers.
+- [x] Build deterministic feature-hashing embeddings and an in-memory cosine
+  index without an external service or vector database.
+- [x] Add a typed `search_documents` tool to synchronous and SSE single-tool
+  flows for focused English procedural questions.
+- [x] Render current-exchange source title, section, excerpt, match score,
+  repository-relative path, and Synthetic Demo provenance.
+- [x] Cover parser, ranking, tool, workflow, SSE, runtime validation, and source
+  rendering with focused tests.
+
+Remaining milestone work includes broader fictional document ingestion,
+chunk-size policy, retrieval evaluation, source viewing, and acceptance review.
+PDF/OCR, uploads, external vector infrastructure, and combined multi-tool turns
+remain outside this slice.
 
 ## v0.6 — Routing and Reliability
 

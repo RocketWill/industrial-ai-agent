@@ -8,7 +8,7 @@ proprietary system material.
 
 ## Current status
 
-**Implemented — v0.4 Production Data Tools**
+**In Progress — v0.5 Self-built RAG**
 
 The conversation foundation is runnable and tested. It includes FastAPI,
 SQLite persistence, explicit Alembic migrations, an OpenAI-compatible chat
@@ -32,6 +32,10 @@ questions use the same SSE transport without manufacturing evidence.
 Focused defect-distribution questions use a separate deterministic tool that
 ranks recorded categories and reports each category's share of classified
 defects.
+The first v0.5 slice retrieves sections from an independently written fictional
+AOI alarm guide with deterministic local embeddings. Synchronous and SSE
+answers can expose the matched excerpts and stable citation metadata in the
+current assistant exchange.
 
 The workbench now uses Ant Design 6.5.1, Ant Design X 2.9.0, and XMarkdown
 2.9.0. Its dark-first responsive layout separates conversation navigation,
@@ -61,6 +65,8 @@ boundaries.
   intervals without inferring status from yield or alarms;
 - a typed `get_defect_distribution` tool that ranks recorded defect categories
   without adding causal interpretation;
+- a typed `search_documents` tool backed by heading-aware Markdown chunks, a
+  deterministic feature-hashing embedding, and an in-memory cosine index;
 - API-process health reporting;
 - grouped conversation navigation with desktop and mobile Drawers;
 - loading, empty, unavailable, streaming, cancellation, and reload states; and
@@ -71,7 +77,7 @@ The browser uses SSE for general and supported manufacturing questions. Tool req
 emit tool-call and tool-result events, and the current exchange can display a
 deterministic Production Summary result surface below the assistant answer,
 including Defect Counts and Alarm Events, a recorded Equipment Status card, or
-a ranked Defect Distribution card.
+a ranked Defect Distribution card, or fictional document Sources.
 Supported
 saved workspace presets can fill missing device, lot, and time-range arguments.
 Custom or unrecognized time ranges still require explicit UTC timestamps.
@@ -105,7 +111,8 @@ industrial-ai-agent/
 ```
 
 LangGraph and the first manufacturing-domain and production-tool slices are
-implemented. RAG and MCP remain planned for later milestones.
+implemented. The first self-built RAG slice is experimental; MCP remains
+planned for a later milestone.
 
 ## Local development
 
@@ -180,7 +187,10 @@ copy verification uses the committed lockfiles and migration workflow.
   is forwarded as provider token deltas.
 - Structured evidence is available for the current exchange but is not
   persisted with Message history.
-- There is no RAG, authentication, retry orchestration, or deployment stack.
+- Document retrieval currently covers one fictional Markdown alarm guide. It
+  has no PDF/OCR ingestion, external embeddings, persistent vector store,
+  reranking, or full-document viewer.
+- There is no authentication, retry orchestration, or deployment stack.
 - Conversation and message history are not paginated.
 
 ## License
