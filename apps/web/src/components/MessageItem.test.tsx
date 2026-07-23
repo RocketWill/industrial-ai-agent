@@ -165,6 +165,37 @@ describe("MessageItem", () => {
     expect(screen.getByText("no_inspection_records")).toBeInTheDocument();
   });
 
+  it("renders retrieved fictional source evidence", () => {
+    render(
+      <MessageItem
+        message={message}
+        evidence={{
+          production_summary: null,
+          document_search: {
+            query: "OPTICAL-SIGNAL-LOW operator check",
+            sources: [{
+              source_id: "aoi-alarm-guide:002",
+              title: "AOI Wafer Inspector Alarm Guide",
+              section: "OPTICAL-SIGNAL-LOW",
+              relative_path: "data/synthetic/documents/aoi-wafer-inspector-alarm-guide.md",
+              excerpt: "Check the optical lens cover and illumination connector.",
+              score: 0.72,
+            }],
+            limitations: [],
+          },
+          tool_error: null,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Sources")).toBeInTheDocument();
+    expect(screen.getByText("AOI Wafer Inspector Alarm Guide")).toBeInTheDocument();
+    expect(screen.getByText("OPTICAL-SIGNAL-LOW")).toBeInTheDocument();
+    expect(screen.getByText("72.0% match")).toBeInTheDocument();
+    expect(screen.getByText("Retrieved")).toBeInTheDocument();
+    expect(screen.getByText("Synthetic Demo")).toBeInTheDocument();
+  });
+
   it("renders production defects, alarms, and explicit empty states", () => {
     const summary = {
       equipment_id: "AOI-WAFER-01", lot_id: "LOT-DEMO-001", start: "2026-01-15T13:00:00Z", end: "2026-01-15T17:00:00Z",

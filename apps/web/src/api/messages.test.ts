@@ -84,4 +84,33 @@ describe("messages API", () => {
       evidence,
     });
   });
+
+  it("accepts retrieved document-source evidence", async () => {
+    const evidence = {
+      production_summary: null,
+      document_search: {
+        query: "OPTICAL-SIGNAL-LOW operator check",
+        sources: [{
+          source_id: "aoi-alarm-guide:002",
+          title: "AOI Wafer Inspector Alarm Guide",
+          section: "OPTICAL-SIGNAL-LOW",
+          relative_path: "data/synthetic/documents/aoi-wafer-inspector-alarm-guide.md",
+          excerpt: "Check the optical lens cover.",
+          score: 0.72,
+        }],
+        limitations: [],
+      },
+      tool_error: null,
+    };
+    const fetchImplementation = async () => new Response(
+      JSON.stringify({ user_message: message, assistant_message: assistant, evidence }),
+      { status: 201 },
+    );
+
+    await expect(sendMessage(id, "Check the manual", fetchImplementation)).resolves.toEqual({
+      user_message: message,
+      assistant_message: assistant,
+      evidence,
+    });
+  });
 });

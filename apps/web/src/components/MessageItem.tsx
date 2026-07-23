@@ -201,6 +201,53 @@ function DefectDistributionCard({ evidence }: { evidence: ProductionEvidence }) 
   );
 }
 
+function DocumentSourcesCard({ evidence }: { evidence: ProductionEvidence }) {
+  const search = evidence.document_search;
+  if (!search) return null;
+
+  return (
+    <section className="evidence-card document-sources-card" aria-label="Retrieved document sources">
+      <div className="evidence-heading">
+        <Typography.Text strong>Sources</Typography.Text>
+        <div className="evidence-tags">
+          <Tag color="blue">Retrieved</Tag>
+          <Tag>Synthetic Demo</Tag>
+        </div>
+      </div>
+      {search.sources.length === 0 ? (
+        <Typography.Text type="secondary">No relevant sources returned.</Typography.Text>
+      ) : (
+        <ol className="document-source-list">
+          {search.sources.map((source) => (
+            <li key={source.source_id}>
+              <div className="document-source-heading">
+                <Typography.Text strong>{source.title}</Typography.Text>
+                <Typography.Text className="document-source-score" type="secondary">
+                  {(source.score * 100).toFixed(1)}% match
+                </Typography.Text>
+              </div>
+              <Typography.Text className="document-source-section">
+                {source.section}
+              </Typography.Text>
+              <Typography.Paragraph className="document-source-excerpt">
+                {source.excerpt}
+              </Typography.Paragraph>
+              <Typography.Text className="document-source-path" type="secondary">
+                {source.relative_path} · {source.source_id}
+              </Typography.Text>
+            </li>
+          ))}
+        </ol>
+      )}
+      {search.limitations.length > 0 && (
+        <Typography.Text className="evidence-limitations" type="secondary">
+          {search.limitations.join(" ")}
+        </Typography.Text>
+      )}
+    </section>
+  );
+}
+
 export default function MessageItem({
   message,
   isStreaming = false,
@@ -263,6 +310,9 @@ export default function MessageItem({
         )}
         {!isUser && !isStreaming && evidence?.defect_distribution && (
           <DefectDistributionCard evidence={evidence} />
+        )}
+        {!isUser && !isStreaming && evidence?.document_search && (
+          <DocumentSourcesCard evidence={evidence} />
         )}
       </div>
     </article>

@@ -29,6 +29,14 @@ export type ProductionEvidence = {
     items: { category: string; count: number; share: number | null; rank: number }[];
     limitations: string[];
   } | null;
+  document_search?: {
+    query: string;
+    sources: {
+      source_id: string; title: string; section: string; relative_path: string;
+      excerpt: string; score: number;
+    }[];
+    limitations: string[];
+  } | null;
   tool_error: { code: string; message: string } | null;
 };
 
@@ -66,7 +74,9 @@ function isEvidence(value: unknown): value is ProductionEvidence | null {
   const validStatus = status !== null && status !== undefined && typeof status === "object" && typeof status.equipment_id === "string" && typeof status.observed_at === "string" && ["running", "idle", "warning", "down", "maintenance", "unknown"].includes(status.status) && (status.effective_start === null || typeof status.effective_start === "string") && (status.effective_end === null || typeof status.effective_end === "string") && (status.source_event_id === null || typeof status.source_event_id === "string") && (status.reason_code === null || typeof status.reason_code === "string") && Array.isArray(status.limitations) && status.limitations.every((limitation) => typeof limitation === "string");
   const distribution = item.defect_distribution;
   const validDistribution = distribution !== null && distribution !== undefined && typeof distribution === "object" && typeof distribution.equipment_id === "string" && (distribution.lot_id === null || typeof distribution.lot_id === "string") && typeof distribution.start === "string" && typeof distribution.end === "string" && Number.isInteger(distribution.failed_wafers) && Number.isInteger(distribution.classified_defect_count) && Number.isInteger(distribution.unclassified_failed_wafers) && Array.isArray(distribution.items) && distribution.items.every((entry) => typeof entry.category === "string" && Number.isInteger(entry.count) && (entry.share === null || typeof entry.share === "number") && Number.isInteger(entry.rank)) && Array.isArray(distribution.limitations) && distribution.limitations.every((limitation) => typeof limitation === "string");
-  return validSummary || validStatus || validDistribution || item.tool_error !== null;
+  const documentSearch = item.document_search;
+  const validDocumentSearch = documentSearch !== null && documentSearch !== undefined && typeof documentSearch === "object" && typeof documentSearch.query === "string" && Array.isArray(documentSearch.sources) && documentSearch.sources.every((source) => typeof source.source_id === "string" && typeof source.title === "string" && typeof source.section === "string" && typeof source.relative_path === "string" && typeof source.excerpt === "string" && typeof source.score === "number" && source.score >= 0 && source.score <= 1) && Array.isArray(documentSearch.limitations) && documentSearch.limitations.every((limitation) => typeof limitation === "string");
+  return validSummary || validStatus || validDistribution || validDocumentSearch || item.tool_error !== null;
 }
 function parseStreamEvent(event: string, data: string): MessageStreamEvent {
   const value: unknown = JSON.parse(data);
