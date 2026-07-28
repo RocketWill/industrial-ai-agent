@@ -73,9 +73,9 @@ The current backend includes explicit SQLite migrations, Conversation and
 Message persistence, synchronous and streaming OpenAI-compatible chat flows,
 conversation-bound workspace context, a deterministic fictional device
 catalog, and synchronous plus SSE production-summary, defect-distribution, and
-equipment-status tool flows. The first document slice parses one fictional
-Markdown alarm guide and exposes deterministic local retrieval through
-synchronous and SSE `search_documents` flows. The React
+equipment-status tool flows. The current document slice builds an explicit
+three-document fictional Markdown corpus and exposes deterministic local
+retrieval through synchronous and SSE `search_documents` flows. The React
 application provides API-process health, conversation and message workflows,
 streaming controls, responsive conversation navigation, draft-based context
 editing, Markdown assistant rendering, and current-exchange tool stages and
@@ -100,12 +100,12 @@ Streaming is outside the original v0.1 contract but implemented in v0.1.1.
 Keeping it separate allowed client cancellation, partial-response handling,
 and the completed-response persistence boundary to be specified together.
 
-The active implementation milestone is v0.5. Its first slice adds stable
-heading-aware chunks, deterministic feature-hashing embeddings, an in-memory
-cosine index, and typed document retrieval without an external embedding
-service. Broader fictional-document ingestion, semantic embedding evaluation,
-source viewing, multi-tool turns, and persisted evidence remain outside the
-current boundary.
+The active implementation milestone is v0.5. It now includes stable
+section-local citations, bounded paragraph- and list-aware chunks,
+deterministic feature-hashing embeddings, an in-memory cosine index, a fixed
+lexical eligibility gate, and a 12-scenario retrieval fixture. It uses no
+external embedding service. Full-document source viewing, multi-tool turns,
+and persisted evidence remain outside the current boundary.
 
 ## Publication safety
 

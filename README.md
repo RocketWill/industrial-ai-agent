@@ -32,8 +32,10 @@ questions use the same SSE transport without manufacturing evidence.
 Focused defect-distribution questions use a separate deterministic tool that
 ranks recorded categories and reports each category's share of classified
 defects.
-The first v0.5 slice retrieves sections from an independently written fictional
-AOI alarm guide with deterministic local embeddings. Synchronous and SSE
+The current v0.5 retrieval slice searches an explicit corpus of three
+independently written fictional AOI documents: an alarm guide, an operator SOP,
+and a preventive-maintenance guide. It uses deterministic local embeddings,
+section-aware chunking, and a fixed lexical eligibility gate. Synchronous and SSE
 answers can expose the matched excerpts and stable citation metadata in the
 current assistant exchange.
 
@@ -66,7 +68,8 @@ boundaries.
 - a typed `get_defect_distribution` tool that ranks recorded defect categories
   without adding causal interpretation;
 - a typed `search_documents` tool backed by heading-aware Markdown chunks, a
-  deterministic feature-hashing embedding, and an in-memory cosine index;
+  deterministic feature-hashing embedding, an in-memory cosine index, and an
+  explicit three-document registry;
 - API-process health reporting;
 - grouped conversation navigation with desktop and mobile Drawers;
 - loading, empty, unavailable, streaming, cancellation, and reload states; and
@@ -111,7 +114,7 @@ industrial-ai-agent/
 ```
 
 LangGraph and the first manufacturing-domain and production-tool slices are
-implemented. The first self-built RAG slice is experimental; MCP remains
+implemented. Self-built RAG remains experimental; MCP remains
 planned for a later milestone.
 
 ## Local development
@@ -187,8 +190,9 @@ copy verification uses the committed lockfiles and migration workflow.
   is forwarded as provider token deltas.
 - Structured evidence is available for the current exchange but is not
   persisted with Message history.
-- Document retrieval currently covers one fictional Markdown alarm guide. It
-  has no PDF/OCR ingestion, external embeddings, persistent vector store,
+- Document retrieval currently covers three repository-owned fictional
+  Markdown documents and a 12-scenario deterministic relevance fixture. It has
+  no PDF/OCR ingestion, external embeddings, persistent vector store,
   reranking, or full-document viewer.
 - There is no authentication, retry orchestration, or deployment stack.
 - Conversation and message history are not paginated.

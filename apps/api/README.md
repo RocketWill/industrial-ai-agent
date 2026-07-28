@@ -229,8 +229,10 @@ status. Both Message endpoints can
 execute one selected tool for requests matched by the focused English
 heuristics.
 
-The first v0.5 slice adds `search_documents` for focused procedural questions.
-It parses one fictional Markdown guide and uses deterministic local
+The current v0.5 retrieval slice adds `search_documents` for focused procedural
+questions. It atomically builds an explicit corpus of three fictional Markdown
+documents, keeps chunks within section and block boundaries, applies a fixed
+lexical eligibility gate, and ranks eligible chunks with deterministic local
 feature-hashing vectors. It does not call an embedding service or persist an
 index.
 

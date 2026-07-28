@@ -189,23 +189,27 @@ Add ingestion, parsing, chunking, embedding, vector storage, retrieval,
 citations, source viewing, and retrieval tests using fictional manuals, SOPs,
 and alarm guides.
 
-Implemented first slice:
+Implemented slices:
 
-- [x] Add one independently written fictional AOI alarm guide.
-- [x] Parse heading-aware Markdown chunks with stable citation identifiers.
+- [x] Add an explicit corpus of three independently written fictional AOI
+  documents: an alarm guide, operator SOP, and preventive-maintenance guide.
+- [x] Parse paragraph- and list-aware Markdown chunks inside H2/H3 section
+  boundaries, with stable section-local citation identifiers.
 - [x] Build deterministic feature-hashing embeddings and an in-memory cosine
   index without an external service or vector database.
+- [x] Apply a fixed lexical eligibility gate before the global cosine threshold.
 - [x] Add a typed `search_documents` tool to synchronous and SSE single-tool
   flows for focused English procedural questions.
 - [x] Render current-exchange source title, section, excerpt, match score,
   repository-relative path, and Synthetic Demo provenance.
 - [x] Cover parser, ranking, tool, workflow, SSE, runtime validation, and source
   rendering with focused tests.
+- [x] Add a machine-readable 12-scenario retrieval fixture with repeatable
+  top-one, top-three, confusable-query, and unrelated-query checks.
 
-Remaining milestone work includes broader fictional document ingestion,
-chunk-size policy, retrieval evaluation, source viewing, and acceptance review.
-PDF/OCR, uploads, external vector infrastructure, and combined multi-tool turns
-remain outside this slice.
+Remaining milestone work includes full-document source viewing and acceptance
+review. PDF/OCR, uploads, external vector infrastructure, and combined
+multi-tool turns remain outside this slice.
 
 ## v0.6 — Routing and Reliability
 
