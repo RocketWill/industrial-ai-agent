@@ -1,8 +1,10 @@
 import { Button, Descriptions, Progress, Tag, Typography } from "antd";
 import { CopyOutlined } from "@ant-design/icons";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import type { Message, ProductionEvidence } from "../api/messages";
 import { normalizeAssistantContent } from "../utils/normalizeAssistantContent";
+import DocumentViewer from "./DocumentViewer";
+import { parseCitation, type DocumentCitation } from "../utils/documentCitation";
 
 const XMarkdown = lazy(() => import("@ant-design/x-markdown").then((module) => ({ default: module.XMarkdown })));
 
@@ -203,6 +205,7 @@ function DefectDistributionCard({ evidence }: { evidence: ProductionEvidence }) 
 
 function DocumentSourcesCard({ evidence }: { evidence: ProductionEvidence }) {
   const search = evidence.document_search;
+  const [citation, setCitation] = useState<DocumentCitation | null>(null);
   if (!search) return null;
 
   return (
@@ -235,6 +238,11 @@ function DocumentSourcesCard({ evidence }: { evidence: ProductionEvidence }) {
               <Typography.Text className="document-source-path" type="secondary">
                 {source.relative_path} · {source.source_id}
               </Typography.Text>
+              {parseCitation(source.source_id) && (
+                <Button size="small" variant="link" onClick={() => setCitation(parseCitation(source.source_id))}>
+                  View document
+                </Button>
+              )}
             </li>
           ))}
         </ol>
@@ -244,6 +252,7 @@ function DocumentSourcesCard({ evidence }: { evidence: ProductionEvidence }) {
           {search.limitations.join(" ")}
         </Typography.Text>
       )}
+      <DocumentViewer citation={citation} open={citation !== null} onClose={() => setCitation(null)} />
     </section>
   );
 }

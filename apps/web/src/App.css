@@ -187,6 +187,14 @@
 .document-source-excerpt { margin: 8px 0 6px; }
 .document-source-path,
 .document-source-score { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; overflow-wrap: anywhere; }
+.document-viewer-body { display: flex; flex-direction: column; gap: 16px; padding: 20px 24px; }
+.document-viewer-state { align-items: center; display: flex; gap: 10px; justify-content: center; min-height: 180px; }
+.document-viewer-meta { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
+.document-viewer-meta > span { margin: 0; overflow-wrap: anywhere; }
+.document-viewer-content { line-height: 1.7; }
+.document-viewer-content h2,
+.document-viewer-content h3 { scroll-margin-top: 20px; }
+.document-viewer-content .document-section-target { background: rgba(55, 198, 208, 0.08); border-left: 3px solid var(--color-accent); padding-left: 10px; }
 
 .scroll-bottom-button { bottom: 14px; left: 50%; position: absolute; transform: translateX(-50%); z-index: 2; }
 .composer-shell { background: var(--color-surface); border-top: 1px solid var(--color-border-subtle); flex: 0 0 auto; padding: 14px 24px 12px; }
