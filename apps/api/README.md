@@ -236,6 +236,10 @@ lexical eligibility gate, and ranks eligible chunks with deterministic local
 feature-hashing vectors. It does not call an embedding service or persist an
 index.
 
+`GET /documents/{document_id}` reads one validated document from the explicit
+registry for the read-only source viewer. It does not accept a filesystem path.
+Unknown IDs return `404`; an unavailable or invalid corpus returns a safe `503`.
+
 ## Dependency management
 
 Backend metadata and runtime dependencies are declared in `pyproject.toml`.

@@ -207,9 +207,20 @@ Implemented slices:
 - [x] Add a machine-readable 12-scenario retrieval fixture with repeatable
   top-one, top-three, confusable-query, and unrelated-query checks.
 
-Remaining milestone work includes full-document source viewing and acceptance
-review. PDF/OCR, uploads, external vector infrastructure, and combined
-multi-tool turns remain outside this slice.
+Planned remaining slices, in order:
+
+- [x] Add a read-only full-document source viewer for repository-owned
+  documents, with citation section positioning and retryable failure states.
+- [ ] Add local Markdown document management with a document list, single-file
+  upload, validation, indexing status, atomic corpus replacement, and deletion
+  for uploaded documents. Keep the three built-in documents protected.
+- [ ] Complete the v0.5 acceptance review and reconcile verified behavior with
+  the public documentation.
+
+The upload flow is a local development and portfolio feature, not a secure
+multi-user document service. PDF/OCR, Word files, batch upload, authentication,
+cloud storage, external vector infrastructure, and combined multi-tool turns
+remain outside v0.5.
 
 ## v0.6 — Routing and Reliability
 
