@@ -1,4 +1,5 @@
 import math
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 
 import pytest
@@ -9,10 +10,12 @@ from industrial_agent.domain.documents import (
     DocumentChunk,
     DocumentCorpus,
     DocumentRegistryEntry,
+    RegistryDocument,
     build_document_corpus,
     build_vector_index,
     embed_text,
     parse_markdown_document,
+    read_registry_document,
 )
 
 
@@ -64,6 +67,116 @@ def test_corpus_builder_preserves_registry_metadata_and_document_order() -> None
         chunk.source_id == "aoi-alarm-guide:optical-signal-low:001"
         for chunk in corpus.chunks
     )
+
+
+def test_registry_document_reader_returns_immutable_metadata_and_markdown() -> None:
+    document = read_registry_document("aoi-alarm-guide")
+
+    assert isinstance(document, RegistryDocument)
+    assert document.document_id == "aoi-alarm-guide"
+    assert document.title == "AOI Wafer Inspector Alarm Guide"
+    assert document.document_type == "alarm_guide"
+    assert document.relative_path == (
+        "data/synthetic/documents/aoi-wafer-inspector-alarm-guide.md"
+    )
+    assert document.markdown.startswith(
+        "# AOI Wafer Inspector Alarm Guide\n"
+    )
+
+    with pytest.raises(FrozenInstanceError):
+        document.title = "Changed title"
+
+
+def test_registry_document_reader_rejects_a_path_outside_repository_root(
+    tmp_path: Path,
+) -> None:
+    registry = (
+        DocumentRegistryEntry(
+            document_id="escape",
+            relative_path="../outside.md",
+            document_type="operator_sop",
+        ),
+    )
+
+    with pytest.raises(CorpusConstructionError, match="outside repository"):
+        read_registry_document(
+            "escape",
+            repository_root=tmp_path,
+            registry=registry,
+        )
+
+
+def test_registry_document_reader_wraps_file_read_failures(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    document_path = tmp_path / "unreadable.md"
+    document_path.write_text(
+        "# Synthetic Document\n\n## Section\n\nContent.\n",
+        encoding="utf-8",
+    )
+    registry = (
+        DocumentRegistryEntry(
+            document_id="unreadable",
+            relative_path="unreadable.md",
+            document_type="operator_sop",
+        ),
+    )
+
+    def fail_read_text(self: Path, *, encoding: str) -> str:
+        raise OSError(f"private path: {self}")
+
+    monkeypatch.setattr(Path, "read_text", fail_read_text)
+
+    with pytest.raises(CorpusConstructionError, match="cannot be read") as error:
+        read_registry_document(
+            "unreadable",
+            repository_root=tmp_path,
+            registry=registry,
+        )
+
+    assert str(tmp_path) not in str(error.value)
+
+
+@pytest.mark.parametrize(
+    ("relative_path", "content", "write_bytes"),
+    [
+        ("missing.md", None, False),
+        ("invalid-utf8.md", b"# Invalid\n\xff", True),
+        ("invalid-markdown.md", "Content before title.\n", False),
+    ],
+)
+def test_registry_document_reader_reports_safe_file_and_markdown_failures(
+    tmp_path: Path,
+    relative_path: str,
+    content: str | bytes | None,
+    write_bytes: bool,
+) -> None:
+    document_path = tmp_path / relative_path
+    if content is not None:
+        if write_bytes:
+            assert isinstance(content, bytes)
+            document_path.write_bytes(content)
+        else:
+            assert isinstance(content, str)
+            document_path.write_text(content, encoding="utf-8")
+
+    registry = (
+        DocumentRegistryEntry(
+            document_id="broken",
+            relative_path=relative_path,
+            document_type="operator_sop",
+        ),
+    )
+
+    with pytest.raises(CorpusConstructionError) as error:
+        read_registry_document(
+            "broken",
+            repository_root=tmp_path,
+            registry=registry,
+        )
+
+    assert str(tmp_path) not in str(error.value)
 
 
 def test_corpus_builder_rejects_a_path_outside_repository_root(tmp_path: Path) -> None:

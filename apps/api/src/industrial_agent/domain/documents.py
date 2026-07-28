@@ -21,13 +21,16 @@ class CorpusConstructionError(ValueError):
     """Raised when the configured synthetic document corpus is invalid."""
 
 
+DocumentType = Literal["alarm_guide", "operator_sop", "maintenance_guide"]
+
+
 @dataclass(frozen=True)
 class DocumentRegistryEntry:
     """Immutable metadata for one repository-owned corpus document."""
 
     document_id: str
     relative_path: str
-    document_type: Literal["alarm_guide", "operator_sop", "maintenance_guide"]
+    document_type: DocumentType
 
 
 DEFAULT_DOCUMENT_REGISTRY = (
@@ -51,6 +54,17 @@ DEFAULT_DOCUMENT_REGISTRY = (
         document_type="maintenance_guide",
     ),
 )
+
+
+@dataclass(frozen=True)
+class RegistryDocument:
+    """Immutable metadata and Markdown for one registry-owned document."""
+
+    document_id: str
+    title: str
+    document_type: DocumentType
+    relative_path: str
+    markdown: str
 
 
 @dataclass(frozen=True)
@@ -294,8 +308,13 @@ def _resolve_document_path(
             f"Document '{entry.document_id}' path is outside repository"
         )
 
-    root = repository_root.resolve()
-    candidate = (root / relative_path).resolve()
+    try:
+        root = repository_root.resolve()
+        candidate = (root / relative_path).resolve()
+    except (OSError, RuntimeError) as error:
+        raise CorpusConstructionError(
+            f"Document '{entry.document_id}' path cannot be resolved"
+        ) from error
     try:
         candidate.relative_to(root)
     except ValueError as error:
@@ -303,6 +322,89 @@ def _resolve_document_path(
             f"Document '{entry.document_id}' path is outside repository"
         ) from error
     return candidate
+
+
+def _read_document_markdown(
+    *, repository_root: Path, entry: DocumentRegistryEntry
+) -> str:
+    """Read one registry file after containment and Markdown validation."""
+    document_path = _resolve_document_path(
+        repository_root=repository_root,
+        entry=entry,
+    )
+    try:
+        if not document_path.exists():
+            raise CorpusConstructionError(
+                f"Document '{entry.document_id}' is missing"
+            )
+        if not document_path.is_file():
+            raise CorpusConstructionError(
+                f"Document '{entry.document_id}' is not a regular file"
+            )
+        markdown = document_path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as error:
+        raise CorpusConstructionError(
+            f"Document '{entry.document_id}' is not valid UTF-8"
+        ) from error
+    except OSError as error:
+        raise CorpusConstructionError(
+            f"Document '{entry.document_id}' cannot be read"
+        ) from error
+
+    _validate_markdown_document(document_id=entry.document_id, markdown=markdown)
+    return markdown
+
+
+def read_registry_document(
+    document_id: str,
+    *,
+    repository_root: Path | None = None,
+    registry: tuple[DocumentRegistryEntry, ...] | None = None,
+) -> RegistryDocument | None:
+    """Read one validated document selected by its registry ID."""
+    active_repository_root = (
+        REPOSITORY_ROOT if repository_root is None else repository_root
+    )
+    active_registry = DEFAULT_DOCUMENT_REGISTRY if registry is None else registry
+    entry = next(
+        (
+            candidate
+            for candidate in active_registry
+            if candidate.document_id == document_id
+        ),
+        None,
+    )
+    if entry is None:
+        return None
+
+    markdown = _read_document_markdown(
+        repository_root=active_repository_root,
+        entry=entry,
+    )
+    try:
+        chunks = parse_markdown_document(
+            document_id=entry.document_id,
+            relative_path=entry.relative_path,
+            markdown=markdown,
+        )
+    except CorpusConstructionError:
+        raise
+    except ValueError as error:
+        raise CorpusConstructionError(
+            f"Document '{entry.document_id}' contains invalid Markdown"
+        ) from error
+    if not chunks:
+        raise CorpusConstructionError(
+            f"Document '{entry.document_id}' produced no chunks"
+        )
+
+    return RegistryDocument(
+        document_id=entry.document_id,
+        title=chunks[0].title,
+        document_type=entry.document_type,
+        relative_path=entry.relative_path,
+        markdown=markdown,
+    )
 
 
 def build_document_corpus(
@@ -321,30 +423,10 @@ def build_document_corpus(
             )
         seen_document_ids.add(entry.document_id)
 
-        document_path = _resolve_document_path(
+        markdown = _read_document_markdown(
             repository_root=repository_root,
             entry=entry,
         )
-        if not document_path.exists():
-            raise CorpusConstructionError(
-                f"Document '{entry.document_id}' is missing"
-            )
-        if not document_path.is_file():
-            raise CorpusConstructionError(
-                f"Document '{entry.document_id}' is not a regular file"
-            )
-        try:
-            markdown = document_path.read_text(encoding="utf-8")
-        except UnicodeDecodeError as error:
-            raise CorpusConstructionError(
-                f"Document '{entry.document_id}' is not valid UTF-8"
-            ) from error
-        except OSError as error:
-            raise CorpusConstructionError(
-                f"Document '{entry.document_id}' cannot be read"
-            ) from error
-
-        _validate_markdown_document(document_id=entry.document_id, markdown=markdown)
         parsed_chunks = parse_markdown_document(
             document_id=entry.document_id,
             relative_path=entry.relative_path,
