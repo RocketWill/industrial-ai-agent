@@ -50,6 +50,19 @@ def test_engine_and_session_factory_connect_to_temporary_sqlite(
     assert database_path.exists()
 
 
+def test_sqlite_engine_enables_foreign_key_enforcement(
+    tmp_path: Path,
+) -> None:
+    engine = create_database_engine(sqlite_url(tmp_path / "foreign-keys.db"))
+
+    with engine.connect() as connection:
+        enabled = connection.scalar(text("PRAGMA foreign_keys"))
+
+    engine.dispose()
+
+    assert enabled == 1
+
+
 def test_database_dependency_closes_successful_session(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

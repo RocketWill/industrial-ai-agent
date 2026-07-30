@@ -11,8 +11,10 @@ fictional equipment documentation, and configurable external services.
 The FastAPI application foundation, environment-based settings, process health
 endpoint, and explicit SQLite/SQLAlchemy migration infrastructure are
 implemented and verified. The backend can now create, list, open, and
-permanently delete Conversation records. Message persistence, the React
-application, and LLM integration have not been implemented yet.
+permanently delete Conversation records. It can also store user Messages and
+reload each Conversation's history in chronological order. Assistant response
+generation, the React application, and LLM integration have not been
+implemented yet.
 
 ## Project goals
 
@@ -34,7 +36,7 @@ See [project scope](docs/project-scope.md) for explicit boundaries and
 ```text
 industrial-ai-agent/
 ├── apps/
-│   ├── api/       # FastAPI backend and Conversation persistence
+│   ├── api/       # FastAPI backend with Conversation and Message persistence
 │   └── web/       # React + TypeScript frontend (planned for v0.1)
 ├── data/          # Synthetic project-owned data (not added yet)
 ├── docs/          # Scope, roadmap, architecture, and engineering notes
@@ -97,8 +99,8 @@ production data, or proprietary material.
 
 ## Known limitations
 
-- Conversation records are persisted, but Message records and assistant
-  responses are not implemented.
+- Conversation and user Message records are persisted, but assistant
+  responses are not generated.
 - LLM integration and the frontend remain planned.
 - The data directory contains documentation only; no synthetic dataset has
   been designed.

@@ -1,10 +1,14 @@
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import CheckConstraint, DateTime, String, Uuid, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from industrial_agent.database.base import Base
+
+if TYPE_CHECKING:
+    from industrial_agent.models.message import Message
 
 
 def utc_now() -> datetime:
@@ -35,4 +39,9 @@ class Conversation(Base):
         nullable=False,
         default=utc_now,
         server_default=func.current_timestamp(),
+    )
+    messages: Mapped[list["Message"]] = relationship(
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
