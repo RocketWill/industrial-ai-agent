@@ -17,10 +17,9 @@ OpenAI-compatible chat adapter with a local Ollama default configuration.
 
 The Message API now uses the adapter to generate and persist one assistant
 response for each successful user message. The React application now provides
-the initial health foundation: it can check the API process through the local
-development proxy, show checking, connected, or unavailable states, and let a
-user run the check again. Conversation navigation and messaging remain to be
-implemented.
+the health foundation and conversation navigation: it can load, create, select,
+and delete conversations through the local development proxy. Message history
+and messaging remain to be implemented.
 
 ## Project goals
 
@@ -43,7 +42,7 @@ See [project scope](docs/project-scope.md) for explicit boundaries and
 industrial-ai-agent/
 ├── apps/
 │   ├── api/       # FastAPI backend with Conversation and Message persistence
-│   └── web/       # React + TypeScript health foundation for v0.1
+│   └── web/       # React + TypeScript conversation foundation for v0.1
 ├── data/          # Synthetic project-owned data (not added yet)
 ├── docs/          # Scope, roadmap, architecture, and engineering notes
 └── scripts/       # Project automation added only when needed

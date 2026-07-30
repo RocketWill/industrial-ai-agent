@@ -2,12 +2,13 @@
 
 ## Purpose
 
-This directory contains the React and TypeScript health foundation for v0.1.
+This directory contains the React and TypeScript v0.1 conversation foundation.
 
 ## Implemented
 
 - Vite, React, TypeScript, Ant Design, Vitest, and React Testing Library;
 - a `GET /health` client with runtime response validation;
+- conversation loading, creation, selection, and deletion through the existing API;
 - local `/api` proxying to `http://127.0.0.1:8000` during Vite development;
 - checking, connected, and unavailable API-process states; and
 - a user-initiated `Check again` action that prevents duplicate in-flight
@@ -74,5 +75,5 @@ authentication, and administrative interfaces are outside v0.1.
 
 ## Current status
 
-**In Progress** — the health foundation is implemented and verified. The
-conversation interface remains planned for v0.1.
+**In Progress** — the health and conversation-navigation foundations are
+implemented and verified. Message history and composition remain planned.
