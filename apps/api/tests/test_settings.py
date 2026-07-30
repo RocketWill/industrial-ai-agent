@@ -13,6 +13,8 @@ APP_ENVIRONMENT_VARIABLES = (
     "LLM_API_KEY",
     "LLM_MODEL",
     "LLM_TIMEOUT_SECONDS",
+    "LLM_ROUTER_MODEL",
+    "LLM_ROUTER_TIMEOUT_SECONDS",
 )
 
 
@@ -37,6 +39,9 @@ def test_settings_use_safe_local_defaults(
     assert settings.llm_api_key is None
     assert settings.llm_model is None
     assert settings.llm_timeout_seconds == 60
+    assert settings.llm_router_model is None
+    assert settings.resolved_llm_router_model is None
+    assert settings.llm_router_timeout_seconds == 10
 
 
 def test_settings_read_supported_environment_overrides(
@@ -67,6 +72,8 @@ def test_settings_read_llm_environment_overrides(
     monkeypatch.setenv("LLM_API_KEY", "local-secret")
     monkeypatch.setenv("LLM_MODEL", "test-model")
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "12.5")
+    monkeypatch.setenv("LLM_ROUTER_MODEL", "router-model")
+    monkeypatch.setenv("LLM_ROUTER_TIMEOUT_SECONDS", "8")
 
     settings = Settings()
 
@@ -75,6 +82,28 @@ def test_settings_read_llm_environment_overrides(
     assert settings.llm_api_key.get_secret_value() == "local-secret"
     assert settings.llm_model == "test-model"
     assert settings.llm_timeout_seconds == 12.5
+    assert settings.llm_router_model == "router-model"
+    assert settings.resolved_llm_router_model == "router-model"
+    assert settings.llm_router_timeout_seconds == 8
+
+
+def test_router_model_defaults_to_answer_model() -> None:
+    settings = Settings(LLM_MODEL="answer-model", LLM_ROUTER_MODEL="   ")
+
+    assert settings.llm_router_model is None
+    assert settings.resolved_llm_router_model == "answer-model"
+
+
+@pytest.mark.parametrize("timeout", ["0", "0.9", "30.1", "31"])
+def test_settings_reject_router_timeout_outside_range(
+    monkeypatch: pytest.MonkeyPatch,
+    timeout: str,
+) -> None:
+    clear_app_environment(monkeypatch)
+    monkeypatch.setenv("LLM_ROUTER_TIMEOUT_SECONDS", timeout)
+
+    with pytest.raises(ValidationError):
+        Settings()
 
 
 def test_settings_treat_blank_llm_api_key_as_absent(
