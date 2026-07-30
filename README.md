@@ -190,11 +190,16 @@ copy verification uses the committed lockfiles and migration workflow.
   is forwarded as provider token deltas.
 - Structured evidence is available for the current exchange but is not
   persisted with Message history.
-- Document retrieval currently covers three repository-owned fictional
-  Markdown documents and a 12-scenario deterministic relevance fixture. The
-  current exchange can open a cited document in a read-only viewer. It has no
-  PDF/OCR ingestion, external embeddings, persistent vector store, reranking,
-  or document management.
+- Document retrieval starts with three repository-owned fictional Markdown
+  documents and supports persistent local `.md` uploads up to 1 MiB. The
+  Documents drawer lists the active corpus, validates one upload at a time,
+  protects built-ins, and deletes local uploads after rebuilding the candidate
+  index. Local files stay below `apps/api/uploads/`, which Git ignores. Their
+  retrieved content may still be sent to the configured model.
+- The retrieval path has no PDF/OCR ingestion, external embeddings, persistent
+  vector store, reranking, authentication, or multi-user isolation. Structured
+  source evidence belongs to the current exchange and is not restored with
+  message history.
 - There is no authentication, retry orchestration, or deployment stack.
 - Conversation and message history are not paginated.
 

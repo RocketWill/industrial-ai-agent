@@ -105,8 +105,10 @@ section-local citations, bounded paragraph- and list-aware chunks,
 deterministic feature-hashing embeddings, an in-memory cosine index, a fixed
 lexical eligibility gate, and a 12-scenario retrieval fixture. It uses no
 external embedding service. A registry-only API and read-only Drawer expose
-the complete cited document. Document management, multi-tool turns, and
-persisted evidence remain outside the current boundary.
+the complete cited document. Local Markdown management adds persistent,
+Git-ignored single-file uploads, validation, atomic corpus replacement, and
+deletion while protecting built-ins. Multi-tool turns, PDF/OCR, authentication,
+cloud storage, and persisted evidence remain outside the current boundary.
 
 ## Publication safety
 

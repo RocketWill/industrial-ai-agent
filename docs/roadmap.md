@@ -183,7 +183,7 @@ multi-tool turns, and persisted evidence history.
 
 ## v0.5 — Self-built RAG
 
-**Status: In Progress**
+**Status: Implemented**
 
 Add ingestion, parsing, chunking, embedding, vector storage, retrieval,
 citations, source viewing, and retrieval tests using fictional manuals, SOPs,
@@ -211,10 +211,10 @@ Planned remaining slices, in order:
 
 - [x] Add a read-only full-document source viewer for repository-owned
   documents, with citation section positioning and retryable failure states.
-- [ ] Add local Markdown document management with a document list, single-file
+- [x] Add local Markdown document management with a document list, single-file
   upload, validation, indexing status, atomic corpus replacement, and deletion
   for uploaded documents. Keep the three built-in documents protected.
-- [ ] Complete the v0.5 acceptance review and reconcile verified behavior with
+- [x] Complete the v0.5 acceptance review and reconcile verified behavior with
   the public documentation.
 
 The upload flow is a local development and portfolio feature, not a secure
