@@ -1,0 +1,15 @@
+export const colors = {
+  bgBase: "#0D1230",
+  bgContainer: "#0B1028",
+  bgElevated: "#0B1739",
+  primary: "#0D46F4",
+  accent: "#C23CE4",
+  accentHover: "#D257FF",
+  cyan: "#13A9D8",
+  textPrimary: "#E8EBFF",
+  textSecondary: "rgba(232, 235, 255, 0.65)",
+  textDescription: "rgba(232, 235, 255, 0.42)",
+  border: "rgba(167, 179, 209, 0.18)",
+  dither: "rgba(167, 179, 209, 0.14)",
+  fillAlter: "rgba(255, 255, 255, 0.05)",
+} as const;

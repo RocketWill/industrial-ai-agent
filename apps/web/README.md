@@ -74,4 +74,5 @@ authentication, and administrative interfaces are outside v0.1.
 ## Current status
 
 **In Progress** — the health, conversation-navigation, and synchronous message
-foundations are implemented and verified. Streaming remains planned.
+foundations and Dithered dark UI foundation are implemented and verified.
+Streaming remains planned.
