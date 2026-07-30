@@ -17,7 +17,7 @@ Current baseline:
 - [x] Create the FastAPI application and health endpoint.
 - [x] Add settings, SQLite, SQLAlchemy, and schema migrations.
 - [x] Implement conversation management and append-only message persistence.
-- [ ] Add one OpenAI-compatible chat adapter.
+- [x] Add one OpenAI-compatible chat adapter.
 - [ ] Create the React, TypeScript, and Vite application.
 - [ ] Implement conversation history and message interactions.
 - [ ] Connect frontend and backend with clear error states.
