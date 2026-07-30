@@ -15,8 +15,8 @@ delete Conversation records, store user Messages, and reload each
 Conversation's history in chronological order. It also includes a standalone
 OpenAI-compatible chat adapter with a local Ollama default configuration.
 
-The adapter is not connected to the Message API yet: assistant response
-generation and persistence, plus the React application, remain to be
+The Message API now uses the adapter to generate and persist one assistant
+response for each successful user message. The React application remains to be
 implemented.
 
 ## Project goals
@@ -102,10 +102,10 @@ production data, or proprietary material.
 
 ## Known limitations
 
-- Conversation and user Message records are persisted, but assistant
-  responses are not generated.
-- The OpenAI-compatible adapter is implemented, but the Message API does not
-  invoke it or persist assistant responses.
+- Conversation records and both user and assistant Messages are persisted.
+- A Message request calls the configured OpenAI-compatible adapter. If that
+  service is unavailable, the user Message remains stored and the API returns
+  a safe `503` error.
 - The frontend remains planned.
 - The data directory contains documentation only; no synthetic dataset has
   been designed.

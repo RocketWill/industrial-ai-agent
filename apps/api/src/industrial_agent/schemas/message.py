@@ -30,3 +30,8 @@ class MessageRead(BaseModel):
         if value.tzinfo is None:
             return value.replace(tzinfo=UTC)
         return value.astimezone(UTC)
+
+
+class MessageExchangeRead(BaseModel):
+    user_message: MessageRead
+    assistant_message: MessageRead

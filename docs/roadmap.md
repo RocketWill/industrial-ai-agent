@@ -19,7 +19,7 @@ Current baseline:
 - [x] Implement conversation management and append-only message persistence.
 - [x] Add one OpenAI-compatible chat adapter.
 - [ ] Create the React, TypeScript, and Vite application.
-- [ ] Implement conversation history and message interactions.
+- [x] Implement persisted message interactions and assistant responses.
 - [ ] Connect frontend and backend with clear error states.
 - [ ] Add backend and critical frontend tests.
 - [ ] Document clean-environment setup and verified limitations.

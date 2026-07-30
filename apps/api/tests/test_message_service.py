@@ -5,6 +5,8 @@ import pytest
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from industrial_agent.llm.errors import LLMConnectionError
+from industrial_agent.llm.types import ChatMessage
 from industrial_agent.models.message import Message
 from industrial_agent.services.conversation import (
     ConversationNotFoundError,
@@ -13,6 +15,7 @@ from industrial_agent.services.conversation import (
 )
 from industrial_agent.services.message import (
     create_message,
+    create_message_exchange,
     create_user_message,
     list_messages,
 )
@@ -63,6 +66,62 @@ def test_internal_create_message_accepts_assistant_role(
     )
 
     assert created.role == "assistant"
+
+
+def test_create_message_exchange_persists_user_and_assistant(
+    database_session: Session,
+) -> None:
+    conversation = create_conversation(
+        database_session,
+        title="Exchange",
+    )
+    received: list[ChatMessage] = []
+
+    def complete(messages: list[ChatMessage]) -> str:
+        received.extend(messages)
+        return "Assistant answer"
+
+    exchange = create_message_exchange(
+        database_session,
+        conversation_id=conversation.id,
+        content="User question",
+        complete=complete,
+    )
+
+    assert received == [
+        ChatMessage(role="user", content="User question"),
+    ]
+    assert exchange.user_message.role == "user"
+    assert exchange.assistant_message.role == "assistant"
+    assert [
+        message.content
+        for message in list_messages(database_session, conversation.id)
+    ] == ["User question", "Assistant answer"]
+
+
+def test_create_message_exchange_keeps_user_message_when_completion_fails(
+    database_session: Session,
+) -> None:
+    conversation = create_conversation(
+        database_session,
+        title="Failed exchange",
+    )
+
+    def complete(_: list[ChatMessage]) -> str:
+        raise LLMConnectionError("unavailable")
+
+    with pytest.raises(LLMConnectionError):
+        create_message_exchange(
+            database_session,
+            conversation_id=conversation.id,
+            content="Keep this question",
+            complete=complete,
+        )
+
+    assert [
+        (message.role, message.content)
+        for message in list_messages(database_session, conversation.id)
+    ] == [("user", "Keep this question")]
 
 
 def test_list_messages_returns_chronological_deterministic_order(
