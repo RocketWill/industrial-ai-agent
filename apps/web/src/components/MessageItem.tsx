@@ -207,6 +207,8 @@ function DocumentSourcesCard({ evidence }: { evidence: ProductionEvidence }) {
   const search = evidence.document_search;
   const [citation, setCitation] = useState<DocumentCitation | null>(null);
   if (!search) return null;
+  const hasBuiltInSource = search.sources.some((source) => source.source === "built_in");
+  const hasLocalSource = search.sources.some((source) => source.source === "local_upload");
 
   return (
     <section className="evidence-card document-sources-card" aria-label="Retrieved document sources">
@@ -214,7 +216,8 @@ function DocumentSourcesCard({ evidence }: { evidence: ProductionEvidence }) {
         <Typography.Text strong>Sources</Typography.Text>
         <div className="evidence-tags">
           <Tag color="blue">Retrieved</Tag>
-          <Tag>Synthetic Demo</Tag>
+          {hasBuiltInSource && <Tag>Synthetic Demo</Tag>}
+          {hasLocalSource && <Tag color="cyan">Local Upload</Tag>}
         </div>
       </div>
       {search.sources.length === 0 ? (

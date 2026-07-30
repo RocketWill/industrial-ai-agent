@@ -1,7 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { checkHealth } from "./api/health";
+import * as documentApi from "./api/documents";
 import App from "./App";
 
 vi.mock("./api/health", async () => {
@@ -15,9 +17,23 @@ vi.mock("./api/health", async () => {
   };
 });
 
+vi.mock("./api/documents", async () => {
+  const actual = await vi.importActual<typeof import("./api/documents")>(
+    "./api/documents",
+  );
+
+  return {
+    ...actual,
+    listDocuments: vi.fn(),
+    uploadDocument: vi.fn(),
+    deleteDocument: vi.fn(),
+  };
+});
+
 describe("App", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(documentApi.listDocuments).mockResolvedValue([]);
   });
 
   it("starts checking the API connection when the application loads", () => {
@@ -64,5 +80,27 @@ describe("App", () => {
     expect(screen.queryByText("Production Data")).not.toBeInTheDocument();
     expect(screen.queryByText("Knowledge Base")).not.toBeInTheDocument();
     expect(screen.queryByText("Evaluations")).not.toBeInTheDocument();
+  });
+
+  it("opens Documents from the header and restores keyboard focus after closing", async () => {
+    vi.mocked(checkHealth).mockReturnValue(new Promise(() => undefined));
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    const documentsTrigger = screen.getByRole("button", { name: "Documents" });
+    documentsTrigger.focus();
+    await user.keyboard("{Enter}");
+
+    expect(await screen.findByText("Local document safety")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Documents are stored on local disk. Retrieved content may be sent to the configured LLM.",
+      ),
+    ).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => expect(documentsTrigger).toHaveFocus());
   });
 });

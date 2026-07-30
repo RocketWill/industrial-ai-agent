@@ -33,7 +33,7 @@ export type ProductionEvidence = {
     query: string;
     sources: {
       source_id: string; title: string; section: string; relative_path: string;
-      excerpt: string; score: number;
+      source: "built_in" | "local_upload"; excerpt: string; score: number;
     }[];
     limitations: string[];
   } | null;
@@ -75,7 +75,7 @@ function isEvidence(value: unknown): value is ProductionEvidence | null {
   const distribution = item.defect_distribution;
   const validDistribution = distribution !== null && distribution !== undefined && typeof distribution === "object" && typeof distribution.equipment_id === "string" && (distribution.lot_id === null || typeof distribution.lot_id === "string") && typeof distribution.start === "string" && typeof distribution.end === "string" && Number.isInteger(distribution.failed_wafers) && Number.isInteger(distribution.classified_defect_count) && Number.isInteger(distribution.unclassified_failed_wafers) && Array.isArray(distribution.items) && distribution.items.every((entry) => typeof entry.category === "string" && Number.isInteger(entry.count) && (entry.share === null || typeof entry.share === "number") && Number.isInteger(entry.rank)) && Array.isArray(distribution.limitations) && distribution.limitations.every((limitation) => typeof limitation === "string");
   const documentSearch = item.document_search;
-  const validDocumentSearch = documentSearch !== null && documentSearch !== undefined && typeof documentSearch === "object" && typeof documentSearch.query === "string" && Array.isArray(documentSearch.sources) && documentSearch.sources.every((source) => typeof source.source_id === "string" && typeof source.title === "string" && typeof source.section === "string" && typeof source.relative_path === "string" && typeof source.excerpt === "string" && typeof source.score === "number" && source.score >= 0 && source.score <= 1) && Array.isArray(documentSearch.limitations) && documentSearch.limitations.every((limitation) => typeof limitation === "string");
+  const validDocumentSearch = documentSearch !== null && documentSearch !== undefined && typeof documentSearch === "object" && typeof documentSearch.query === "string" && Array.isArray(documentSearch.sources) && documentSearch.sources.every((source) => typeof source.source_id === "string" && (source.source === "built_in" || source.source === "local_upload") && typeof source.title === "string" && typeof source.section === "string" && typeof source.relative_path === "string" && typeof source.excerpt === "string" && typeof source.score === "number" && source.score >= 0 && source.score <= 1) && Array.isArray(documentSearch.limitations) && documentSearch.limitations.every((limitation) => typeof limitation === "string");
   return validSummary || validStatus || validDistribution || validDocumentSearch || item.tool_error !== null;
 }
 function parseStreamEvent(event: string, data: string): MessageStreamEvent {

@@ -8,6 +8,7 @@ import { useWorkspaceContext } from "./hooks/useWorkspaceContext";
 import AnalysisContext from "./components/AnalysisContext";
 import ConversationNavigation from "./components/ConversationNavigation";
 import ConversationWorkspace from "./components/ConversationWorkspace";
+import DocumentManager from "./components/DocumentManager";
 import { colors } from "./theme/colors";
 import { layoutTokens, workbenchTheme } from "./theme/theme";
 import "./App.css";
@@ -30,6 +31,7 @@ export default function App() {
   const [modal, modalContextHolder] = Modal.useModal();
   const [navigationOpen, setNavigationOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
+  const [documentsOpen, setDocumentsOpen] = useState(false);
   const [contextDirty, setContextDirty] = useState(false);
   const [contextResetToken, setContextResetToken] = useState(0);
   const { status, checkAgain } = useHealth();
@@ -71,6 +73,7 @@ export default function App() {
     "--color-text-primary": colors.textPrimary,
     "--color-text-secondary": colors.textSecondary,
     "--color-text-muted": colors.textDescription,
+    "--color-dither": colors.dither,
     "--panel-radius": `${layoutTokens.radiusPanel}px`,
   } as CSSProperties;
 
@@ -88,11 +91,24 @@ export default function App() {
             conversationTitle={selectedConversation?.title ?? null}
             onOpenNavigation={() => setNavigationOpen(true)}
             onOpenContext={() => setContextOpen(true)}
+            documentsOpen={documentsOpen}
+            onOpenDocuments={() => setDocumentsOpen(true)}
           />
           <div className="desktop-inspector">{context}</div>
         </div>
         <Drawer title="Conversations" placement="left" open={navigationOpen} onClose={() => setNavigationOpen(false)} size={320} classNames={{ body: "navigation-drawer-body" }}>{navigation}</Drawer>
         <Drawer title="Analysis context" placement="right" open={contextOpen} onClose={closeContext} size={360} classNames={{ body: "context-drawer-body" }}>{context}</Drawer>
+        <Drawer
+          title="Documents"
+          placement="right"
+          open={documentsOpen}
+          onClose={() => setDocumentsOpen(false)}
+          size="min(720px, 100vw)"
+          destroyOnHidden
+          classNames={{ body: "documents-drawer-body" }}
+        >
+          {documentsOpen && <DocumentManager />}
+        </Drawer>
       </main>
     </XProvider>
   );

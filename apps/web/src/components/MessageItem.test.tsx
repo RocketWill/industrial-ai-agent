@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { Message } from "../api/messages";
 import MessageItem from "./MessageItem";
@@ -175,6 +175,7 @@ describe("MessageItem", () => {
             query: "OPTICAL-SIGNAL-LOW operator check",
             sources: [{
               source_id: "aoi-alarm-guide:optical-signal-low:001",
+              source: "built_in",
               title: "AOI Wafer Inspector Alarm Guide",
               section: "OPTICAL-SIGNAL-LOW",
               relative_path: "data/synthetic/documents/aoi-wafer-inspector-alarm-guide.md",
@@ -195,6 +196,35 @@ describe("MessageItem", () => {
     expect(screen.getByText("Retrieved")).toBeInTheDocument();
     expect(screen.getByText("Synthetic Demo")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "View document" })).toBeInTheDocument();
+  });
+
+  it("labels uploaded document evidence without calling it synthetic", () => {
+    render(
+      <MessageItem
+        message={message}
+        evidence={{
+          production_summary: null,
+          document_search: {
+            query: "calibration note",
+            sources: [{
+              source_id: "uploaded-calibration-note:procedure:001",
+              source: "local_upload",
+              title: "Calibration Note",
+              section: "Procedure",
+              relative_path: "uploaded-calibration-note.md",
+              excerpt: "Use the fictional calibration fixture.",
+              score: 0.84,
+            }],
+            limitations: [],
+          },
+          tool_error: null,
+        }}
+      />,
+    );
+
+    const sources = screen.getByRole("region", { name: "Retrieved document sources" });
+    expect(within(sources).getByText("Local Upload")).toBeInTheDocument();
+    expect(within(sources).queryByText("Synthetic Demo")).not.toBeInTheDocument();
   });
 
   it("renders production defects, alarms, and explicit empty states", () => {

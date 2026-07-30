@@ -33,12 +33,20 @@ if (typeof window.matchMedia !== "function") {
   })) as typeof window.matchMedia;
 }
 
+const nativeGetComputedStyle = window.getComputedStyle.bind(window);
+window.getComputedStyle = ((element: Element, pseudoElement?: string | null) =>
+  nativeGetComputedStyle(element, pseudoElement ? undefined : pseudoElement)) as typeof window.getComputedStyle;
+
 if (typeof globalThis.ResizeObserver === "undefined") {
   globalThis.ResizeObserver = class ResizeObserver {
     observe() {}
     unobserve() {}
     disconnect() {}
   };
+}
+
+if (typeof HTMLElement !== "undefined" && typeof HTMLElement.prototype.scrollIntoView !== "function") {
+  HTMLElement.prototype.scrollIntoView = () => undefined;
 }
 
 if (typeof globalThis.IntersectionObserver === "undefined") {
