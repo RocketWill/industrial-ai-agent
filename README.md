@@ -4,7 +4,7 @@ Industrial AI Agent is an independently developed full-stack portfolio project
 for exploring traceable AI-assisted manufacturing workflows. The repository
 uses fictional equipment identities, synthetic context, and configurable local
 or external OpenAI-compatible services. It does not contain production data or
-proprietary system material.
+proprietary system material. The current domain model is centered on semiconductor manufacturing, while the workflow abstractions are intended to remain applicable to other inspection-oriented industrial settings.
 
 ## Current status
 
