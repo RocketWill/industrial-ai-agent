@@ -18,15 +18,31 @@ Current baseline:
 - [x] Add settings, SQLite, SQLAlchemy, and schema migrations.
 - [x] Implement conversation management and append-only message persistence.
 - [x] Add one OpenAI-compatible chat adapter.
-- [ ] Create the React, TypeScript, and Vite application.
+- [x] Create the React, TypeScript, and Vite application.
+- [x] Implement and test frontend API-process health connection states.
 - [x] Implement persisted message interactions and assistant responses.
 - [ ] Connect frontend and backend with clear error states.
-- [ ] Add backend and critical frontend tests.
+- [x] Add backend API, persistence, migration, and adapter tests.
+- [ ] Add critical frontend conversation interaction tests.
 - [ ] Document clean-environment setup and verified limitations.
 
 Acceptance criteria are defined in the root README. This milestone explicitly
 excludes LangGraph, RAG, MCP, manufacturing data/tools, authentication,
 streaming, Redis, and deployment infrastructure.
+
+## v0.1.1 — Streaming Conversation
+
+**Status: Planned**
+
+Add streaming only after the synchronous React conversation workflow is
+implemented and verified. Define one browser-compatible streaming transport,
+incremental assistant rendering, cancellation and disconnect behavior, safe
+error reporting, and the persistence rule for complete or interrupted
+assistant responses. Cover these boundaries with focused backend and frontend
+tests before describing streaming as implemented.
+
+This milestone does not add LangGraph, tool calling, retries, manufacturing
+logic, RAG, or execution traces.
 
 ## v0.2 — Minimal LangGraph
 

@@ -132,8 +132,8 @@ is created. This makes it possible to retry without losing the original input.
 The backend provides `OpenAICompatibleChatAdapter` as a standalone Python
 adapter. It sends non-streaming requests to the standard
 `/v1/chat/completions` endpoint and accepts only `user` and `assistant` chat
-messages. It is deliberately not wired into the HTTP Message API yet, so it
-does not create or persist assistant Messages.
+messages. The HTTP Message API uses this adapter to request and persist one
+assistant Message for each successful user Message.
 
 Configuration uses these environment variables:
 
@@ -181,8 +181,9 @@ uv build
 
 ## Remaining v0.1 responsibilities
 
-- assistant response generation and persistence;
-- tests for the remaining backend behavior.
+- implement and connect the synchronous React conversation interface;
+- verify critical frontend interactions and error states; and
+- document the complete clean-environment workflow.
 
 ## Non-responsibilities
 
@@ -202,4 +203,5 @@ The adapter can call a configured compatible service, but has no streaming,
 retries, system prompts, tool calling, or model-discovery behavior. Message
 history has no pagination or individual mutation operations. The health
 endpoint reports API-process availability only and does not check the database
-or LLM service.
+or LLM service. Responses remain synchronous and non-streaming in v0.1;
+streaming transport and persistence semantics are planned for v0.1.1.
