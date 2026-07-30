@@ -9,7 +9,9 @@ import {
 } from "antd";
 
 import { useHealth, type HealthStatus } from "./hooks/useHealth";
+import { useConversations } from "./hooks/useConversations";
 import ConversationNavigation from "./components/ConversationNavigation";
+import ConversationWorkspace from "./components/ConversationWorkspace";
 import "./App.css";
 
 const { Text, Title } = Typography;
@@ -63,6 +65,7 @@ function HealthStatusPanel({
 
 export default function App() {
   const { status, checkAgain } = useHealth();
+  const conversations = useConversations();
 
   return (
     <ConfigProvider
@@ -84,7 +87,10 @@ export default function App() {
           <Text className="eyebrow">Foundation status</Text>
           <Title level={1}>Industrial AI Agent</Title>
         </header>
-        <ConversationNavigation />
+        <div className="conversation-layout">
+          <ConversationNavigation state={conversations} />
+          <ConversationWorkspace conversationId={conversations.selectedConversationId} />
+        </div>
         <Card className="health-card" title="API connection">
           <HealthStatusPanel
             status={status}

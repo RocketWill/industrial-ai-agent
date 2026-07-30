@@ -18,8 +18,9 @@ OpenAI-compatible chat adapter with a local Ollama default configuration.
 The Message API now uses the adapter to generate and persist one assistant
 response for each successful user message. The React application now provides
 the health foundation and conversation navigation: it can load, create, select,
-and delete conversations through the local development proxy. Message history
-and messaging remain to be implemented.
+and delete conversations through the local development proxy. It can also load
+persisted message history and submit synchronous user messages for complete
+assistant responses. Streaming remains a separate planned milestone.
 
 ## Project goals
 
