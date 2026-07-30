@@ -9,8 +9,10 @@ description = "FastAPI backend for the Industrial AI Agent portfolio project"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+  "alembic",
   "fastapi",
   "pydantic-settings",
+  "sqlalchemy",
   "uvicorn",
 ]
 

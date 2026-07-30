@@ -8,10 +8,10 @@ fictional equipment documentation, and configurable external services.
 
 **In Progress — v0.1 backend foundation**
 
-The FastAPI application foundation, environment-based settings, and process
-health endpoint are implemented and verified. The React application, database
-models, conversation workflow, and LLM integration have not been implemented
-yet.
+The FastAPI application foundation, environment-based settings, process health
+endpoint, and explicit SQLite/SQLAlchemy migration infrastructure are
+implemented and verified. Business database models, the React application,
+conversation workflow, and LLM integration have not been implemented yet.
 
 ## Project goals
 
@@ -86,9 +86,9 @@ uv run ruff check .
 uv build
 ```
 
-See the [API guide](apps/api/README.md) for the implemented contract and current
-limitations. Frontend setup commands will be added when that application is
-implemented.
+See the [API guide](apps/api/README.md) for the implemented contract, explicit
+Alembic migration commands, and current limitations. Frontend setup commands
+will be added when that application is implemented.
 
 Copy `.env.example` to `.env` only when local application configuration is
 introduced. Never commit `.env`, credentials, private endpoints, real
@@ -96,7 +96,7 @@ production data, or proprietary material.
 
 ## Known limitations
 
-- Only API process health and application settings are implemented.
+- The database foundation contains no business model or persistence API.
 - Conversation persistence, LLM integration, and the frontend remain planned.
 - The data directory contains documentation only; no synthetic dataset has
   been designed.
