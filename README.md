@@ -6,12 +6,13 @@ fictional equipment documentation, and configurable external services.
 
 ## Current status
 
-**In Progress — v0.1 backend foundation**
+**In Progress — v0.1 conversation workflow**
 
 The FastAPI application foundation, environment-based settings, process health
 endpoint, and explicit SQLite/SQLAlchemy migration infrastructure are
-implemented and verified. Business database models, the React application,
-conversation workflow, and LLM integration have not been implemented yet.
+implemented and verified. The backend can now create, list, open, and
+permanently delete Conversation records. Message persistence, the React
+application, and LLM integration have not been implemented yet.
 
 ## Project goals
 
@@ -33,7 +34,7 @@ See [project scope](docs/project-scope.md) for explicit boundaries and
 ```text
 industrial-ai-agent/
 ├── apps/
-│   ├── api/       # FastAPI backend foundation
+│   ├── api/       # FastAPI backend and Conversation persistence
 │   └── web/       # React + TypeScript frontend (planned for v0.1)
 ├── data/          # Synthetic project-owned data (not added yet)
 ├── docs/          # Scope, roadmap, architecture, and engineering notes
@@ -96,8 +97,9 @@ production data, or proprietary material.
 
 ## Known limitations
 
-- The database foundation contains no business model or persistence API.
-- Conversation persistence, LLM integration, and the frontend remain planned.
+- Conversation records are persisted, but Message records and assistant
+  responses are not implemented.
+- LLM integration and the frontend remain planned.
 - The data directory contains documentation only; no synthetic dataset has
   been designed.
 
