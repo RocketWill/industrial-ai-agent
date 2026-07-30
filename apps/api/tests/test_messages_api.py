@@ -14,9 +14,44 @@ from industrial_agent.llm.errors import (
 from industrial_agent.llm.openai_compatible import (
     OpenAICompatibleChatAdapter,
 )
+from industrial_agent.llm.types import CompletionResult, ToolCall
 from industrial_agent.models.message import Message
+from industrial_agent.services.routing import COMBINED_MESSAGE
 
 UNKNOWN_CONVERSATION_ID = "00000000-0000-0000-0000-000000000099"
+
+
+@pytest.fixture(autouse=True)
+def deterministic_router_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeRouterAdapter:
+        def __enter__(self) -> "FakeRouterAdapter":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def complete_with_tools(self, _messages, *, tools, tool_call=None):
+            assert tool_call is None
+            assert tools[0].name == "classify_request"
+            return CompletionResult(
+                content=None,
+                tool_calls=(
+                    ToolCall(
+                        call_id="route-1",
+                        name="classify_request",
+                        arguments={
+                            "intent": "general",
+                            "reason_code": "general_request",
+                        },
+                    ),
+                ),
+            )
+
+    monkeypatch.setattr(
+        OpenAICompatibleChatAdapter,
+        "router_from_settings",
+        classmethod(lambda cls, settings: FakeRouterAdapter()),
+    )
 
 
 @pytest.fixture
@@ -81,6 +116,46 @@ def test_create_message_returns_persisted_user_and_assistant_messages(
     assert payload["assistant_message"]["content"] == "Assistant answer"
 
 
+def test_explicit_general_route_does_not_construct_router_adapter(
+    conversation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conversation = create_conversation(conversation_client)
+
+    class FakeAnswerAdapter:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def complete(self, _messages):
+            return "Hello."
+
+    monkeypatch.setattr(
+        OpenAICompatibleChatAdapter,
+        "from_settings",
+        classmethod(lambda cls, settings: FakeAnswerAdapter()),
+    )
+    monkeypatch.setattr(
+        OpenAICompatibleChatAdapter,
+        "router_from_settings",
+        classmethod(
+            lambda cls, settings: (_ for _ in ()).throw(
+                AssertionError("deterministic route must not construct router")
+            )
+        ),
+    )
+
+    response = conversation_client.post(
+        f"/conversations/{conversation['id']}/messages",
+        json={"content": "Hello, what can you do?"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["assistant_message"]["content"] == "Hello."
+
+
 def test_stream_message_returns_ordered_sse_events(
     conversation_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
@@ -118,6 +193,8 @@ def test_stream_message_returns_ordered_sse_events(
     ]
     assert events == [
         "event: message_started",
+        "event: routing_started",
+        "event: routing_decided",
         "event: token",
         "event: token",
         "event: message_completed",
@@ -136,6 +213,10 @@ def test_stream_production_message_emits_tool_events(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     conversation = create_conversation(conversation_client)
+    conversation_client.patch(
+        f"/conversations/{conversation['id']}/context",
+        json={"device": "AOI-WAFER-01", "time_range": "Last 4 hours"},
+    )
 
     class FakeAdapter:
         def __enter__(self) -> "FakeAdapter":
@@ -181,6 +262,8 @@ def test_stream_production_message_emits_tool_events(
     events = [line for line in response.text.splitlines() if line.startswith("event:")]
     assert events == [
         "event: message_started",
+        "event: routing_started",
+        "event: routing_decided",
         "event: tool_call_started",
         "event: tool_result",
         "event: token",
@@ -245,6 +328,8 @@ def test_stream_equipment_status_message_emits_recorded_status_evidence(
     events = [line for line in response.text.splitlines() if line.startswith("event:")]
     assert events == [
         "event: message_started",
+        "event: routing_started",
+        "event: routing_decided",
         "event: tool_call_started",
         "event: tool_result",
         "event: token",
@@ -309,6 +394,8 @@ def test_stream_defect_distribution_message_emits_ranked_evidence(
     events = [line for line in response.text.splitlines() if line.startswith("event:")]
     assert events == [
         "event: message_started",
+        "event: routing_started",
+        "event: routing_decided",
         "event: tool_call_started",
         "event: tool_result",
         "event: token",
@@ -323,6 +410,10 @@ def test_stream_document_question_emits_retrieved_source_evidence(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     conversation = create_conversation(conversation_client)
+    conversation_client.patch(
+        f"/conversations/{conversation['id']}/context",
+        json={"device": "AOI-WAFER-01", "time_range": "Last 8 hours"},
+    )
 
     class FakeAdapter:
         def __enter__(self) -> "FakeAdapter":
@@ -337,7 +428,8 @@ def test_stream_document_question_emits_retrieved_source_evidence(
         def stream_with_tool_result(self, messages, *, tools, tool_call):
             assert tools[0].name == "search_documents"
             assert '"section":"OPTICAL-SIGNAL-LOW"' in tool_call.content
-            yield "Check the fictional optical lens cover."
+            yield "Check the fictional optical lens cover "
+            yield "[aoi-alarm-guide:optical-signal-low:001]."
 
     monkeypatch.setattr(
         OpenAICompatibleChatAdapter,
@@ -359,6 +451,37 @@ def test_stream_document_question_emits_retrieved_source_evidence(
         'OPTICAL-SIGNAL-LOW occurs?"'
     ) in response.text
     assert '"section":"OPTICAL-SIGNAL-LOW"' in response.text
+
+
+def test_stream_combined_request_completes_with_clarification(
+    conversation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conversation = create_conversation(conversation_client)
+    conversation_client.patch(
+        f"/conversations/{conversation['id']}/context",
+        json={"device": "AOI-WAFER-01", "time_range": "Last 8 hours"},
+    )
+
+    class UnexpectedAdapter:
+        def __enter__(self):
+            raise AssertionError("combined deterministic routing must not call a model")
+
+    monkeypatch.setattr(
+        OpenAICompatibleChatAdapter,
+        "from_settings",
+        classmethod(lambda cls, settings: UnexpectedAdapter()),
+    )
+    response = conversation_client.post(
+        f"/conversations/{conversation['id']}/messages/stream",
+        json={"content": "Show production yield and search the documents."},
+    )
+
+    assert response.status_code == 200
+    assert '"route":"clarification"' in response.text
+    assert "event: clarification_required" in response.text
+    assert f'data: {{"text":"{COMBINED_MESSAGE}"}}' in response.text
+    assert "event: message_completed" in response.text
 
 
 def test_stream_production_tool_error_persists_safe_response(
@@ -402,15 +525,24 @@ def test_stream_production_tool_error_persists_safe_response(
     )
     response = conversation_client.post(
         f"/conversations/{conversation['id']}/messages/stream",
-        json={"content": "What is the production yield?"},
+        json={
+            "content": (
+                "What is the production yield for AOI-WAFER-99 today?"
+            )
+        },
     )
 
     assert response.status_code == 200
-    assert 'data: {"text":"The requested Equipment is not available."}' in response.text
+    assert (
+        'data: {"text":"No sufficient production evidence was found."}'
+        in response.text
+    )
     history = conversation_client.get(
         f"/conversations/{conversation['id']}/messages"
     ).json()
-    assert history[-1]["content"] == "The requested Equipment is not available."
+    assert history[-1]["content"] == (
+        "No sufficient production evidence was found."
+    )
 
 
 def test_created_message_persists_across_requests(

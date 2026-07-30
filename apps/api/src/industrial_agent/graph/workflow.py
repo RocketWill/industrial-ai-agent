@@ -6,6 +6,7 @@ from langgraph.graph import END, START, StateGraph
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from industrial_agent.domain.routing import RouteIntent, TimePreset
 from industrial_agent.graph.errors import GraphExecutionError
 from industrial_agent.graph.state import (
     EvidenceState,
@@ -23,6 +24,8 @@ from industrial_agent.llm.types import (
 from industrial_agent.services import conversation as conversation_service
 from industrial_agent.services import message as message_service
 from industrial_agent.services.documents import DocumentCorpusService
+from industrial_agent.services.evidence import validate_answer, validate_evidence
+from industrial_agent.services.routing import RoutingOutcome
 from industrial_agent.tools.defect_distribution import (
     DefectDistributionRequest,
     DefectDistributionToolError,
@@ -45,6 +48,7 @@ from industrial_agent.tools.production import (
 
 Complete = Callable[[Sequence[ChatMessage]], str]
 CompleteWithTools = Callable[..., CompletionResult]
+RouteExchange = Callable[[GraphState], RoutingOutcome]
 
 
 def _is_production_question(messages: Sequence[ChatMessage]) -> bool:
@@ -718,7 +722,16 @@ def _call_llm(
     complete: Complete,
     complete_with_tools: CompleteWithTools | None = None,
     document_corpus_service: DocumentCorpusService | None = None,
+    route_exchange: RouteExchange | None = None,
 ) -> GraphState:
+    if route_exchange is not None:
+        return _call_routed_exchange(
+            state,
+            outcome=route_exchange(state),
+            complete=complete,
+            complete_with_tools=complete_with_tools,
+            document_corpus_service=document_corpus_service,
+        )
     if complete_with_tools is not None and _is_document_question(state["messages"]):
         call = build_document_search_call(state["messages"])
         tool_state = execute_document_search_tool(
@@ -824,6 +837,112 @@ def _call_llm(
     }
 
 
+def _call_routed_exchange(
+    state: GraphState,
+    *,
+    outcome: RoutingOutcome,
+    complete: Complete,
+    complete_with_tools: CompleteWithTools | None,
+    document_corpus_service: DocumentCorpusService | None,
+) -> GraphState:
+    decision = outcome.decision
+    if outcome.response_text is not None:
+        return {**state, "assistant_content": outcome.response_text}
+    if decision.intent is RouteIntent.GENERAL:
+        return {**state, "assistant_content": complete(state["messages"])}
+    if complete_with_tools is None:
+        raise GraphExecutionError(code="empty_response")
+
+    call = _tool_call_for_route(state, outcome)
+    if decision.intent is RouteIntent.PRODUCTION_SUMMARY:
+        tool_state = execute_production_tool(
+            state, CompletionResult(content=None, tool_calls=(call,))
+        )
+        answer = answer_with_production_evidence
+    elif decision.intent is RouteIntent.EQUIPMENT_STATUS:
+        tool_state = execute_equipment_status_tool(
+            state, CompletionResult(content=None, tool_calls=(call,))
+        )
+        answer = answer_with_equipment_status_evidence
+    elif decision.intent is RouteIntent.DEFECT_DISTRIBUTION:
+        tool_state = execute_defect_distribution_tool(
+            state, CompletionResult(content=None, tool_calls=(call,))
+        )
+        answer = answer_with_defect_distribution_evidence
+    elif decision.intent is RouteIntent.DOCUMENT_SEARCH:
+        tool_state = execute_document_search_tool(
+            state,
+            CompletionResult(content=None, tool_calls=(call,)),
+            document_corpus_service=document_corpus_service,
+        )
+        answer = answer_with_document_search_evidence
+    else:
+        raise GraphExecutionError(code="empty_response")
+
+    evidence = tool_state["evidence"] or EvidenceState()
+    approval = validate_evidence(decision, evidence)
+    if not approval.sufficient:
+        return {**tool_state, "assistant_content": approval.response_text or ""}
+    answered = answer(
+        tool_state,
+        complete_with_tools=complete_with_tools,
+        tool_call=call,
+    )
+    post_check = validate_answer(
+        decision, evidence, answered["assistant_content"]
+    )
+    if not post_check.sufficient:
+        return {**answered, "assistant_content": post_check.response_text or ""}
+    return answered
+
+
+def _tool_call_for_route(
+    state: GraphState, outcome: RoutingOutcome
+) -> ToolCall:
+    decision = outcome.decision
+    context = decision.resolved_context
+    arguments: dict[str, object] = {}
+    if context.equipment_id is not None:
+        arguments["equipment_id"] = context.equipment_id
+    if context.lot_id is not None:
+        arguments["lot_id"] = context.lot_id
+    if context.start is not None:
+        arguments["start"] = context.start.isoformat()
+        arguments["end"] = context.end.isoformat()
+    elif context.time_preset is not None:
+        end = _DEMO_SHIFT_END
+        if context.time_preset is TimePreset.TODAY:
+            start = end.replace(hour=0, minute=0, second=0, microsecond=0)
+        else:
+            hours = {
+                TimePreset.LAST_1_HOUR: 1,
+                TimePreset.LAST_4_HOURS: 4,
+                TimePreset.LAST_8_HOURS: 8,
+                TimePreset.LAST_24_HOURS: 24,
+                TimePreset.LAST_7_DAYS: 24 * 7,
+            }[context.time_preset]
+            start = end - timedelta(hours=hours)
+        arguments["start"] = start.isoformat()
+        arguments["end"] = end.isoformat()
+    if decision.intent is RouteIntent.EQUIPMENT_STATUS:
+        arguments.pop("start", None)
+        end = arguments.pop("end", None)
+        if end is not None:
+            arguments["at"] = end
+    if decision.intent is RouteIntent.DOCUMENT_SEARCH:
+        arguments = {
+            "query": context.document_query or state["messages"][-1].content,
+            "limit": 3,
+        }
+    name = {
+        RouteIntent.PRODUCTION_SUMMARY: PRODUCTION_TOOL.name,
+        RouteIntent.EQUIPMENT_STATUS: EQUIPMENT_STATUS_TOOL.name,
+        RouteIntent.DEFECT_DISTRIBUTION: DEFECT_DISTRIBUTION_TOOL.name,
+        RouteIntent.DOCUMENT_SEARCH: DOCUMENT_SEARCH_TOOL.name,
+    }[decision.intent]
+    return ToolCall(call_id="application-route", name=name, arguments=arguments)
+
+
 def persist_response(session: Session, state: GraphState) -> GraphState:
     assistant_content = state["assistant_content"].strip()
     if not assistant_content:
@@ -851,6 +970,7 @@ def build_workflow(
     complete: Complete,
     complete_with_tools: CompleteWithTools | None = None,
     document_corpus_service: DocumentCorpusService | None = None,
+    route_exchange: RouteExchange | None = None,
 ):
     graph = StateGraph(GraphState)
     graph.add_node(
@@ -867,6 +987,7 @@ def build_workflow(
             complete=complete,
             complete_with_tools=complete_with_tools,
             document_corpus_service=document_corpus_service,
+            route_exchange=route_exchange,
         ),
     )
     graph.add_node("persist_response", lambda state: persist_response(session, state))
