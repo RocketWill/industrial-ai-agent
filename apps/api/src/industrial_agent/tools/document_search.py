@@ -4,9 +4,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from industrial_agent.domain.documents import (
     TOKEN_PATTERN,
+    DocumentSource,
     VectorIndex,
-    build_document_corpus,
-    build_vector_index,
+)
+from industrial_agent.services.documents import (
+    DocumentCorpusService,
+    get_document_corpus_service,
 )
 
 MINIMUM_SCORE = 0.05
@@ -62,6 +65,7 @@ class RetrievedSourceResult(BaseModel):
     relative_path: str
     excerpt: str
     score: float
+    source: DocumentSource
 
 
 class DocumentSearchResult(BaseModel):
@@ -76,9 +80,16 @@ def search_documents(
     request: DocumentSearchRequest,
     *,
     index: VectorIndex | None = None,
+    service: DocumentCorpusService | None = None,
 ) -> DocumentSearchResult:
-    """Search the validated synthetic corpus with lexical and cosine gates."""
-    active_index = index or build_vector_index(build_document_corpus().chunks)
+    """Search one immutable active corpus with lexical and cosine gates."""
+    snapshot = None
+    if index is not None:
+        active_index = index
+    else:
+        active_service = service or get_document_corpus_service()
+        snapshot = active_service.get_snapshot()
+        active_index = snapshot.index
     query_terms = _meaningful_terms(request.query)
     matches = tuple(
         match
@@ -96,6 +107,11 @@ def search_documents(
             relative_path=match.chunk.relative_path,
             excerpt=match.chunk.content,
             score=match.score,
+            source=(
+                snapshot.source_for(match.chunk.document_id)
+                if snapshot is not None
+                else "built_in"
+            ),
         )
         for match in matches
     )

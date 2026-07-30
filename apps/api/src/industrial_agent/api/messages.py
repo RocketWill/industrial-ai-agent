@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -51,6 +51,7 @@ from industrial_agent.services.conversation import (
     ConversationNotFoundError,
     get_conversation,
 )
+from industrial_agent.services.documents import DocumentCorpusService
 
 router = APIRouter(
     prefix="/conversations/{conversation_id}/messages",
@@ -75,7 +76,11 @@ def create_user_message(
     conversation_id: UUID,
     payload: MessageCreate,
     session: DatabaseSession,
+    request: Request,
 ) -> MessageExchangeRead:
+    document_corpus_service: DocumentCorpusService = (
+        request.app.state.document_corpus_service
+    )
     def complete(messages: Sequence[ChatMessage]) -> str:
         with OpenAICompatibleChatAdapter.from_settings(
             Settings()
@@ -102,6 +107,7 @@ def create_user_message(
             content=payload.content,
             complete=complete,
             complete_with_tools=complete_with_tools,
+            document_corpus_service=document_corpus_service,
         )
     except ConversationNotFoundError as error:
         raise HTTPException(
@@ -141,7 +147,11 @@ def stream_user_message(
     conversation_id: UUID,
     payload: MessageCreate,
     session: DatabaseSession,
+    request: Request,
 ) -> StreamingResponse:
+    document_corpus_service: DocumentCorpusService = (
+        request.app.state.document_corpus_service
+    )
     try:
         get_conversation(session, conversation_id)
     except ConversationNotFoundError as error:
@@ -201,6 +211,7 @@ def stream_user_message(
                     content=payload.content,
                     complete_with_tools=complete_with_tools,
                     stream_with_tool_result=stream_with_tool_result,
+                    document_corpus_service=document_corpus_service,
                 )
             else:
                 events = run_stream_exchange(

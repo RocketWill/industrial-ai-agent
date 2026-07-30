@@ -31,6 +31,7 @@ from industrial_agent.llm.types import (
     ToolResult,
 )
 from industrial_agent.services import message as message_service
+from industrial_agent.services.documents import DocumentCorpusService
 from industrial_agent.services.message import MessageExchange
 
 
@@ -41,6 +42,7 @@ def run_sync_exchange(
     content: str,
     complete: Complete,
     complete_with_tools: CompleteWithTools | None = None,
+    document_corpus_service: DocumentCorpusService | None = None,
 ) -> MessageExchange:
     initial_state = load_context(
         session,
@@ -51,6 +53,7 @@ def run_sync_exchange(
         session,
         complete,
         complete_with_tools=complete_with_tools,
+        document_corpus_service=document_corpus_service,
     ).invoke(initial_state)
     messages = message_service.list_messages(session, conversation_id)
     return MessageExchange(
@@ -72,6 +75,7 @@ def run_stream_tool_exchange(
     content: str,
     complete_with_tools: ToolComplete,
     stream_with_tool_result: ToolStream,
+    document_corpus_service: DocumentCorpusService | None = None,
 ) -> Iterator[ExecutionEvent]:
     """Run one production tool exchange and expose its stages as SSE events."""
     state = load_context(
@@ -113,7 +117,11 @@ def run_stream_tool_exchange(
         yield ExecutionEvent(kind="assistant_message", payload=assistant_message)
         return
     if is_document_search:
-        tool_state = execute_document_search_tool(state, first)
+        tool_state = execute_document_search_tool(
+            state,
+            first,
+            document_corpus_service=document_corpus_service,
+        )
     elif is_equipment_status:
         tool_state = execute_equipment_status_tool(state, first)
     elif is_defect_distribution:

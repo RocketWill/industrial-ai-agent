@@ -22,6 +22,7 @@ from industrial_agent.llm.types import (
 )
 from industrial_agent.services import conversation as conversation_service
 from industrial_agent.services import message as message_service
+from industrial_agent.services.documents import DocumentCorpusService
 from industrial_agent.tools.defect_distribution import (
     DefectDistributionRequest,
     DefectDistributionToolError,
@@ -492,6 +493,8 @@ def execute_defect_distribution_tool(
 def execute_document_search_tool(
     state: GraphState,
     result: CompletionResult,
+    *,
+    document_corpus_service: DocumentCorpusService | None = None,
 ) -> GraphState:
     """Execute one parsed document-search Tool Call into Evidence State."""
     if len(result.tool_calls) != 1:
@@ -516,7 +519,10 @@ def execute_document_search_tool(
             **state,
             "evidence": EvidenceState(tool_error=ToolError(code="INVALID_INPUT")),
         }
-    document_search = search_documents(request)
+    document_search = search_documents(
+        request,
+        service=document_corpus_service,
+    )
     return {
         **state,
         "evidence": EvidenceState(document_search=document_search),
@@ -711,12 +717,14 @@ def _call_llm(
     *,
     complete: Complete,
     complete_with_tools: CompleteWithTools | None = None,
+    document_corpus_service: DocumentCorpusService | None = None,
 ) -> GraphState:
     if complete_with_tools is not None and _is_document_question(state["messages"]):
         call = build_document_search_call(state["messages"])
         tool_state = execute_document_search_tool(
             state,
             CompletionResult(content=None, tool_calls=(call,)),
+            document_corpus_service=document_corpus_service,
         )
         return answer_with_document_search_evidence(
             tool_state,
@@ -842,6 +850,7 @@ def build_workflow(
     session: Session,
     complete: Complete,
     complete_with_tools: CompleteWithTools | None = None,
+    document_corpus_service: DocumentCorpusService | None = None,
 ):
     graph = StateGraph(GraphState)
     graph.add_node(
@@ -857,6 +866,7 @@ def build_workflow(
             state,
             complete=complete,
             complete_with_tools=complete_with_tools,
+            document_corpus_service=document_corpus_service,
         ),
     )
     graph.add_node("persist_response", lambda state: persist_response(session, state))
