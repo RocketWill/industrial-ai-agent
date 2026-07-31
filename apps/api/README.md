@@ -130,7 +130,7 @@ is created. This makes it possible to retry without losing the original input.
 ## OpenAI-compatible chat adapter
 
 The backend provides `OpenAICompatibleChatAdapter` as a standalone Python
-adapter. It sends non-streaming requests to the standard
+adapter. It sends synchronous or streaming requests to the standard
 `/v1/chat/completions` endpoint and accepts only `user` and `assistant` chat
 messages. The HTTP Message API uses this adapter to request and persist one
 assistant Message for each successful user Message.
@@ -168,8 +168,9 @@ PY
 The adapter raises a configuration error for a missing model, a connection
 error for timeout or transport failures, a service error for non-success HTTP
 responses, and a response error for malformed or empty completion payloads.
-It does not start Ollama, download models, retry requests, stream responses,
-or inspect whether the configured model is installed.
+It does not start Ollama, download models, retry requests, or inspect whether
+the configured model is installed. Streaming uses the dedicated Message API
+endpoint and does not persist partial assistant output.
 
 ## Verify
 
@@ -181,14 +182,13 @@ uv build
 
 ## Remaining v0.1 responsibilities
 
-- implement and connect the synchronous React conversation interface;
-- verify critical frontend interactions and error states; and
 - document the complete clean-environment workflow.
 
 ## Non-responsibilities
 
 LangGraph, RAG, MCP, manufacturing analytics, production tools, authentication,
-streaming, and distributed deployment are outside v0.1.
+and distributed deployment are outside v0.1. Streaming is implemented in the
+separate v0.1.1 milestone.
 
 ## Dependency management
 
@@ -199,8 +199,8 @@ records the resolved environment.
 ## Current limitations
 
 The API persists Conversation, user Message, and assistant Message records.
-The adapter can call a configured compatible service, but has no streaming,
-retries, system prompts, tool calling, or model-discovery behavior. Message
+The adapter can call a configured compatible service, but has no retries,
+system prompts, tool calling, or model-discovery behavior. Message
 history has no pagination or individual mutation operations. The health
 endpoint reports API-process availability only and does not check the database
 or LLM service. The synchronous endpoint remains available. The v0.1.1

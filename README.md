@@ -137,8 +137,8 @@ production data, or proprietary material.
 - A Message request calls the configured OpenAI-compatible adapter. If that
   service is unavailable, the user Message remains stored and the API returns
   a safe `503` error.
-- The frontend currently reports API-process availability only; conversation
-  navigation, history, and messaging are not implemented yet.
+- The frontend reports API-process availability and supports conversation
+  navigation, history, synchronous messaging, and streaming.
 - Streaming depends on provider and proxy support for timely response flushing.
 - The data directory contains documentation only; no synthetic dataset has
   been designed.
