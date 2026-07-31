@@ -63,17 +63,19 @@ The latest full local verification on 2026-07-31 produced:
 - Browser: desktop and mobile shell checks confirmed viewport-bound layout,
   hidden body overflow, mobile navigation switching, and the conversation list
   as the primary vertical scroll region.
+- Clean copy: git archive output installed API and Web dependencies from the
+  committed lockfiles, applied all migrations, and reran the API and Web test
+  suites successfully.
 
 The Vite build reports a JavaScript chunk-size warning above 500 kB. This is a
 build warning rather than a failed verification, and code splitting has not
 yet been introduced.
 
-## Open acceptance item
+## Remaining hardening
 
-The repository documents the local commands, but the complete setup has not
-yet been re-run from a clean machine or equivalent clean environment. For that
-reason, v0.1 remains **In Progress** even though its application behavior and
-the v0.1.1 and v0.1.2 extensions are implemented.
+The v0.1 clean-environment acceptance item is complete. Client-disconnect
+persistence behavior for streaming still needs a dedicated integration test;
+this does not block the current v0.1 or v0.1.1 status.
 
 ## Truthfulness notes
 

@@ -205,10 +205,10 @@ uv run ruff check .
 uv build
 ```
 
-## Remaining v0.1 responsibility
+## Verification status
 
-- verify the documented workflow from a clean machine or equivalent clean
-  environment.
+The documented workflow has been verified from a clean git archive copy using
+the committed uv lockfile, migrations, and backend test suite.
 
 ## Non-responsibilities
 
