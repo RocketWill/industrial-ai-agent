@@ -58,8 +58,8 @@ describe("App", () => {
     render(<App />);
 
     expect(screen.getAllByText("Agent Workspace")).toHaveLength(2);
-    expect(screen.getByText("Synthetic Demo Data")).toBeInTheDocument();
+    expect(screen.getByText("Synthetic Demo")).toBeInTheDocument();
     expect(screen.getByText("Production Data")).toBeInTheDocument();
-    expect(screen.getAllByText("Planned")).toHaveLength(3);
+    expect(screen.getAllByText("Soon")).toHaveLength(3);
   });
 });
