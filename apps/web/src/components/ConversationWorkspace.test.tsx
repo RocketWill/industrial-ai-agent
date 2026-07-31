@@ -11,8 +11,8 @@ vi.mock("../hooks/useMessages", () => ({ useMessages: vi.fn() }));
 
 const conversationId = "11111111-1111-1111-8111-111111111111";
 const messages: Message[] = [
-  { id: "21111111-1111-1111-8111-111111111111", conversation_id: conversationId, role: "user", content: "Question", created_at: "2026-08-02T00:00:00Z" },
-  { id: "31111111-1111-1111-8111-111111111111", conversation_id: conversationId, role: "assistant", content: "Answer", created_at: "2026-08-02T00:00:01Z" },
+  { id: "21111111-1111-1111-8111-111111111111", conversation_id: conversationId, role: "user", content: "Question", created_at: "2026-08-02T00:00:00Z", suggested_actions: [] },
+  { id: "31111111-1111-1111-8111-111111111111", conversation_id: conversationId, role: "assistant", content: "Answer", created_at: "2026-08-02T00:00:01Z", suggested_actions: [] },
 ];
 
 const state = (overrides: Partial<MessageState> = {}): MessageState => ({
@@ -182,5 +182,51 @@ describe("ConversationWorkspace scrolling", () => {
     await user.keyboard("{Enter}");
 
     expect(onOpenDocuments).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers persisted routing choices only on the latest unresolved assistant message", async () => {
+    const user = userEvent.setup();
+    const guided: Message = {
+      ...messages[1],
+      suggested_actions: [
+        { id: "production_evidence_first" as const, label: "Production evidence", message: "Show the production evidence first." },
+        { id: "document_evidence_first" as const, label: "Document evidence", message: "Search the documents first." },
+      ],
+    };
+    currentState = state({ messages: [messages[0], guided] });
+    render(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
+
+    const productionChoice = screen.getByRole("button", { name: "Production evidence" });
+    productionChoice.focus();
+    await user.keyboard("{Enter}");
+
+    expect(currentState.send).toHaveBeenCalledTimes(1);
+    expect(currentState.send).toHaveBeenCalledWith("Show the production evidence first.");
+  });
+
+  it("hides routing choices after a later user message", () => {
+    const guided: Message = {
+      ...messages[1],
+      suggested_actions: [
+        { id: "production_evidence_first" as const, label: "Production evidence", message: "Show the production evidence first." },
+      ],
+    };
+    currentState = state({ messages: [messages[0], guided, { ...messages[0], id: "41111111-1111-1111-8111-111111111111", content: "Follow-up" }] });
+    render(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
+
+    expect(screen.queryByText("Production evidence")).not.toBeInTheDocument();
+  });
+
+  it("disables routing choices while another send is active", () => {
+    const guided: Message = {
+      ...messages[1],
+      suggested_actions: [
+        { id: "production_evidence_first" as const, label: "Production evidence", message: "Show the production evidence first." },
+      ],
+    };
+    currentState = state({ messages: [messages[0], guided], isSending: true });
+    render(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Production evidence" })).toBeDisabled();
   });
 });

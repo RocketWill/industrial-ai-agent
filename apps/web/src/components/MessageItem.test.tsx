@@ -9,6 +9,7 @@ const message: Message = {
   role: "assistant",
   content: "<think>private</think>Visible answer",
   created_at: "2026-07-30T00:00:00Z",
+  suggested_actions: [],
 };
 
 describe("MessageItem", () => {
