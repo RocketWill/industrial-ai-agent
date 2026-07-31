@@ -224,11 +224,51 @@ remain outside v0.5.
 
 ## v0.6 — Routing and Reliability
 
-**Status: Planned**
+**Status: Implemented**
 
 Add structured intent and context extraction, conditional document,
 production, and combined routing, evidence validation, timeouts, retries,
 empty-result handling, clarification, safe failure, and observable traces.
+
+Implemented slices:
+
+- [x] Add immutable routing candidates and decisions plus a 38-scenario
+  English and Traditional Chinese fixture.
+- [x] Add a deterministic gate and typed `classify_request` adapter with a
+  1–30 second timeout and one bounded retry.
+- [x] Add one authoritative policy with context precedence, clarification,
+  unsupported responses, conservative fallback, and safe routing logs.
+- [x] Validate route-specific evidence and reject ungrounded numeric or
+  uncited document answers deterministically.
+- [x] Use the shared policy in synchronous and SSE workflows.
+- [x] Expose bounded routing progress without adding a persistent trace
+  timeline.
+
+Combined requests remain clarification-only. Evidence-tool retries, persisted
+routing traces, and broader multilingual support remain outside this milestone.
+
+## v0.6.1 — Guided Routing Choices
+
+**Status: Planned**
+
+Persist two application-owned choices with a combined-route clarification:
+`Production evidence` and `Document evidence`. The latest unresolved
+clarification remains actionable after reload, and selecting one choice sends a
+normal user message through the existing SSE and routing workflow.
+
+Planned slices:
+
+- [ ] Add a typed persisted `suggested_actions` message contract and one
+  explicit migration.
+- [ ] Attach the two fixed actions only to combined-route clarifications in
+  synchronous and SSE paths.
+- [ ] Render the latest unresolved actions with accessible one-shot submission,
+  loading, disabled, reload, and failure behavior.
+- [ ] Complete browser acceptance, two-axis review, verification, and public
+  documentation updates before starting v0.7.
+
+This milestone does not execute combined tools, add equipment or time-range
+choices, accept model-generated actions, or introduce a special action API.
 
 ## v0.7 — MCP
 

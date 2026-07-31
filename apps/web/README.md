@@ -12,7 +12,8 @@ workbench implemented across the frontend milestones.
 - a `GET /health` client with runtime response validation;
 - conversation loading, creation, selection, and deletion through the existing API;
 - persisted message history and synchronous user/assistant exchanges;
-- synchronous production-question fallback for a focused English keyword set;
+- synchronous and SSE routing for explicit English and Traditional Chinese
+  requests, with typed classification for ambiguous requests;
 - deterministic Production Summary result surface for the current exchange,
   including Defect Counts, Alarm Events, provenance, and empty states;
 - deterministic Equipment Status evidence for an explicit synthetic
@@ -88,9 +89,10 @@ the committed npm lockfile and frontend test, typecheck, lint, and build
 commands.
 
 The conversation workflow keeps the synchronous Message API as a stable path
-and uses the v0.1.1 streaming endpoint in the browser. Production questions
-receive tool-stage and evidence events before the completed answer. General
-questions retain provider token streaming. The browser keeps draft text after
+and uses the streaming endpoint in the browser. Every exchange receives safe
+routing progress before general generation, clarification, or one evidence
+tool. Evidence routes receive tool-stage and result events before the completed
+answer. The browser keeps draft text after
 failed submissions and does not persist partial assistant output.
 
 ## Non-responsibilities
@@ -121,8 +123,8 @@ structured summary, recorded status, ranked defect distribution, or retrieved
 fictional sources attached to the assistant bubble that produced it. Pending
 assistant bubbles use an accessible three-dot processing indicator and an
 Ant Design BorderBeam while a response is active. Completed bubbles retain a
-static multicolor bottom accent. Generating and production-tool stages remain
-distinguishable through text and ARIA state.
+static multicolor bottom accent. Routing, retry or fallback, generation, and
+evidence-tool stages remain distinguishable through text and ARIA state.
 
 The workspace header also opens a Documents drawer. It lists protected
 repository documents and local uploads, validates one `.md` file up to 1 MiB,
@@ -131,6 +133,6 @@ name. The drawer warns that files remain on local disk and that retrieved text
 may be sent to the configured model.
 
 Evidence is not persisted across reloads, and the browser does not display a
-full tool timeline or manufacturing charts. Its keyword heuristic does not yet
-cover Chinese production terms or distinguish every conceptual question from
-a data query.
+full tool timeline or manufacturing charts. Deterministic routing supports
+English and Traditional Chinese only; ambiguous requests still depend on the
+configured routing model.

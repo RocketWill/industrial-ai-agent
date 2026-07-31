@@ -59,7 +59,8 @@ belongs in deterministic domain code rather than an LLM.
 
 ## Current milestone boundary
 
-The active milestone is **v0.5 — Self-built RAG**. The v0.1 foundation,
+The latest completed milestone is **v0.6 — Routing and Reliability**. v0.6.1
+Guided Routing Choices is planned next, before v0.7 MCP. The v0.1 foundation,
 v0.1.1 streaming extension, v0.1.2 workspace extension, and v0.2 minimal
 LangGraph orchestration are implemented, including clean-environment
 verification. v0.3 Manufacturing Domain is implemented; throughput is
@@ -79,8 +80,8 @@ retrieval through synchronous and SSE `search_documents` flows. The React
 application provides API-process health, conversation and message workflows,
 streaming controls, responsive conversation navigation, draft-based context
 editing, Markdown assistant rendering, and current-exchange tool stages and
-evidence for focused English production-summary, defect-distribution, and
-equipment-status terms, plus current-exchange fictional document sources.
+evidence for routed production-summary, defect-distribution, equipment-status,
+and fictional document requests.
 
 Streaming and the refined workspace are recorded as completed v0.1.1 and
 v0.1.2 extensions.
@@ -100,7 +101,7 @@ Streaming is outside the original v0.1 contract but implemented in v0.1.1.
 Keeping it separate allowed client cancellation, partial-response handling,
 and the completed-response persistence boundary to be specified together.
 
-The active implementation milestone is v0.5. It now includes stable
+The completed v0.5 milestone includes stable
 section-local citations, bounded paragraph- and list-aware chunks,
 deterministic feature-hashing embeddings, an in-memory cosine index, a fixed
 lexical eligibility gate, and a 12-scenario retrieval fixture. It uses no
@@ -109,6 +110,16 @@ the complete cited document. Local Markdown management adds persistent,
 Git-ignored single-file uploads, validation, atomic corpus replacement, and
 deletion while protecting built-ins. Multi-tool turns, PDF/OCR, authentication,
 cloud storage, and persisted evidence remain outside the current boundary.
+
+The completed v0.6 milestone adds typed English and Traditional Chinese routing,
+bounded classifier retry and fallback, deterministic clarification, shared
+synchronous and SSE decisions, evidence sufficiency checks, and safe routing
+progress events. It does not execute combined turns or persist routing traces.
+
+The planned v0.6.1 milestone adds two persisted, application-owned actions to
+the combined clarification. Selecting one records a normal user message and
+reuses the existing routing workflow. It does not add multi-tool execution,
+context selectors, model-generated actions, or a special execution endpoint.
 
 ## Publication safety
 

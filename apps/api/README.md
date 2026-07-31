@@ -160,6 +160,12 @@ LLM_MODEL=<installed-or-compatible-model>
 
 # Default: 60 seconds. Must be greater than zero.
 LLM_TIMEOUT_SECONDS=60
+
+# Optional. Defaults to LLM_MODEL when empty.
+LLM_ROUTER_MODEL=<router-or-answer-model>
+
+# Default: 10 seconds. Accepted range: 1 through 30 seconds.
+LLM_ROUTER_TIMEOUT_SECONDS=10
 ```
 
 For example, with Ollama already running and a model already installed, this
@@ -176,11 +182,13 @@ with OpenAICompatibleChatAdapter.from_settings(Settings()) as adapter:
 PY
 ```
 
-The adapter raises a configuration error for a missing model, a connection
+The answer adapter raises a configuration error for a missing model, a connection
 error for timeout or transport failures, a service error for non-success HTTP
 responses, and a response error for malformed or empty completion payloads.
-It does not start Ollama, download models, retry requests, or inspect whether
-the configured model is installed. Streaming uses the dedicated Message API
+It does not start Ollama, download models, or inspect whether the configured
+model is installed. The routing classifier retries one timeout, transient
+transport failure, or invalid structured response; answer and evidence-tool
+requests are not retried. Streaming uses the dedicated Message API
 endpoint and does not persist partial assistant output.
 
 ## Workspace Context API
@@ -225,9 +233,9 @@ the committed uv lockfile, migrations, and backend test suite.
 MCP, authentication, and distributed deployment remain outside the implemented
 scope. The v0.4 tool slice supports deterministic production
 summaries, ranked defect distributions, and recorded synthetic equipment
-status. Both Message endpoints can
-execute one selected tool for requests matched by the focused English
-heuristics.
+status. Both Message endpoints use the same authoritative decision and can
+execute one selected tool. Combined requests produce clarification rather than
+executing multiple tools.
 
 The current v0.5 retrieval slice adds `search_documents` for focused procedural
 questions. It builds an explicit corpus from three protected fictional Markdown
@@ -260,22 +268,24 @@ records the resolved environment.
 
 The API persists Conversation, user Message, and assistant Message records.
 The adapter can call a configured compatible service for one supported
-tool-call exchange, but has no retries, system prompts, or model-discovery
-behavior. The configured model must implement the compatible tool-call
-protocol. LangGraph provides a compiled synchronous workflow with focused
-manufacturing-query detection and one selected tool execution. The SSE endpoint
+tool-call exchange, but has no answer retry, system prompt, or model-discovery
+behavior. Ambiguous routing requires exactly one valid `classify_request` tool
+call. LangGraph provides a compiled synchronous workflow with one authoritative
+route and one selected tool execution. The SSE endpoint
 supports production summaries, ranked defect distributions, and recorded
 equipment status. Focused document questions use the same flow with retrieved
-source evidence, emitting
-`tool_call_started`, `tool_result`, final text, and completion events. Its
-grounded answer is forwarded as a
-provider-token stream after a successful tool result. Message history
+source evidence, emitting routing progress, `tool_call_started`, `tool_result`,
+final text, and completion events. Its
+grounded answer is forwarded as a provider-token stream after a successful
+tool result. If that answer fails deterministic citation or numeric checks, the
+API keeps the valid evidence and returns a route-specific message explaining
+that the generated answer could not be verified. Message history
 has no pagination or individual mutation operations. The health
 endpoint reports API-process availability only and does not check the database
 or LLM service. The synchronous endpoint remains available. The v0.1.1
 streaming endpoint is `POST /conversations/{conversation_id}/messages/stream`
-and returns SSE events for `message_started`, `token`, `message_completed`, and
-`error`. A matched production request can additionally emit
+and returns SSE events for `message_started`, routing progress, `token`,
+`message_completed`, and `error`. An evidence route can additionally emit
 `tool_call_started` and `tool_result`. Only a non-empty completed assistant
 response is persisted.
 
