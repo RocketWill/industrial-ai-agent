@@ -207,3 +207,12 @@ or LLM service. The synchronous endpoint remains available. The v0.1.1
 streaming endpoint is `POST /conversations/{conversation_id}/messages/stream`
 and returns SSE events for `message_started`, `token`, `message_completed`,
 and `error`. Only a non-empty completed assistant response is persisted.
+
+The conversation-bound Workspace Context contract provides `GET` and `PATCH`
+endpoints at `/conversations/{conversation_id}/context`. It stores optional
+device, lot, and time-range values with truthful synthetic defaults. It does
+not query production systems or infer context automatically.
+
+`GET /devices` returns a deterministic catalog of fictional synthetic device
+identifiers for context selection. The catalog contains identity metadata only;
+it does not represent live equipment status or production records.
