@@ -6,7 +6,7 @@ implemented features.
 
 ## v0.1 — Full-stack Foundation
 
-**Status: In Progress**
+**Status: Implemented**
 
 Current baseline:
 
@@ -49,6 +49,48 @@ boundaries.
 
 This milestone does not add LangGraph, tool calling, retries, manufacturing
 logic, RAG, or execution traces.
+
+## v0.1.2 — Industrial Chat Workspace UI
+
+**Status: In Progress**
+
+Refine the existing React conversation workflow into a restrained Ant Design
+workbench before starting LangGraph. Reduce nested card framing, establish a
+readable user/assistant message layout, normalize internal reasoning tags,
+improve the sticky composer and empty states, and verify responsive overflow,
+keyboard behavior, focus visibility, and streaming states. Reuse the existing
+conversation and SSE data flows; do not add manufacturing data, tool activity,
+context drawers, or unsupported model/device controls in this milestone.
+
+The remaining UI work is intentionally staged:
+
+- **Slice A — workspace hierarchy:** finish the single-scroll desktop shell,
+  remove the large Conversation container treatment, narrow message reading
+  widths, simplify the workspace header, refine sidebar emphasis, and add a
+  truthful `Device: Not selected · Lot: — · Range: Last 4 hours · Source:
+  Synthetic Demo` context bar.
+- **Slice B — industrial content layer:** after supporting backend contracts
+  exist, add tool activity, metric summaries, source references, context drawer,
+  and long-conversation affordances such as scroll-to-bottom and new-response
+  notices. These are not complete yet.
+
+Ant Design X components may be evaluated after the baseline UI is stable. They
+are not a requirement for the first implementation slice, and no new package
+will be added without a verified need and compatibility check.
+
+The next UI feature after v0.1.2 is the **Industrial Context Layer**. It will
+make device, lot, time range, data source, and agent capability context visible
+through real backend-supported values, without inventing production data.
+
+The contract foundation is implemented: conversation-bound context defaults,
+GET/PATCH API endpoints, migration coverage, and a small context edit drawer
+are available. A deterministic synthetic device catalog and read-only device
+selection are now implemented; live status and production-backed values remain
+planned.
+
+The pre-LangGraph UI also includes time-range presets, lot validation, and a
+scroll-to-bottom affordance. Browser verification confirms the desktop and
+mobile shell, single-scroll hierarchy, and fixed composer/header behavior.
 
 ## v0.2 — Minimal LangGraph
 
