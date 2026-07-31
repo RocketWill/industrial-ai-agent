@@ -14,6 +14,8 @@ workbench implemented across the frontend milestones.
 - persisted message history and synchronous user/assistant exchanges;
 - synchronous and SSE routing for explicit English and Traditional Chinese
   requests, with typed classification for ambiguous requests;
+- reload-safe `Production evidence` and `Document evidence` choices on the
+  latest unresolved combined-route clarification;
 - deterministic Production Summary result surface for the current exchange,
   including Defect Counts, Alarm Events, provenance, and empty states;
 - deterministic Equipment Status evidence for an explicit synthetic
@@ -125,6 +127,9 @@ assistant bubbles use an accessible three-dot processing indicator and an
 Ant Design BorderBeam while a response is active. Completed bubbles retain a
 static multicolor bottom accent. Routing, retry or fallback, generation, and
 evidence-tool stages remain distinguishable through text and ARIA state.
+Combined-route choices use keyboard-accessible buttons, disable while a send is
+active, and disappear after the selected continuation is recorded as a normal
+user message.
 
 The workspace header also opens a Documents drawer. It lists protected
 repository documents and local uploads, validates one `.md` file up to 1 MiB,

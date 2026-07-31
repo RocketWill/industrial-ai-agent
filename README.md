@@ -8,7 +8,7 @@ proprietary system material. The current domain model is centered on semiconduct
 
 ## Current status
 
-**Implemented — v0.6 Routing and Reliability**
+**Implemented — v0.6.1 Guided Routing Choices**
 
 The conversation foundation is runnable and tested. It includes FastAPI,
 SQLite persistence, explicit Alembic migrations, an OpenAI-compatible chat
@@ -45,6 +45,12 @@ use a deterministic gate. Ambiguous requests use one typed
 `classify_request` call with a bounded timeout and one retry; clarification,
 unsupported requests, fallback, and insufficient evidence use deterministic
 safe responses.
+
+Combined-route clarifications now persist two application-owned continuations:
+`Production evidence` and `Document evidence`. The latest unresolved choices
+survive reload, and selecting one records a normal user message through the
+existing SSE and routing workflow. This does not execute both tools or accept
+model-generated actions.
 
 The workbench now uses Ant Design 6.5.1, Ant Design X 2.9.0, and XMarkdown
 2.9.0. Its dark-first responsive layout separates conversation navigation,

@@ -235,7 +235,9 @@ scope. The v0.4 tool slice supports deterministic production
 summaries, ranked defect distributions, and recorded synthetic equipment
 status. Both Message endpoints use the same authoritative decision and can
 execute one selected tool. Combined requests produce clarification rather than
-executing multiple tools.
+executing multiple tools. That clarification persists two fixed
+application-owned actions; selecting either action remains a normal message
+request through the existing synchronous or SSE contract.
 
 The current v0.5 retrieval slice adds `search_documents` for focused procedural
 questions. It builds an explicit corpus from three protected fictional Markdown
