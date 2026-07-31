@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Literal
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
+    JSON,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -49,6 +50,12 @@ class Message(Base):
     )
     role: Mapped[str] = mapped_column(String(9), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    suggested_actions: Mapped[list[dict[str, str]]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
+        server_default="[]",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

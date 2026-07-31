@@ -5,7 +5,12 @@ import pytest
 from pydantic import ValidationError
 
 from industrial_agent.models.message import Message
-from industrial_agent.schemas.message import MessageCreate, MessageRead
+from industrial_agent.schemas.message import (
+    MessageCreate,
+    MessageRead,
+    SuggestedAction,
+    SuggestedActionId,
+)
 
 
 def test_message_create_trims_content() -> None:
@@ -61,3 +66,68 @@ def test_message_read_accepts_assistant_role() -> None:
     response = MessageRead.model_validate(message)
 
     assert response.role == "assistant"
+    assert response.suggested_actions == ()
+
+
+@pytest.mark.parametrize(
+    ("action_id", "label", "message"),
+    [
+        (
+            SuggestedActionId.PRODUCTION_EVIDENCE_FIRST,
+            "Production evidence",
+            "Show the production evidence first.",
+        ),
+        (
+            SuggestedActionId.DOCUMENT_EVIDENCE_FIRST,
+            "Document evidence",
+            "Search the documents first.",
+        ),
+    ],
+)
+def test_suggested_action_accepts_only_canonical_application_actions(
+    action_id: SuggestedActionId,
+    label: str,
+    message: str,
+) -> None:
+    action = SuggestedAction(id=action_id, label=label, message=message)
+
+    assert action.model_dump(mode="json") == {
+        "id": action_id.value,
+        "label": label,
+        "message": message,
+    }
+    with pytest.raises(ValidationError):
+        action.label = "Changed"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "id": "unknown",
+            "label": "Production evidence",
+            "message": "Show the production evidence first.",
+        },
+        {
+            "id": "production_evidence_first",
+            "label": "Changed label",
+            "message": "Show the production evidence first.",
+        },
+        {
+            "id": "document_evidence_first",
+            "label": "Document evidence",
+            "message": "Changed message",
+        },
+        {
+            "id": "document_evidence_first",
+            "label": "Document evidence",
+            "message": "Search the documents first.",
+            "extra": True,
+        },
+    ],
+)
+def test_suggested_action_rejects_unknown_or_noncanonical_payload(
+    payload: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError):
+        SuggestedAction.model_validate(payload)
