@@ -20,7 +20,8 @@ response for each successful user message. The React application now provides
 the health foundation and conversation navigation: it can load, create, select,
 and delete conversations through the local development proxy. It can also load
 persisted message history and submit synchronous user messages for complete
-assistant responses. Streaming remains a separate planned milestone.
+assistant responses. It also supports SSE streaming for incremental assistant
+rendering and complete-response persistence.
 
 ## Project goals
 
@@ -83,10 +84,10 @@ v0.1 is complete only when all of the following are demonstrated:
 LangGraph, RAG, MCP, production tools, industrial datasets, authentication,
 streaming, Redis, and container deployment are outside v0.1.
 
-Streaming is planned as a separate v0.1.1 milestone after the synchronous
-React conversation workflow is implemented and verified. That milestone will
-define the streaming transport, cancellation and disconnect behavior, and
-assistant-message persistence before changing the current API contract.
+Streaming is implemented as a separate v0.1.1 flow after the synchronous React
+conversation workflow. The browser uses a POST request with SSE framing and an
+AbortController; cancellation, disconnects, malformed streams, and empty
+responses do not create partial assistant records.
 
 The React shell now uses the Dithered dark UI foundation: shared Ant Design
 theme tokens, a wider responsive workspace, and semantic dark surfaces. This
@@ -138,7 +139,7 @@ production data, or proprietary material.
   a safe `503` error.
 - The frontend currently reports API-process availability only; conversation
   navigation, history, and messaging are not implemented yet.
-- Responses are synchronous and non-streaming in v0.1.
+- Streaming depends on provider and proxy support for timely response flushing.
 - The data directory contains documentation only; no synthetic dataset has
   been designed.
 

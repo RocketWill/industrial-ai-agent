@@ -38,14 +38,14 @@ streaming, Redis, and deployment infrastructure.
 
 ## v0.1.1 — Streaming Conversation
 
-**Status: Planned**
+**Status: Implemented**
 
 Add streaming only after the synchronous React conversation workflow is
-implemented and verified. Define one browser-compatible streaming transport,
-incremental assistant rendering, cancellation and disconnect behavior, safe
-error reporting, and the persistence rule for complete or interrupted
-assistant responses. Cover these boundaries with focused backend and frontend
-tests before describing streaming as implemented.
+implemented and verified. The milestone now uses one browser-compatible SSE
+transport with incremental assistant rendering, cancellation and disconnect
+behavior, safe error reporting, and a persistence rule for complete or
+interrupted assistant responses. Focused backend and frontend tests cover these
+boundaries.
 
 This milestone does not add LangGraph, tool calling, retries, manufacturing
 logic, RAG, or execution traces.

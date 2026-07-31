@@ -203,5 +203,7 @@ The adapter can call a configured compatible service, but has no streaming,
 retries, system prompts, tool calling, or model-discovery behavior. Message
 history has no pagination or individual mutation operations. The health
 endpoint reports API-process availability only and does not check the database
-or LLM service. Responses remain synchronous and non-streaming in v0.1;
-streaming transport and persistence semantics are planned for v0.1.1.
+or LLM service. The synchronous endpoint remains available. The v0.1.1
+streaming endpoint is `POST /conversations/{conversation_id}/messages/stream`
+and returns SSE events for `message_started`, `token`, `message_completed`,
+and `error`. Only a non-empty completed assistant response is persisted.

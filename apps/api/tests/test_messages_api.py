@@ -81,6 +81,56 @@ def test_create_message_returns_persisted_user_and_assistant_messages(
     assert payload["assistant_message"]["content"] == "Assistant answer"
 
 
+def test_stream_message_returns_ordered_sse_events(
+    conversation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conversation = create_conversation(conversation_client)
+
+    class FakeAdapter:
+        def __enter__(self) -> "FakeAdapter":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def stream(self, _: object):
+            yield "Hello"
+            yield " world"
+
+    monkeypatch.setattr(
+        OpenAICompatibleChatAdapter,
+        "from_settings",
+        classmethod(lambda cls, settings: FakeAdapter()),
+    )
+
+    response = conversation_client.post(
+        f"/conversations/{conversation['id']}/messages/stream",
+        json={"content": "Question"},
+    )
+
+    assert response.status_code == 200
+    assert "text/event-stream" in response.headers["content-type"]
+    events = [
+        line
+        for line in response.text.splitlines()
+        if line.startswith("event:")
+    ]
+    assert events == [
+        "event: message_started",
+        "event: token",
+        "event: token",
+        "event: message_completed",
+    ]
+    history = conversation_client.get(
+        f"/conversations/{conversation['id']}/messages"
+    ).json()
+    assert [(item["role"], item["content"]) for item in history] == [
+        ("user", "Question"),
+        ("assistant", "Hello world"),
+    ]
+
+
 def test_created_message_persists_across_requests(
     conversation_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,

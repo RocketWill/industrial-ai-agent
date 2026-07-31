@@ -1,4 +1,4 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -14,6 +14,12 @@ from industrial_agent.services.conversation import get_conversation
 class MessageExchange:
     user_message: Message
     assistant_message: Message
+
+
+@dataclass(frozen=True)
+class MessageStreamEvent:
+    kind: str
+    value: Message | str
 
 
 def create_message(
@@ -78,6 +84,44 @@ def create_message_exchange(
         user_message=user_message,
         assistant_message=assistant_message,
     )
+
+
+def stream_message_exchange(
+    session: Session,
+    *,
+    conversation_id: UUID,
+    content: str,
+    stream: Callable[[Sequence[ChatMessage]], Iterator[str]],
+) -> Iterator[MessageStreamEvent]:
+    """Yield a message exchange while persisting only completed output."""
+    user_message = create_user_message(
+        session,
+        conversation_id=conversation_id,
+        content=content,
+    )
+    yield MessageStreamEvent("user_message", user_message)
+    history = list_messages(session, conversation_id)
+    assistant_parts: list[str] = []
+    for delta in stream(
+        [
+            ChatMessage(role=message.role, content=message.content)
+            for message in history
+        ]
+    ):
+        if not isinstance(delta, str) or not delta:
+            continue
+        assistant_parts.append(delta)
+        yield MessageStreamEvent("token", delta)
+    assistant_content = "".join(assistant_parts).strip()
+    if not assistant_content:
+        raise ValueError("Assistant stream returned empty content")
+    assistant_message = create_message(
+        session,
+        conversation_id=conversation_id,
+        role="assistant",
+        content=assistant_content,
+    )
+    yield MessageStreamEvent("assistant_message", assistant_message)
 
 
 def list_messages(
