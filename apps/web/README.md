@@ -76,3 +76,8 @@ authentication, and administrative interfaces are outside v0.1.
 **In Progress** — the health, conversation-navigation, and synchronous message
 foundations and Dithered dark UI foundation are implemented and verified.
 Streaming remains planned.
+
+The current shell presents these capabilities as a semiconductor Agent
+workbench. Its navigation marks Production Data, Knowledge Base, and Evaluations
+as planned, and it labels the current portfolio context as `Synthetic Demo
+Data`.

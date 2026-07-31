@@ -92,6 +92,11 @@ The React shell now uses the Dithered dark UI foundation: shared Ant Design
 theme tokens, a wider responsive workspace, and semantic dark surfaces. This
 changes presentation only and does not change conversation or backend behavior.
 
+The frontend now uses an Agent workbench information architecture: a two-column
+navigation/workspace shell, explicit `Synthetic Demo Data` context, and shared
+spacing and layout tokens. Future tool execution, manufacturing analytics, and
+source panels will be introduced only with their supporting backend contracts.
+
 ## Development
 
 The backend can be installed, run, and verified from `apps/api`:
