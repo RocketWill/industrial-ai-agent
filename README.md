@@ -1,169 +1,158 @@
 # Industrial AI Agent for Semiconductor Manufacturing
 
-An independently developed full-stack industrial AI agent portfolio project for
-manufacturing scenarios. The project will use only synthetic production data,
-fictional equipment documentation, and configurable external services.
+Industrial AI Agent is an independently developed full-stack portfolio project
+for exploring traceable AI-assisted manufacturing workflows. The repository
+uses fictional equipment identities, synthetic context, and configurable local
+or external OpenAI-compatible services. It does not contain production data or
+proprietary system material.
 
 ## Current status
 
-**In Progress — v0.1 conversation workflow**
+**In Progress — v0.1 foundation closeout**
 
-The FastAPI application foundation, environment-based settings, process health
-endpoint, and explicit SQLite/SQLAlchemy migration infrastructure are
-implemented and verified. The backend can create, list, open, and permanently
-delete Conversation records, store user Messages, and reload each
-Conversation's history in chronological order. It also includes a standalone
-OpenAI-compatible chat adapter with a local Ollama default configuration.
+The conversation foundation is runnable and tested. It includes FastAPI,
+SQLite persistence, explicit Alembic migrations, an OpenAI-compatible chat
+adapter, synchronous and SSE message flows, and a React workbench for
+conversation history and context editing.
 
-The Message API now uses the adapter to generate and persist one assistant
-response for each successful user message. The React application now provides
-the health foundation and conversation navigation: it can load, create, select,
-and delete conversations through the local development proxy. It can also load
-persisted message history and submit synchronous user messages for complete
-assistant responses. It also supports SSE streaming for incremental assistant
-rendering and complete-response persistence.
+Two follow-up milestones are also implemented:
 
-## Project goals
+- **v0.1.1 — Streaming Conversation:** incremental SSE responses, client-side
+  cancellation, explicit stream errors, and persistence only after the backend
+  consumes a complete non-empty assistant response.
+- **v0.1.2 — Industrial Chat Workspace UI:** a Dithered Ant Design shell,
+  responsive navigation, a single-scroll conversation layout, message states,
+  and conversation-bound synthetic context.
 
-The long-term goal is to demonstrate a traceable and testable industrial AI
-agent that can:
+The remaining v0.1 acceptance item is a clean-environment setup verification.
+LangGraph remains planned for v0.2.
 
-- maintain conversation and manufacturing context;
-- retrieve fictional equipment knowledge;
-- invoke deterministic production analytics;
-- distinguish retrieved, calculated, and inferred evidence;
-- expose workflow events, tool calls, sources, errors, and retries; and
-- evaluate behavior against reproducible synthetic scenarios.
+See the [implementation status](docs/implementation-status.md) for the
+code-backed feature matrix and the [roadmap](docs/roadmap.md) for milestone
+boundaries.
 
-See [project scope](docs/project-scope.md) for explicit boundaries and
-[roadmap](docs/roadmap.md) for milestone status.
+## What is implemented
+
+- conversation create, list, open, and permanent delete;
+- chronological user and assistant message persistence;
+- synchronous and SSE assistant-response endpoints;
+- conversation history passed to the configured model for continued dialogue;
+- conversation-bound device, lot, time-range, environment, and data-source
+  context;
+- a deterministic catalog of three fictional devices for context selection;
+- API-process health reporting;
+- desktop and mobile conversation navigation;
+- loading, empty, unavailable, streaming, cancellation, and retry states; and
+- a dark Ant Design workbench with restrained Dithered accents.
+
+The current assistant is still a general OpenAI-compatible chat flow. Device
+selection does not query equipment, and the project does not yet calculate
+yield, inspect alarms, retrieve documents, call manufacturing tools, or provide
+evidence-backed causal analysis.
+
+## Project direction
+
+The planned system will combine:
+
+- persistent conversation and manufacturing context;
+- deterministic production analytics;
+- retrieval from fictional equipment documents;
+- explicit LangGraph orchestration;
+- visible tool, source, error, and retry events; and
+- reproducible evaluation against synthetic scenarios.
+
+Numeric manufacturing results will be calculated in domain code rather than
+inferred by the language model. Answers must distinguish retrieved facts,
+structured records, calculated values, model interpretation, and missing
+evidence.
 
 ## Repository layout
 
 ```text
 industrial-ai-agent/
 ├── apps/
-│   ├── api/       # FastAPI backend with Conversation and Message persistence
-│   └── web/       # React + TypeScript conversation foundation for v0.1
-├── data/          # Synthetic project-owned data (not added yet)
-├── docs/          # Scope, roadmap, architecture, and engineering notes
-└── scripts/       # Project automation added only when needed
+│   ├── api/       # FastAPI, SQLAlchemy, Alembic, and LLM adapter
+│   └── web/       # React, TypeScript, Vite, and Ant Design
+├── data/          # Documentation only; no dataset is implemented yet
+├── docs/          # Scope, implementation status, and roadmap
+└── scripts/       # Added only when project automation is needed
 ```
 
-Directories for LangGraph, RAG, MCP, and manufacturing-domain features will be
-introduced only in the milestone that implements them.
+LangGraph, RAG, MCP, and manufacturing-domain packages will be introduced only
+when their milestones implement working behavior.
 
-## Dependency management
+## Local development
 
-The backend uses uv and a `pyproject.toml` inside `apps/api`, with dependency
-groups for runtime and development packages. Its committed lockfile keeps the
-environment reproducible, while Python environments remain local and are not
-committed.
-
-The frontend will use npm with a committed lockfile inside `apps/web`. Keeping
-Python and Node project metadata beside their respective applications makes
-each app independently testable without introducing a monorepo orchestrator
-before one is needed.
-
-## v0.1 acceptance criteria
-
-v0.1 is complete only when all of the following are demonstrated:
-
-- documented steps can start both applications in a clean environment;
-- a user can create, list, open, and delete a conversation;
-- a user can send a message and receive an assistant response;
-- messages persist in SQLite and history reloads correctly;
-- an OpenAI-compatible adapter is configurable without committing secrets;
-- missing LLM configuration produces an explicit error or documented
-  development fallback;
-- backend API and persistence tests pass;
-- critical frontend conversation interactions are covered by tests;
-- frontend and backend failures are presented clearly; and
-- documentation describes only behavior verified by code or tests.
-
-LangGraph, RAG, MCP, production tools, industrial datasets, authentication,
-streaming, Redis, and container deployment are outside v0.1.
-
-Streaming is implemented as a separate v0.1.1 flow after the synchronous React
-conversation workflow. The browser uses a POST request with SSE framing and an
-AbortController; cancellation, disconnects, malformed streams, and empty
-responses do not create partial assistant records.
-
-The React shell now uses the Dithered dark UI foundation: shared Ant Design
-theme tokens, a wider responsive workspace, and semantic dark surfaces. This
-changes presentation only and does not change conversation or backend behavior.
-
-The frontend now uses an Agent workbench information architecture: a two-column
-navigation/workspace shell, explicit `Synthetic Demo Data` context, and shared
-spacing and layout tokens. Future tool execution, manufacturing analytics, and
-source panels will be introduced only with their supporting backend contracts.
-
-The current UI milestone is v0.1.2, an Industrial Chat Workspace UI pass. Its
-single-scroll shell, message widths, header/sidebar emphasis, and truthful
-context bar are implemented and browser-verified. A later Slice B will add
-industrial content surfaces only when backend contracts exist.
-
-The next UI feature after v0.1.2 is an Industrial Context Layer for device, lot,
-time range, data source, and agent capability context. It will use verified
-values and will not create synthetic production results to fill the interface.
-
-The first context contract slice is available per conversation through typed
-GET/PATCH endpoints. The current UI reads and edits optional device, lot, and
-time-range values without presenting unsupported production controls.
-
-The device selector uses a deterministic fictional catalog from `GET /devices`.
-It exposes identity metadata only and does not imply live equipment status.
-
-The pre-LangGraph UI includes time-range presets, lot validation, and a
-scroll-to-bottom affordance for long conversations. Desktop and mobile browser
-checks confirm that only the conversation viewport scrolls.
-
-## Development
-
-The backend can be installed, run, and verified from `apps/api`:
+The backend requires Python 3.12 and
+[uv](https://docs.astral.sh/uv/). From `apps/api`:
 
 ```bash
 uv sync --locked
+uv run alembic upgrade head
 uv run uvicorn industrial_agent.main:app --host 127.0.0.1 --port 8000
-uv run pytest
-uv run ruff check .
-uv build
 ```
 
-The browser health foundation can be installed, run, and verified from
-`apps/web`:
+The API process can start without an LLM model. Message requests require an
+OpenAI-compatible service and `LLM_MODEL`; the default base URL targets a local
+Ollama-compatible endpoint.
+
+From `apps/web`, using a compatible Node.js environment:
 
 ```bash
 npm ci
 npm run dev
-npm test
+```
+
+Vite proxies `/api` to `http://127.0.0.1:8000`. The application is then
+available at the URL printed by Vite.
+
+Detailed configuration and endpoint examples are in the
+[API guide](apps/api/README.md) and [web guide](apps/web/README.md).
+
+## Verification
+
+```bash
+cd apps/api
+uv run pytest -q
+uv run ruff check .
+uv build
+
+cd ../web
 npm run typecheck
+npm test -- --run
 npm run lint
 npm run build
 ```
 
-The Vite development server proxies `/api` to `http://127.0.0.1:8000` by
-default. See the [API guide](apps/api/README.md) and
-[web guide](apps/web/README.md) for the implemented contracts and current
-limits.
+The latest recorded results are listed in
+[implementation status](docs/implementation-status.md). A successful local
+verification is not yet treated as proof of the remaining clean-environment
+acceptance item.
 
-Copy `.env.example` to `.env` only when local application configuration is
-introduced. Never commit `.env`, credentials, private endpoints, real
-production data, or proprietary material.
+## Documentation
+
+- [Documentation index](docs/README.md)
+- [Project scope and publication boundaries](docs/project-scope.md)
+- [Implementation status and API matrix](docs/implementation-status.md)
+- [Milestone roadmap](docs/roadmap.md)
 
 ## Known limitations
 
-- Conversation records and both user and assistant Messages are persisted.
-- A Message request calls the configured OpenAI-compatible adapter. If that
-  service is unavailable, the user Message remains stored and the API returns
-  a safe `503` error.
-- The frontend reports API-process availability and supports conversation
-  navigation, history, synchronous messaging, and streaming.
-- Streaming depends on provider and proxy support for timely response flushing.
-- The data directory contains documentation only; no synthetic dataset has
-  been designed.
+- Health reports API-process availability only. It does not check the database,
+  model service, or future manufacturing tools.
+- The configured model receives conversation history, but workspace context is
+  not yet injected into the model request.
+- A failed assistant request leaves the user message persisted.
+- Streaming depends on provider and proxy flushing behavior. The service
+  creates an assistant record only after consuming a complete non-empty stream;
+  client-disconnect persistence behavior still needs an integration test.
+- Context values and device identities are synthetic metadata. They do not
+  represent live equipment or production state.
+- There is no LangGraph, tool calling, RAG, manufacturing dataset,
+  authentication, retry orchestration, or deployment stack.
+- Conversation and message history are not paginated.
 
 ## License
 
-No license has been selected yet. Until a license file is added, reuse rights
-are not granted.
+No license has been selected. Until a license file is added, reuse rights are
+not granted.

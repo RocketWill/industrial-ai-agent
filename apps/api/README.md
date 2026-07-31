@@ -16,8 +16,11 @@ portfolio project.
 - Conversation create, list, get, and permanent-delete endpoints;
 - append-only user Message persistence and chronological history endpoints;
 - database-enforced Message role, content, and cascade-delete constraints;
+- synchronous and SSE assistant-response endpoints;
 - standalone OpenAI-compatible chat adapter with configurable endpoint,
   optional API key, model, and timeout;
+- conversation-bound Workspace Context `GET` and `PATCH` endpoints;
+- deterministic fictional device catalog and device-ID validation;
 - Pytest and Ruff verification; and
 - reproducible uv lockfile and package build.
 
@@ -172,6 +175,28 @@ It does not start Ollama, download models, retry requests, or inspect whether
 the configured model is installed. Streaming uses the dedicated Message API
 endpoint and does not persist partial assistant output.
 
+## Workspace Context API
+
+Each Conversation stores synthetic workspace metadata. New records default to
+the `synthetic` environment and `synthetic_demo` data source; device, lot, and
+time range remain empty until selected.
+
+```bash
+curl \
+  http://127.0.0.1:8000/conversations/<conversation-id>/context
+
+curl -X PATCH \
+  http://127.0.0.1:8000/conversations/<conversation-id>/context \
+  -H 'Content-Type: application/json' \
+  -d '{"device":"AOI-WAFER-01","lot":"LOT-DEMO-01","time_range":"Last 4 hours"}'
+
+curl http://127.0.0.1:8000/devices
+```
+
+The device catalog contains three deterministic fictional identities. Context
+does not query equipment, load production records, or enter the current model
+prompt.
+
 ## Verify
 
 ```bash
@@ -180,9 +205,10 @@ uv run ruff check .
 uv build
 ```
 
-## Remaining v0.1 responsibilities
+## Remaining v0.1 responsibility
 
-- document the complete clean-environment workflow.
+- verify the documented workflow from a clean machine or equivalent clean
+  environment.
 
 ## Non-responsibilities
 

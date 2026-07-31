@@ -11,6 +11,13 @@ This directory contains the React and TypeScript v0.1 conversation foundation.
 - conversation loading, creation, selection, and deletion through the existing API;
 - persisted message history and synchronous user/assistant exchanges;
 - SSE streaming assistant responses with a keyboard-accessible Stop action;
+- conversation-bound context display and editing;
+- deterministic fictional device selection, lot validation, and time-range
+  presets;
+- desktop sidebar navigation and a mobile Drawer;
+- a viewport-bound shell with one primary conversation scrollbar;
+- assistant reasoning-tag suppression, message copy, empty states, and a
+  scroll-to-bottom control;
 - local `/api` proxying to `http://127.0.0.1:8000` during Vite development;
 - checking, connected, and unavailable API-process states; and
 - a user-initiated `Check again` action that prevents duplicate in-flight
@@ -59,9 +66,10 @@ npm run lint
 npm run build
 ```
 
-## Remaining v0.1 responsibilities
+## Remaining v0.1 responsibility
 
-- add broader clean-environment documentation and verified limitations.
+- verify the documented workflow from a clean machine or equivalent clean
+  environment.
 
 The conversation workflow keeps the synchronous Message API as a stable path
 and also supports the v0.1.1 streaming endpoint. It keeps draft text after
@@ -75,31 +83,18 @@ the separate v0.1.1 milestone.
 
 ## Current status
 
-**In Progress** — the health, conversation-navigation, and synchronous message
-foundations and Dithered dark UI foundation are implemented and verified.
-Streaming is available through the message composer. The client consumes SSE
-frames with `fetch` and `ReadableStream`, renders token deltas in memory, and
-offers a keyboard-accessible Stop action. Partial or cancelled assistant text
-is not persisted.
+The web behavior for v0.1, v0.1.1, and v0.1.2 is implemented and verified.
+Streaming uses `fetch` and `ReadableStream`, renders token deltas in memory, and
+offers a keyboard-accessible Stop action. The browser does not treat partial
+assistant text as persisted; the backend creates the record only after it
+consumes a complete non-empty stream. Client-disconnect persistence still
+needs a dedicated integration test.
 
-The v0.1.2 UI milestone is implemented. Slice A's shell hierarchy, message
-widths, header/sidebar emphasis, and truthful context bar are browser-verified.
-Slice B will add tool activity, metric summaries, and sources only after their
-backend contracts exist.
+The context bar loads conversation-bound metadata from the API. Its Drawer
+allows a device to be selected from the fictional catalog and optional lot and
+time-range values to be saved. Empty values remain `Not selected` or `—`, and
+the source remains read-only `Synthetic Demo`.
 
-The next UI feature after this milestone is an Industrial Context Layer for
-verified device, lot, time-range, data-source, and agent-capability context.
-
-The current pre-LangGraph UI also includes time-range presets, lot length
-validation, and a scroll-to-bottom affordance for long conversations. Desktop
-and mobile browser checks confirm the single-scroll shell behavior.
-
-The Context Bar loads conversation-bound context from the API. Its edit drawer
-allows a device to be selected from the synthetic catalog and lot/time-range
-values to be saved through the PATCH contract; empty values remain explicitly
-`Not selected` or `—`, and the source remains read-only `Synthetic Demo`.
-
-The current shell presents these capabilities as a semiconductor Agent
-workbench. Its navigation marks Production Data, Knowledge Base, and Evaluations
-as planned, and it labels the current portfolio context as `Synthetic Demo
-Data`.
+Production Data, Knowledge Base, and Evaluations are marked as planned. The
+prompt suggestions describe intended industrial questions, but the current
+application has no manufacturing tools or datasets to ground those answers.
