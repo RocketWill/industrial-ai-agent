@@ -17,6 +17,7 @@ portfolio project.
 - append-only user Message persistence and chronological history endpoints;
 - database-enforced Message role, content, and cascade-delete constraints;
 - synchronous and SSE assistant-response endpoints;
+- typed LangGraph orchestration shared by synchronous and streaming flows;
 - standalone OpenAI-compatible chat adapter with configurable endpoint,
   optional API key, model, and timeout;
 - conversation-bound Workspace Context `GET` and `PATCH` endpoints;
@@ -97,8 +98,8 @@ History is returned from oldest to newest. Messages are append-only, so the
 API does not expose individual get, update, or delete operations. Deleting the
 parent Conversation permanently removes its Messages.
 
-This endpoint stores the user's message, sends the complete chronological
-history for that Conversation to the configured adapter, then stores one
+This endpoint stores the user's message, loads the complete chronological
+history through the graph, sends it to the configured adapter, then stores one
 assistant response. A successful request returns both new records:
 
 ```json
@@ -226,8 +227,9 @@ records the resolved environment.
 
 The API persists Conversation, user Message, and assistant Message records.
 The adapter can call a configured compatible service, but has no retries,
-system prompts, tool calling, or model-discovery behavior. Message
-history has no pagination or individual mutation operations. The health
+system prompts, tool calling, or model-discovery behavior. LangGraph currently
+provides orchestration only; it has no tool nodes or routing. Message history
+has no pagination or individual mutation operations. The health
 endpoint reports API-process availability only and does not check the database
 or LLM service. The synchronous endpoint remains available. The v0.1.1
 streaming endpoint is `POST /conversations/{conversation_id}/messages/stream`

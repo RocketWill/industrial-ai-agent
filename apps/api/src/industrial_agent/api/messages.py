@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 
 from industrial_agent.config.settings import Settings
 from industrial_agent.database.session import get_db_session
+from industrial_agent.graph.errors import GraphExecutionError
+from industrial_agent.graph.runner import run_stream_exchange, run_sync_exchange
 from industrial_agent.llm.errors import (
     LLMConfigurationError,
     LLMConnectionError,
@@ -61,7 +63,7 @@ def create_user_message(
             return adapter.complete(messages)
 
     try:
-        exchange = message_service.create_message_exchange(
+        exchange = run_sync_exchange(
             session,
             conversation_id=conversation_id,
             content=payload.content,
@@ -78,6 +80,11 @@ def create_user_message(
         LLMResponseError,
         LLMServiceError,
     ) as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Assistant response is temporarily unavailable",
+        ) from error
+    except GraphExecutionError as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Assistant response is temporarily unavailable",
@@ -112,7 +119,7 @@ def stream_user_message(
                 yield from adapter.stream(messages)
 
         try:
-            events = message_service.stream_message_exchange(
+            events = run_stream_exchange(
                 session,
                 conversation_id=conversation_id,
                 content=payload.content,
@@ -120,15 +127,15 @@ def stream_user_message(
             )
             for event in events:
                 if event.kind == "user_message":
-                    message = MessageRead.model_validate(event.value)
+                    message = MessageRead.model_validate(event.payload)
                     yield _sse_event(
                         "message_started",
                         {"user_message": message.model_dump(mode="json")},
                     )
                 elif event.kind == "token":
-                    yield _sse_event("token", {"text": event.value})
+                    yield _sse_event("token", event.payload)
                 elif event.kind == "assistant_message":
-                    message = MessageRead.model_validate(event.value)
+                    message = MessageRead.model_validate(event.payload)
                     yield _sse_event(
                         "message_completed",
                         {"assistant_message": message.model_dump(mode="json")},
@@ -146,12 +153,16 @@ def stream_user_message(
                     "message": "Assistant response is temporarily unavailable",
                 },
             )
-        except ValueError:
+        except GraphExecutionError as error:
             yield _sse_event(
                 "error",
                 {
-                    "code": "empty_response",
-                    "message": "Assistant returned an empty response",
+                    "code": error.code,
+                    "message": (
+                        "Assistant returned an empty response"
+                        if error.code == "empty_response"
+                        else "Assistant response is temporarily unavailable"
+                    ),
                 },
             )
 

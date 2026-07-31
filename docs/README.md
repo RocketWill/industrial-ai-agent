@@ -19,8 +19,9 @@ contracts.
 
 ## Status
 
-The v0.1 foundation is implemented. Streaming v0.1.1 and the Industrial Chat
-Workspace UI v0.1.2 are also implemented. LangGraph is still planned for v0.2.
+The v0.1 foundation, streaming v0.1.1, Industrial Chat Workspace UI v0.1.2,
+and minimal LangGraph orchestration v0.2 are implemented. The next planned
+milestone is v0.3 Manufacturing Domain.
 
 Architecture notes and engineering decisions should be added only when the
 corresponding code or decision exists. Planned architecture belongs in the
