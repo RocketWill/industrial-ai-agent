@@ -32,6 +32,7 @@ from industrial_agent.llm.types import (
     CompletionResult,
     ToolResult,
 )
+from industrial_agent.schemas.message import SuggestedAction
 from industrial_agent.services import message as message_service
 from industrial_agent.services.documents import DocumentCorpusService
 from industrial_agent.services.evidence import validate_answer, validate_evidence
@@ -134,7 +135,12 @@ def run_stream_routed_exchange(
                     "label": "Clarification required",
                 },
             )
-        yield from _persist_stream_text(session, state, outcome.response_text)
+        yield from _persist_stream_text(
+            session,
+            state,
+            outcome.response_text,
+            suggested_actions=outcome.suggested_actions,
+        )
         return
     if decision.intent is RouteIntent.GENERAL:
         parts = list(stream(state["messages"]))
@@ -219,8 +225,16 @@ def _persist_stream_text(
     content: str,
     *,
     emit_token: bool = True,
+    suggested_actions: tuple[SuggestedAction, ...] = (),
 ) -> Iterator[ExecutionEvent]:
-    persist_response(session, {**state, "assistant_content": content})
+    persist_response(
+        session,
+        {
+            **state,
+            "assistant_content": content,
+            "suggested_actions": suggested_actions,
+        },
+    )
     if emit_token:
         yield ExecutionEvent(kind="token", payload={"text": content})
     assistant_message = message_service.list_messages(

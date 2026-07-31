@@ -18,6 +18,7 @@ from industrial_agent.domain.routing import (
     deterministic_gate,
     resolve_exchange_context,
 )
+from industrial_agent.schemas.message import SuggestedAction, SuggestedActionId
 from industrial_agent.services.routing_classifier import (
     ClassifierInput,
     PriorExchange,
@@ -43,12 +44,25 @@ UNSUPPORTED_MESSAGE = (
     "That request is outside this synthetic portfolio project's supported "
     "capabilities."
 )
+COMBINED_SUGGESTED_ACTIONS = (
+    SuggestedAction(
+        id=SuggestedActionId.PRODUCTION_EVIDENCE_FIRST,
+        label="Production evidence",
+        message="Show the production evidence first.",
+    ),
+    SuggestedAction(
+        id=SuggestedActionId.DOCUMENT_EVIDENCE_FIRST,
+        label="Document evidence",
+        message="Search the documents first.",
+    ),
+)
 
 
 @dataclass(frozen=True, slots=True)
 class RoutingOutcome:
     decision: RouteDecision
     response_text: str | None = None
+    suggested_actions: tuple[SuggestedAction, ...] = ()
 
 
 def route_exchange(
@@ -142,7 +156,9 @@ def route_deterministically(
             fallback_state=decision.fallback_state,
             safe_action=SafeAction.REQUEST_CLARIFICATION,
         )
-        outcome = RoutingOutcome(decision, COMBINED_MESSAGE)
+        outcome = RoutingOutcome(
+            decision, COMBINED_MESSAGE, COMBINED_SUGGESTED_ACTIONS
+        )
         _log_decision(outcome.decision, conversation_id, trace_id)
         return outcome
     outcome = _outcome_for_decision(decision)
@@ -212,7 +228,9 @@ def _outcome_for_decision(
     if decision.intent is not RouteIntent.CLARIFICATION:
         return RoutingOutcome(decision)
     if candidate is not None and candidate.intent is RouteIntent.COMBINED:
-        return RoutingOutcome(decision, COMBINED_MESSAGE)
+        return RoutingOutcome(
+            decision, COMBINED_MESSAGE, COMBINED_SUGGESTED_ACTIONS
+        )
     missing = candidate.missing_fields if candidate is not None else ()
     message = next(
         (CLARIFICATION_MESSAGES[field] for field in missing),

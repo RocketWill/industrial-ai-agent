@@ -4,6 +4,7 @@ from uuid import UUID
 
 from industrial_agent.llm.types import ChatMessage, ToolCall
 from industrial_agent.schemas.context import WorkspaceContextRead
+from industrial_agent.schemas.message import SuggestedAction
 from industrial_agent.tools.defect_distribution import DefectDistributionResult
 from industrial_agent.tools.document_search import DocumentSearchResult
 from industrial_agent.tools.equipment_status import EquipmentStatusResult
@@ -93,6 +94,7 @@ class GraphState(TypedDict):
     messages: list[ChatMessage]
     workspace_context: WorkspaceContextRead
     assistant_content: str
+    suggested_actions: tuple[SuggestedAction, ...]
     execution_events: list[ExecutionEvent]
     evidence: EvidenceState | None
     tool_call: ToolCall | None

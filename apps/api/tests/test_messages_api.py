@@ -114,6 +114,8 @@ def test_create_message_returns_persisted_user_and_assistant_messages(
     assert payload["user_message"]["content"] == "Check chamber pressure"
     assert payload["assistant_message"]["role"] == "assistant"
     assert payload["assistant_message"]["content"] == "Assistant answer"
+    assert payload["user_message"]["suggested_actions"] == []
+    assert payload["assistant_message"]["suggested_actions"] == []
 
 
 def test_explicit_general_route_does_not_construct_router_adapter(
@@ -482,6 +484,61 @@ def test_stream_combined_request_completes_with_clarification(
     assert "event: clarification_required" in response.text
     assert f'data: {{"text":"{COMBINED_MESSAGE}"}}' in response.text
     assert "event: message_completed" in response.text
+    assert '"suggested_actions":[{"id":"production_evidence_first"' in response.text
+    history = conversation_client.get(
+        f"/conversations/{conversation['id']}/messages"
+    ).json()
+    assert history[-1]["suggested_actions"] == [
+        {
+            "id": "production_evidence_first",
+            "label": "Production evidence",
+            "message": "Show the production evidence first.",
+        },
+        {
+            "id": "document_evidence_first",
+            "label": "Document evidence",
+            "message": "Search the documents first.",
+        },
+    ]
+
+
+def test_sync_combined_request_returns_persisted_suggested_actions(
+    conversation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conversation = create_conversation(conversation_client)
+    conversation_client.patch(
+        f"/conversations/{conversation['id']}/context",
+        json={"device": "AOI-WAFER-01", "time_range": "Last 8 hours"},
+    )
+
+    class UnexpectedAdapter:
+        def __enter__(self):
+            raise AssertionError("combined deterministic routing must not call a model")
+
+    monkeypatch.setattr(
+        OpenAICompatibleChatAdapter,
+        "from_settings",
+        classmethod(lambda cls, settings: UnexpectedAdapter()),
+    )
+    response = conversation_client.post(
+        f"/conversations/{conversation['id']}/messages",
+        json={"content": "Show production yield and search the documents."},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["assistant_message"]["suggested_actions"] == [
+        {
+            "id": "production_evidence_first",
+            "label": "Production evidence",
+            "message": "Show the production evidence first.",
+        },
+        {
+            "id": "document_evidence_first",
+            "label": "Document evidence",
+            "message": "Search the documents first.",
+        },
+    ]
 
 
 def test_stream_production_tool_error_persists_safe_response(
