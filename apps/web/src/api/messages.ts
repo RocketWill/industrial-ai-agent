@@ -41,8 +41,32 @@ export type ProductionEvidence = {
 };
 
 export type MessageExchange = { user_message: Message; assistant_message: Message; evidence: ProductionEvidence | null };
+export type RouteIntent =
+  | "general"
+  | "production_summary"
+  | "equipment_status"
+  | "defect_distribution"
+  | "document_search"
+  | "combined"
+  | "clarification"
+  | "unsupported";
+export type RoutingReasonCode =
+  | "general_request"
+  | "production_request"
+  | "equipment_status_request"
+  | "defect_distribution_request"
+  | "document_request"
+  | "combined_request"
+  | "clarification_required"
+  | "unsupported_capability"
+  | "ambiguous_request";
 export type MessageStreamEvent =
   | { type: "message_started"; user_message: Message }
+  | { type: "routing_started"; label: string }
+  | { type: "routing_retry"; label: string; retry_count: number }
+  | { type: "routing_decided"; label: string; route: RouteIntent; reason_code: RoutingReasonCode; retry_count: number }
+  | { type: "clarification_required"; label: string; reason_code: RoutingReasonCode }
+  | { type: "routing_fallback_used"; label: string; reason_code: RoutingReasonCode }
   | { type: "tool_call_started"; name: string; arguments: Record<string, unknown> }
   | { type: "tool_result"; evidence: ProductionEvidence }
   | { type: "token"; text: string }
@@ -81,12 +105,28 @@ function isEvidence(value: unknown): value is ProductionEvidence | null {
 function parseStreamEvent(event: string, data: string): MessageStreamEvent {
   const value: unknown = JSON.parse(data);
   if (event === "message_started" && typeof value === "object" && value !== null && isMessage((value as { user_message: unknown }).user_message)) return { type: event, user_message: (value as { user_message: Message }).user_message };
+  if (event === "routing_started" && isRoutingPayload(value)) return { type: event, label: value.label };
+  if (event === "routing_retry" && isRoutingPayload(value) && typeof value.retry_count === "number") return { type: event, label: value.label, retry_count: value.retry_count };
+  if (event === "routing_decided" && isRoutingPayload(value) && isRouteIntent(value.route) && isRoutingReasonCode(value.reason_code) && typeof value.retry_count === "number") return { type: event, label: value.label, route: value.route, reason_code: value.reason_code, retry_count: value.retry_count };
+  if (event === "clarification_required" && isRoutingPayload(value) && isRoutingReasonCode(value.reason_code)) return { type: event, label: value.label, reason_code: value.reason_code };
+  if (event === "routing_fallback_used" && isRoutingPayload(value) && isRoutingReasonCode(value.reason_code)) return { type: event, label: value.label, reason_code: value.reason_code };
   if (event === "token" && typeof value === "object" && value !== null && typeof (value as { text: unknown }).text === "string") return { type: event, text: (value as { text: string }).text };
   if (event === "tool_call_started" && typeof value === "object" && value !== null && typeof (value as { name: unknown }).name === "string" && typeof (value as { arguments: unknown }).arguments === "object") return { type: event, name: (value as { name: string }).name, arguments: (value as { arguments: Record<string, unknown> }).arguments };
   if (event === "tool_result" && typeof value === "object" && value !== null && isEvidence(value)) return { type: event, evidence: value };
   if (event === "message_completed" && typeof value === "object" && value !== null && isMessage((value as { assistant_message: unknown }).assistant_message)) return { type: event, assistant_message: (value as { assistant_message: Message }).assistant_message };
   if (event === "error" && typeof value === "object" && value !== null && typeof (value as { code: unknown }).code === "string" && typeof (value as { message: unknown }).message === "string") return { type: event, code: (value as { code: string }).code, message: (value as { message: string }).message };
   throw new Error("invalid streaming event");
+}
+function isRoutingPayload(value: unknown): value is { label: string; route?: unknown; reason_code?: unknown; retry_count?: unknown } {
+  return typeof value === "object" && value !== null && typeof (value as { label?: unknown }).label === "string";
+}
+const ROUTE_INTENTS = new Set<RouteIntent>(["general", "production_summary", "equipment_status", "defect_distribution", "document_search", "combined", "clarification", "unsupported"]);
+const ROUTING_REASON_CODES = new Set<RoutingReasonCode>(["general_request", "production_request", "equipment_status_request", "defect_distribution_request", "document_request", "combined_request", "clarification_required", "unsupported_capability", "ambiguous_request"]);
+function isRouteIntent(value: unknown): value is RouteIntent {
+  return typeof value === "string" && ROUTE_INTENTS.has(value as RouteIntent);
+}
+function isRoutingReasonCode(value: unknown): value is RoutingReasonCode {
+  return typeof value === "string" && ROUTING_REASON_CODES.has(value as RoutingReasonCode);
 }
 export function buildMessagesUrl(baseUrl: string | undefined, conversationId: string): string {
   const base = baseUrl?.trim() ? baseUrl.replace(/\/+$/, "") : "/api";

@@ -37,6 +37,8 @@ describe("useMessages", () => {
       sendMessage: vi.fn().mockResolvedValue(exchange),
       streamMessage: vi.fn(async function* () {
         yield { type: "message_started" as const, user_message: exchange.user_message };
+        yield { type: "routing_started" as const, label: "Understanding request" };
+        yield { type: "routing_decided" as const, label: "Selecting production summary", route: "production_summary" as const, reason_code: "production_request" as const, retry_count: 0 };
         yield { type: "tool_call_started" as const, name: "get_production_summary", arguments: {} };
         yield { type: "tool_result" as const, evidence: { production_summary: null, tool_error: { code: "NO_DATA", message: "No data" } } };
         yield { type: "token" as const, text: "Answer" };
@@ -53,6 +55,27 @@ describe("useMessages", () => {
     expect(result.current.messages).toEqual([exchange.user_message, exchange.assistant_message]);
     expect(result.current.runState.phase).toBe("success");
     expect(result.current.evidence?.tool_error?.code).toBe("NO_DATA");
+  });
+
+  it("shows routing retry and clarification progress", async () => {
+    const api = {
+      listMessages: vi.fn().mockResolvedValue([]),
+      sendMessage: vi.fn(),
+      streamMessage: vi.fn(async function* () {
+        yield { type: "message_started" as const, user_message: exchange.user_message };
+        yield { type: "routing_started" as const, label: "Understanding request" };
+        yield { type: "routing_retry" as const, label: "Retrying request classification", retry_count: 1 };
+        yield { type: "routing_decided" as const, label: "Clarification required", route: "clarification" as const, reason_code: "clarification_required" as const, retry_count: 1 };
+        yield { type: "clarification_required" as const, label: "Clarification required", reason_code: "clarification_required" as const };
+        yield { type: "token" as const, text: "Which equipment?" };
+        yield { type: "message_completed" as const, assistant_message: exchange.assistant_message };
+      }),
+    };
+    const { result } = renderHook(() => useMessages(id, api));
+    await waitFor(() => expect(api.listMessages).toHaveBeenCalled());
+    await act(async () => { await result.current.send("Analyze the run"); });
+    expect(result.current.runState.phase).toBe("success");
+    expect(result.current.messages).toEqual([exchange.user_message, exchange.assistant_message]);
   });
 
   it("clears previous production evidence for a new general question", async () => {
