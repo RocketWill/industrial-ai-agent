@@ -93,9 +93,11 @@ needs a dedicated integration test.
 
 The context bar loads conversation-bound metadata from the API. Its Drawer
 allows a device to be selected from the fictional catalog and optional lot and
-time-range values to be saved. Empty values remain `Not selected` or `—`, and
-the source remains read-only `Synthetic Demo`.
+time-range values to be saved. Empty values appear as `Not configured`, and the
+source remains read-only `Synthetic Demo`.
 
-Production Data, Knowledge Base, and Evaluations are marked as planned. The
-prompt suggestions describe intended industrial questions, but the current
-application has no manufacturing tools or datasets to ground those answers.
+The sidebar exposes only the implemented analysis workspace. The empty-state
+prompts describe synthetic conversation tasks rather than implying that
+production analytics are available. The current application has no
+manufacturing tools or datasets to ground equipment, yield, alarm, or defect
+answers.

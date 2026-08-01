@@ -17,7 +17,8 @@ portfolio project.
 - append-only user Message persistence and chronological history endpoints;
 - database-enforced Message role, content, and cascade-delete constraints;
 - synchronous and SSE assistant-response endpoints;
-- typed LangGraph orchestration shared by synchronous and streaming flows;
+- a compiled typed LangGraph workflow for synchronous execution, with the SSE
+  runner reusing its state and execution-step boundaries;
 - standalone OpenAI-compatible chat adapter with configurable endpoint,
   optional API key, model, and timeout;
 - conversation-bound Workspace Context `GET` and `PATCH` endpoints;
@@ -228,7 +229,10 @@ records the resolved environment.
 The API persists Conversation, user Message, and assistant Message records.
 The adapter can call a configured compatible service, but has no retries,
 system prompts, tool calling, or model-discovery behavior. LangGraph currently
-provides orchestration only; it has no tool nodes or routing. Message history
+provides a compiled synchronous workflow. Streaming reuses the graph state,
+context-loading step, and persistence step but emits token events from its
+runner rather than invoking the compiled graph. There are no tool nodes or
+routing. Message history
 has no pagination or individual mutation operations. The health
 endpoint reports API-process availability only and does not check the database
 or LLM service. The synchronous endpoint remains available. The v0.1.1

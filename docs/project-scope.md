@@ -59,10 +59,13 @@ belongs in deterministic domain code rather than an LLM.
 
 ## Current milestone boundary
 
-The active milestone is **v0.3 — Manufacturing Domain** planning. The v0.1
+The current completed baseline is **v0.2 — Minimal LangGraph**. The v0.1
 foundation, v0.1.1 streaming extension, v0.1.2 workspace extension, and v0.2
 minimal LangGraph orchestration are implemented, including clean-environment
-verification.
+verification. v0.3 Manufacturing Domain is in progress. Its first vertical
+slice provides deterministic domain records, production summarization, and one
+fictional AOI wafer-inspection dataset. Equipment-status and possible
+throughput semantics remain undecided.
 
 The current backend includes explicit SQLite migrations, Conversation and
 Message persistence, synchronous and streaming OpenAI-compatible chat flows,
@@ -89,7 +92,7 @@ Streaming is outside the original v0.1 contract but implemented in v0.1.1.
 Keeping it separate allowed client cancellation, partial-response handling,
 and the completed-response persistence boundary to be specified together.
 
-The next planned implementation milestone is v0.3. It defines synthetic domain
+The active implementation milestone is v0.3. It defines synthetic domain
 models and deterministic numeric semantics before any manufacturing tool is
 added to the graph.
 

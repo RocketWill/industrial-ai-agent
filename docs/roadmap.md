@@ -68,22 +68,54 @@ Those surfaces remain tied to later backend milestones.
 
 **Status: Implemented**
 
-The Message API now routes synchronous and SSE execution through a typed graph
-with context loading, model execution, token events, safe errors, and completed
-assistant persistence. Both transports share the same orchestration boundary,
-while Workspace Context remains synthetic metadata and is not converted into a
-system prompt. Graph, API regression, and frontend compatibility tests pass.
+The synchronous Message API executes a compiled typed graph with context
+loading, model execution, safe errors, and completed assistant persistence. The
+SSE runner reuses the same typed state plus the context-loading and persistence
+steps, while emitting model token events directly instead of invoking the
+compiled graph. Workspace Context remains synthetic metadata and is not
+converted into a system prompt. Graph, API regression, and frontend
+compatibility tests pass.
 
 This milestone does not add tool nodes, manufacturing analytics, RAG, MCP,
 retry orchestration, or workflow visualization.
 
+### v0.2 UI refinement
+
+**Status: Implemented**
+
+The existing workbench was refined without changing its routes or API
+contracts. The sidebar now exposes only the available analysis workspace, the
+workspace header and synthetic context have clearer hierarchy, the empty state
+uses prompts that match the current conversation capability, and assistant
+responses have a distinct analysis block treatment.
+
+This refinement does not claim manufacturing analytics, source evidence, tool
+activity, or evaluation views. Those remain tied to the later milestones that
+implement their backend behavior.
+
 ## v0.3 — Manufacturing Domain
 
-**Status: Planned**
+**Status: In Progress**
 
 Define synthetic equipment, production, inspection, defect, yield, alarm,
 time-range, and status models. Specify numeric semantics and boundary behavior,
 then verify them with deterministic unit tests.
+
+Implemented first slice:
+
+- [x] Define the shared manufacturing-analysis language.
+- [x] Add UTC Time Range, Equipment, Production Lot, Inspection Record, Defect
+  Count, Alarm Event, Yield Rate, and Production Summary semantics.
+- [x] Enforce inspection-count conservation and defect-count boundaries.
+- [x] Aggregate yield, defects, and overlapping alarms deterministically.
+- [x] Add a reproducible fictional AOI wafer-inspection dataset without a
+  causal claim.
+
+Remaining milestone work:
+
+- [ ] Decide and specify equipment-status semantics.
+- [ ] Decide whether throughput belongs in this milestone's domain contract.
+- [ ] Complete milestone documentation and acceptance review.
 
 ## v0.4 — Production Data Tools
 
