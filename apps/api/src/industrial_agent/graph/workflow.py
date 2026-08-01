@@ -15,7 +15,9 @@ from industrial_agent.graph.state import (
 from industrial_agent.llm.types import (
     ChatMessage,
     CompletionResult,
+    ToolCall,
     ToolDefinition,
+    ToolResult,
 )
 from industrial_agent.services import conversation as conversation_service
 from industrial_agent.services import message as message_service
@@ -26,6 +28,7 @@ from industrial_agent.tools.production import (
 )
 
 Complete = Callable[[Sequence[ChatMessage]], str]
+CompleteWithTools = Callable[..., CompletionResult]
 
 PRODUCTION_TOOL = ToolDefinition(
     name="get_production_summary",
@@ -122,6 +125,53 @@ def execute_production_tool(
             *state["execution_events"],
             ExecutionEvent(
                 kind="node_completed", payload={"node": "execute_production_tool"}
+            ),
+        ],
+    }
+
+
+def answer_with_production_evidence(
+    state: GraphState,
+    *,
+    complete_with_tools: CompleteWithTools,
+    tool_call: ToolCall,
+) -> GraphState:
+    """Ask the model for a final answer using one structured tool result."""
+    evidence = state["evidence"]
+    if evidence is None:
+        raise GraphExecutionError(code="empty_response")
+    if evidence.tool_error is not None:
+        return {
+            **state,
+            "assistant_content": evidence.tool_error.message,
+            "execution_events": [
+                *state["execution_events"],
+                ExecutionEvent(
+                    kind="node_completed", payload={"node": "tool_error"}
+                ),
+            ],
+        }
+    if evidence.production_summary is None:
+        raise GraphExecutionError(code="empty_response")
+    result = complete_with_tools(
+        state["messages"],
+        (PRODUCTION_TOOL,),
+        tool_call=ToolResult(
+            call_id=tool_call.call_id,
+            name=tool_call.name,
+            arguments=tool_call.arguments,
+            content=evidence.production_summary.model_dump_json(),
+        ),
+    )
+    if result.tool_calls or not result.content or not result.content.strip():
+        raise GraphExecutionError(code="empty_response")
+    return {
+        **state,
+        "assistant_content": result.content.strip(),
+        "execution_events": [
+            *state["execution_events"],
+            ExecutionEvent(
+                kind="node_completed", payload={"node": "answer_with_evidence"}
             ),
         ],
     }

@@ -56,6 +56,16 @@ class ToolCall:
 
 
 @dataclass(frozen=True, slots=True)
+class ToolResult:
+    """A tool result paired with the model Tool Call that requested it."""
+
+    call_id: str
+    name: str
+    arguments: dict[str, Any]
+    content: str
+
+
+@dataclass(frozen=True, slots=True)
 class CompletionResult:
     """A model completion containing text, one tool call, or neither."""
 

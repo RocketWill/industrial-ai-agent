@@ -1,7 +1,15 @@
 from industrial_agent.graph.runner import run_sync_exchange
 from industrial_agent.graph.state import EvidenceState
-from industrial_agent.graph.workflow import execute_production_tool, load_context
-from industrial_agent.llm.types import ChatMessage, CompletionResult, ToolCall
+from industrial_agent.graph.workflow import (
+    answer_with_production_evidence,
+    execute_production_tool,
+    load_context,
+)
+from industrial_agent.llm.types import (
+    ChatMessage,
+    CompletionResult,
+    ToolCall,
+)
 from industrial_agent.schemas.context import WorkspaceContextUpdate
 from industrial_agent.services.conversation import (
     create_conversation,
@@ -147,3 +155,42 @@ def test_execute_production_tool_rejects_unknown_tool_without_execution(
     )
 
     assert result["evidence"].tool_error.code == "UNSUPPORTED_TOOL_CALL_PATTERN"
+
+
+def test_answer_with_evidence_persists_only_final_model_content(
+    database_session,
+) -> None:
+    conversation = create_conversation(database_session, title="Production")
+    state = load_context(
+        database_session,
+        conversation_id=conversation.id,
+        content="Show production yield",
+    )
+    tool_call = ToolCall(
+        call_id="call-001",
+        name="get_production_summary",
+        arguments={
+            "equipment_id": "AOI-WAFER-01",
+            "start": "2026-01-15T15:00:00Z",
+            "end": "2026-01-15T18:00:00Z",
+        },
+    )
+    state = execute_production_tool(
+        state,
+        CompletionResult(content=None, tool_calls=(tool_call,)),
+    )
+    received = []
+
+    def complete_with_tools(messages, tools, *, tool_call):
+        received.append((messages, tools, tool_call))
+        return CompletionResult(content="Yield is 85.67%.")
+
+    answered = answer_with_production_evidence(
+        state,
+        complete_with_tools=complete_with_tools,
+        tool_call=tool_call,
+    )
+
+    assert answered["assistant_content"] == "Yield is 85.67%."
+    assert len(received) == 1
+    assert received[0][2].content
