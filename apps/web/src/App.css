@@ -130,6 +130,7 @@
 .message-body.streaming::after { animation: message-cursor 1s steps(2, end) infinite; color: var(--color-accent); content: "▋"; margin-left: 3px; }
 .evidence-card { background: rgba(55, 198, 208, 0.06); border: 1px solid rgba(55, 198, 208, 0.24); border-radius: 8px; margin-top: 12px; padding: 12px; }
 .evidence-heading { align-items: center; display: flex; justify-content: space-between; margin-bottom: 8px; }
+.tool-status { display: block; margin: 0 auto 8px; max-width: 960px; width: 100%; }
 .message-copy { color: var(--color-text-muted); opacity: 0; padding-inline: 4px; }
 .chat-message:hover .message-copy, .chat-message:focus-within .message-copy { opacity: 1; }
 .empty-conversation { align-self: center; margin: auto; max-width: 640px; padding: 32px 16px; text-align: center; }
