@@ -4,6 +4,7 @@ from industrial_agent.graph.workflow import (
     answer_with_production_evidence,
     execute_production_tool,
     load_context,
+    resolve_production_request,
 )
 from industrial_agent.llm.types import (
     ChatMessage,
@@ -130,6 +131,55 @@ def test_execute_production_tool_puts_summary_in_evidence_state(
     assert result["assistant_content"] == ""
 
 
+def test_resolve_production_request_fills_missing_values_from_context(
+    database_session,
+) -> None:
+    conversation = create_conversation(database_session, title="Production")
+    update_workspace_context(
+        database_session,
+        conversation.id,
+        update=WorkspaceContextUpdate(
+            device="AOI-WAFER-01", lot="LOT-DEMO-001", time_range="Last 4 hours"
+        ),
+    )
+    state = load_context(
+        database_session,
+        conversation_id=conversation.id,
+        content="Show production yield",
+    )
+
+    request, clarification = resolve_production_request(
+        state,
+        ToolCall(call_id="call-001", name="get_production_summary", arguments={}),
+    )
+
+    assert clarification is None
+    assert request is not None
+    assert request.equipment_id == "AOI-WAFER-01"
+    assert request.lot_id == "LOT-DEMO-001"
+    assert request.start.isoformat() == "2026-01-15T13:00:00+00:00"
+    assert request.end.isoformat() == "2026-01-15T17:00:00+00:00"
+
+
+def test_resolve_production_request_asks_for_missing_context(database_session) -> None:
+    conversation = create_conversation(database_session, title="Production")
+    state = load_context(
+        database_session,
+        conversation_id=conversation.id,
+        content="Show production yield",
+    )
+
+    request, clarification = resolve_production_request(
+        state,
+        ToolCall(call_id="call-001", name="get_production_summary", arguments={}),
+    )
+
+    assert request is None
+    assert clarification == (
+        "Please specify an equipment ID or select a device in the analysis context."
+    )
+
+
 def test_execute_production_tool_rejects_unknown_tool_without_execution(
     database_session,
 ) -> None:
@@ -200,7 +250,15 @@ def test_sync_runner_executes_one_production_tool_then_persists_final_answer(
     database_session,
 ) -> None:
     conversation = create_conversation(database_session, title="Production")
+    update_workspace_context(
+        database_session,
+        conversation.id,
+        update=WorkspaceContextUpdate(
+            device="AOI-WAFER-01", time_range="Last 4 hours"
+        ),
+    )
     calls = []
+    first_messages = []
 
     def complete(messages):
         raise AssertionError("production question should use tools")
@@ -208,6 +266,7 @@ def test_sync_runner_executes_one_production_tool_then_persists_final_answer(
     def complete_with_tools(messages, tools, *, tool_call=None):
         calls.append(tool_call)
         if tool_call is None:
+            first_messages.extend(messages)
             return CompletionResult(
                 content=None,
                 tool_calls=(
@@ -237,3 +296,5 @@ def test_sync_runner_executes_one_production_tool_then_persists_final_answer(
     )
     assert calls[0] is None
     assert calls[1] is not None
+    assert "Saved analysis context" in first_messages[-1].content
+    assert "2026-01-15T13:00:00Z/2026-01-15T17:00:00Z" in first_messages[-1].content

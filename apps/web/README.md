@@ -10,6 +10,7 @@ This directory contains the React and TypeScript v0.1 conversation foundation.
 - a `GET /health` client with runtime response validation;
 - conversation loading, creation, selection, and deletion through the existing API;
 - persisted message history and synchronous user/assistant exchanges;
+- synchronous production-question fallback for a focused English keyword set;
 - SSE streaming assistant responses with a keyboard-accessible Stop action;
 - conversation-bound context display and editing;
 - deterministic fictional device selection, lot validation, and time-range
@@ -73,8 +74,11 @@ the committed npm lockfile and frontend test, typecheck, lint, and build
 commands.
 
 The conversation workflow keeps the synchronous Message API as a stable path
-and also supports the v0.1.1 streaming endpoint. It keeps draft text after
-failed submissions and does not persist partial assistant output.
+and also supports the v0.1.1 streaming endpoint. Questions containing the
+current English production, yield, defect, alarm, or inspection terms use the
+synchronous path so the backend can execute its production-summary tool. Other
+questions use streaming. The browser keeps draft text after failed submissions
+and does not persist partial assistant output.
 
 ## Non-responsibilities
 
@@ -96,8 +100,8 @@ allows a device to be selected from the fictional catalog and optional lot and
 time-range values to be saved. Empty values appear as `Not configured`, and the
 source remains read-only `Synthetic Demo`.
 
-The sidebar exposes only the implemented analysis workspace. The empty-state
-prompts describe synthetic conversation tasks rather than implying that
-production analytics are available. The current application has no
-manufacturing tools or datasets to ground equipment, yield, alarm, or defect
-answers.
+The sidebar exposes only the implemented analysis workspace. Grounded
+production results currently appear as the final assistant text. The browser
+does not display structured tool evidence, tool activity, or manufacturing
+charts, and its keyword heuristic does not yet cover Chinese production terms
+or distinguish every conceptual question from a data query.

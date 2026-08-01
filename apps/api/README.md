@@ -21,6 +21,10 @@ portfolio project.
   runner reusing its state and execution-step boundaries;
 - standalone OpenAI-compatible chat adapter with configurable endpoint,
   optional API key, model, and timeout;
+- typed OpenAI-compatible tool-call support for one
+  `get_production_summary` call;
+- deterministic production-summary execution over a fictional AOI dataset and
+  evidence handoff for the final synchronous model response;
 - conversation-bound Workspace Context `GET` and `PATCH` endpoints;
 - deterministic fictional device catalog and device-ID validation;
 - Pytest and Ruff verification; and
@@ -136,9 +140,11 @@ is created. This makes it possible to retry without losing the original input.
 
 The backend provides `OpenAICompatibleChatAdapter` as a standalone Python
 adapter. It sends synchronous or streaming requests to the standard
-`/v1/chat/completions` endpoint and accepts only `user` and `assistant` chat
-messages. The HTTP Message API uses this adapter to request and persist one
-assistant Message for each successful user Message.
+`/v1/chat/completions` endpoint and accepts `user` and `assistant` history.
+For a supported synchronous production question, it can also send one tool
+definition, parse one tool call, append the tool evidence, and request the
+final assistant response. The HTTP Message API persists one assistant Message
+for each successful exchange.
 
 Configuration uses these environment variables:
 
@@ -195,9 +201,11 @@ curl -X PATCH \
 curl http://127.0.0.1:8000/devices
 ```
 
-The device catalog contains three deterministic fictional identities. Context
-does not query equipment, load production records, or enter the current model
-prompt.
+The device catalog contains three deterministic fictional identities. The
+graph can fill missing production-tool arguments from the selected device, lot,
+and supported synthetic time-range presets. It does not inject context into
+the general model prompt; custom or unrecognized time-range labels still
+require explicit UTC timestamps.
 
 ## Verify
 
@@ -214,9 +222,10 @@ the committed uv lockfile, migrations, and backend test suite.
 
 ## Non-responsibilities
 
-LangGraph, RAG, MCP, manufacturing analytics, production tools, authentication,
-and distributed deployment are outside v0.1. Streaming is implemented in the
-separate v0.1.1 milestone.
+RAG, MCP, authentication, and distributed deployment remain outside the
+implemented scope. The first manufacturing summary tool is an in-progress
+v0.4 capability. Streaming is implemented in v0.1.1 but does not execute that
+tool.
 
 ## Dependency management
 
@@ -227,12 +236,13 @@ records the resolved environment.
 ## Current limitations
 
 The API persists Conversation, user Message, and assistant Message records.
-The adapter can call a configured compatible service, but has no retries,
-system prompts, tool calling, or model-discovery behavior. LangGraph currently
-provides a compiled synchronous workflow. Streaming reuses the graph state,
-context-loading step, and persistence step but emits token events from its
-runner rather than invoking the compiled graph. There are no tool nodes or
-routing. Message history
+The adapter can call a configured compatible service, including one supported
+tool-call exchange, but has no retries, system prompts, or model-discovery
+behavior. The configured model must implement the compatible tool-call
+protocol. LangGraph provides a compiled synchronous workflow with focused
+production-query detection and production-summary execution. Streaming reuses
+the graph state, context-loading step, and persistence step but emits token
+events from its runner and does not execute tools. Message history
 has no pagination or individual mutation operations. The health
 endpoint reports API-process availability only and does not check the database
 or LLM service. The synchronous endpoint remains available. The v0.1.1
