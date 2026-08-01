@@ -30,4 +30,22 @@ describe("useMessages", () => {
     expect(selected.result.current.draft).toBe("Question");
     expect(selected.result.current.error).toBe("Unable to send message");
   });
+
+  it("uses synchronous API for production queries even when streaming is available", async () => {
+    const api = {
+      listMessages: vi.fn().mockResolvedValue([]),
+      sendMessage: vi.fn().mockResolvedValue(exchange),
+      streamMessage: vi.fn(async function* () {
+        yield { type: "error" as const, code: "unexpected", message: "not used" };
+      }),
+    };
+    const { result } = renderHook(() => useMessages(id, api));
+    await waitFor(() => expect(api.listMessages).toHaveBeenCalledWith(id));
+    act(() => result.current.setDraft("What is the production yield?"));
+    await act(async () => { await result.current.send(); });
+
+    expect(api.sendMessage).toHaveBeenCalledWith(id, "What is the production yield?");
+    expect(api.streamMessage).not.toHaveBeenCalled();
+    expect(result.current.messages).toEqual([exchange.user_message, exchange.assistant_message]);
+  });
 });

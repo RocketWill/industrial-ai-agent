@@ -12,6 +12,11 @@ export type MessageState = {
   setDraft: (value: string) => void; reload: () => Promise<void>; send: () => Promise<boolean>; cancelStreaming: () => void;
 };
 
+export function isProductionQuery(content: string): boolean {
+  const normalized = content.toLowerCase();
+  return ["yield", "defect", "alarm", "production", "inspection"].some((term) => normalized.includes(term));
+}
+
 const defaultApi: MessageApi = { listMessages: (id) => messageApi.listMessages(id), sendMessage: (id, content) => messageApi.sendMessage(id, content), streamMessage: (id, content, signal) => messageApi.streamMessage(id, content, signal) };
 
 export function useMessages(conversationId: string | null, api: MessageApi = defaultApi): MessageState {
@@ -39,7 +44,7 @@ export function useMessages(conversationId: string | null, api: MessageApi = def
     if (!id || !content || busy.current) return false;
     busy.current = true; setSending(true); setError(null);
     try {
-      if (!api.streamMessage) {
+      if (!api.streamMessage || isProductionQuery(content)) {
         const exchange = await api.sendMessage(id, content); setMessages((current) => [...current, exchange.user_message, exchange.assistant_message]); setDraft(""); return true;
       }
       const abortController = new AbortController(); controller.current = abortController; setStreaming(true);
