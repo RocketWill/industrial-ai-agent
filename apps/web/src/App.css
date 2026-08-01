@@ -129,7 +129,20 @@
 .message-body { color: var(--color-text-primary); line-height: 1.7; margin: 6px 0 0 !important; white-space: pre-wrap; overflow-wrap: anywhere; }
 .message-body.streaming::after { animation: message-cursor 1s steps(2, end) infinite; color: var(--color-accent); content: "▋"; margin-left: 3px; }
 .evidence-card { background: rgba(55, 198, 208, 0.06); border: 1px solid rgba(55, 198, 208, 0.24); border-radius: 8px; margin-top: 12px; padding: 12px; }
-.evidence-heading { align-items: center; display: flex; justify-content: space-between; margin-bottom: 8px; }
+.evidence-heading { align-items: center; display: flex; gap: 8px; justify-content: space-between; margin-bottom: 8px; }
+.evidence-tags { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.evidence-tags .ant-tag { margin: 0; }
+.evidence-details { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 12px; }
+.evidence-detail-section { background: var(--color-elevated); border: 1px solid var(--color-border-subtle); border-radius: 6px; min-width: 0; padding: 10px; }
+.evidence-detail-section .ant-typography-title { font-size: 13px; margin: 0 0 8px; }
+.evidence-detail-list { display: grid; gap: 6px; margin: 0; }
+.evidence-detail-list > div { align-items: baseline; display: flex; gap: 8px; justify-content: space-between; }
+.evidence-detail-list dt, .evidence-detail-list dd { margin: 0; overflow-wrap: anywhere; }
+.evidence-detail-list dd { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.evidence-alarm-list { display: grid; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.evidence-alarm-list li { display: grid; gap: 2px; overflow-wrap: anywhere; }
+.evidence-alarm-list .ant-typography-secondary { font-size: 12px; }
+.evidence-limitations { display: block; margin-top: 12px; }
 .tool-status { display: block; margin: 0 auto 8px; max-width: 960px; width: 100%; }
 .message-copy { color: var(--color-text-muted); opacity: 0; padding-inline: 4px; }
 .chat-message:hover .message-copy, .chat-message:focus-within .message-copy { opacity: 1; }
@@ -158,6 +171,7 @@
   .workbench-layout { gap: 0; }
   .desktop-sidebar { display: none; }
   .mobile-menu-button { display: inline-flex; }
+  .evidence-details { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 479px) {

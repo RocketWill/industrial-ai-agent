@@ -60,7 +60,8 @@ boundaries.
 
 The browser uses SSE for general and production questions. Production requests
 emit tool-call and tool-result events, and the current exchange can display a
-compact deterministic evidence summary below the assistant answer. Supported
+deterministic Production Summary result surface below the assistant answer,
+including Defect Counts and Alarm Events. Supported
 saved workspace presets can fill missing device, lot, and time-range arguments.
 Custom or unrecognized time ranges still require explicit UTC timestamps.
 
