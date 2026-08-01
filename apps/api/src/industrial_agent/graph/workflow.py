@@ -30,6 +30,14 @@ from industrial_agent.tools.production import (
 Complete = Callable[[Sequence[ChatMessage]], str]
 CompleteWithTools = Callable[..., CompletionResult]
 
+
+def _is_production_question(messages: Sequence[ChatMessage]) -> bool:
+    question = messages[-1].content.lower()
+    return any(
+        term in question
+        for term in ("yield", "defect", "alarm", "production", "inspection")
+    )
+
 PRODUCTION_TOOL = ToolDefinition(
     name="get_production_summary",
     description="Read deterministic synthetic production evidence.",
@@ -71,6 +79,7 @@ def load_context(
         ),
         "assistant_content": "",
         "evidence": None,
+        "tool_call": None,
         "execution_events": [
             ExecutionEvent(kind="node_completed", payload={"node": "load_context"})
         ],
@@ -121,6 +130,7 @@ def execute_production_tool(
     return {
         **state,
         "evidence": EvidenceState(production_summary=summary),
+        "tool_call": call,
         "execution_events": [
             *state["execution_events"],
             ExecutionEvent(
@@ -177,7 +187,36 @@ def answer_with_production_evidence(
     }
 
 
-def _call_llm(state: GraphState, *, complete: Complete) -> GraphState:
+def _call_llm(
+    state: GraphState,
+    *,
+    complete: Complete,
+    complete_with_tools: CompleteWithTools | None = None,
+) -> GraphState:
+    if complete_with_tools is not None and _is_production_question(state["messages"]):
+        first_result = complete_with_tools(
+            state["messages"],
+            (PRODUCTION_TOOL,),
+        )
+        if first_result.tool_calls:
+            tool_state = execute_production_tool(state, first_result)
+            return answer_with_production_evidence(
+                tool_state,
+                complete_with_tools=complete_with_tools,
+                tool_call=first_result.tool_calls[0],
+            )
+        if first_result.content and first_result.content.strip():
+            return {
+                **state,
+                "assistant_content": first_result.content.strip(),
+                "execution_events": [
+                    *state["execution_events"],
+                    ExecutionEvent(
+                        kind="node_completed", payload={"node": "call_llm"}
+                    ),
+                ],
+            }
+        raise GraphExecutionError(code="empty_response")
     assistant_content = complete(state["messages"])
     return {
         **state,
@@ -211,7 +250,11 @@ def persist_response(session: Session, state: GraphState) -> GraphState:
     }
 
 
-def build_workflow(session: Session, complete: Complete):
+def build_workflow(
+    session: Session,
+    complete: Complete,
+    complete_with_tools: CompleteWithTools | None = None,
+):
     graph = StateGraph(GraphState)
     graph.add_node(
         "load_context",
@@ -220,7 +263,14 @@ def build_workflow(session: Session, complete: Complete):
             conversation_id=state["conversation_id"],
         ),
     )
-    graph.add_node("call_llm", lambda state: _call_llm(state, complete=complete))
+    graph.add_node(
+        "call_llm",
+        lambda state: _call_llm(
+            state,
+            complete=complete,
+            complete_with_tools=complete_with_tools,
+        ),
+    )
     graph.add_node("persist_response", lambda state: persist_response(session, state))
     graph.add_edge(START, "load_context")
     graph.add_edge("load_context", "call_llm")

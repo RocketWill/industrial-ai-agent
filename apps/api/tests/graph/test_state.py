@@ -27,6 +27,7 @@ def test_graph_state_keeps_typed_conversation_inputs() -> None:
         assistant_content="",
         execution_events=[],
         evidence=None,
+        tool_call=None,
     )
 
     assert state["assistant_content"] == ""

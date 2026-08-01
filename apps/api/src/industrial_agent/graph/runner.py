@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from industrial_agent.graph.state import ExecutionEvent, GraphState
 from industrial_agent.graph.workflow import (
     Complete,
+    CompleteWithTools,
     build_workflow,
     load_context,
     persist_response,
@@ -21,13 +22,18 @@ def run_sync_exchange(
     conversation_id: UUID,
     content: str,
     complete: Complete,
+    complete_with_tools: CompleteWithTools | None = None,
 ) -> MessageExchange:
     initial_state = load_context(
         session,
         conversation_id=conversation_id,
         content=content,
     )
-    build_workflow(session, complete).invoke(initial_state)
+    build_workflow(
+        session,
+        complete,
+        complete_with_tools=complete_with_tools,
+    ).invoke(initial_state)
     messages = message_service.list_messages(session, conversation_id)
     return MessageExchange(
         user_message=messages[-2],

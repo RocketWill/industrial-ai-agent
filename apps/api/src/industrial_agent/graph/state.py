@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, TypedDict
 from uuid import UUID
 
-from industrial_agent.llm.types import ChatMessage
+from industrial_agent.llm.types import ChatMessage, ToolCall
 from industrial_agent.schemas.context import WorkspaceContextRead
 from industrial_agent.tools.production import ProductionSummaryResult
 
@@ -72,3 +72,4 @@ class GraphState(TypedDict):
     assistant_content: str
     execution_events: list[ExecutionEvent]
     evidence: EvidenceState | None
+    tool_call: ToolCall | None
