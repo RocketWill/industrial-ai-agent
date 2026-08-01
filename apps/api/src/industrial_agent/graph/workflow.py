@@ -36,6 +36,7 @@ def load_context(
             session, conversation_id
         ),
         "assistant_content": "",
+        "evidence": None,
         "execution_events": [
             ExecutionEvent(kind="node_completed", payload={"node": "load_context"})
         ],
