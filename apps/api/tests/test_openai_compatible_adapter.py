@@ -13,7 +13,7 @@ from industrial_agent.llm.errors import (
 from industrial_agent.llm.openai_compatible import (
     OpenAICompatibleChatAdapter,
 )
-from industrial_agent.llm.types import ChatMessage
+from industrial_agent.llm.types import ChatMessage, ToolDefinition
 
 
 def test_complete_sends_compatible_request_and_returns_text() -> None:
@@ -81,6 +81,120 @@ def test_complete_omits_authorization_without_api_key() -> None:
         assert adapter.complete(
             [ChatMessage(role="user", content="Question")]
         ) == "Answer"
+
+
+def test_complete_with_tools_sends_schema_and_parses_one_tool_call() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.content)
+        assert payload["tools"] == [
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_production_summary",
+                    "description": "Read production evidence",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"equipment_id": {"type": "string"}},
+                        "required": ["equipment_id"],
+                        "additionalProperties": False,
+                    },
+                },
+            }
+        ]
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "content": None,
+                            "tool_calls": [
+                                {
+                                    "id": "call-001",
+                                    "type": "function",
+                                    "function": {
+                                        "name": "get_production_summary",
+                                        "arguments": '{"equipment_id":"AOI-WAFER-01"}',
+                                    },
+                                }
+                            ],
+                        }
+                    }
+                ]
+            },
+        )
+
+    adapter = OpenAICompatibleChatAdapter.from_settings(
+        Settings(LLM_MODEL="test-model"),
+        transport=httpx.MockTransport(handler),
+    )
+
+    with adapter:
+        result = adapter.complete_with_tools(
+            [ChatMessage(role="user", content="What is yield?")],
+            tools=(
+                ToolDefinition(
+                    name="get_production_summary",
+                    description="Read production evidence",
+                    parameters={
+                        "type": "object",
+                        "properties": {"equipment_id": {"type": "string"}},
+                        "required": ["equipment_id"],
+                        "additionalProperties": False,
+                    },
+                ),
+            ),
+        )
+
+    assert result.content is None
+    assert len(result.tool_calls) == 1
+    assert result.tool_calls[0].call_id == "call-001"
+    assert result.tool_calls[0].name == "get_production_summary"
+    assert result.tool_calls[0].arguments == {"equipment_id": "AOI-WAFER-01"}
+
+
+def test_complete_with_tools_rejects_multiple_tool_calls() -> None:
+    adapter = OpenAICompatibleChatAdapter.from_settings(
+        Settings(LLM_MODEL="test-model"),
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(
+                200,
+                json={
+                    "choices": [
+                        {
+                            "message": {
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": "call-001",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "first",
+                                            "arguments": "{}",
+                                        },
+                                    },
+                                    {
+                                        "id": "call-002",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "second",
+                                            "arguments": "{}",
+                                        },
+                                    },
+                                ],
+                            }
+                        }
+                    ]
+                },
+            )
+        ),
+    )
+
+    with adapter, pytest.raises(LLMResponseError, match="one tool call"):
+        adapter.complete_with_tools(
+            [ChatMessage(role="user", content="Question")],
+            tools=(),
+        )
 
 
 def test_from_settings_rejects_missing_model() -> None:

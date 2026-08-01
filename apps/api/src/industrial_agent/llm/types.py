@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 type ChatRole = Literal["user", "assistant"]
 
@@ -17,3 +17,47 @@ class ChatMessage:
             raise ValueError("Chat message content must not be empty")
         object.__setattr__(self, "role", cast(ChatRole, self.role))
         object.__setattr__(self, "content", normalized)
+
+
+@dataclass(frozen=True, slots=True)
+class ToolDefinition:
+    """OpenAI-compatible function tool schema."""
+
+    name: str
+    description: str
+    parameters: dict[str, Any]
+
+    def __post_init__(self) -> None:
+        if not self.name.strip():
+            raise ValueError("Tool name must not be empty")
+        if not self.description.strip():
+            raise ValueError("Tool description must not be empty")
+        if self.parameters.get("type") != "object":
+            raise ValueError("Tool parameters must be an object schema")
+
+    def as_payload(self) -> dict[str, Any]:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.parameters,
+            },
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ToolCall:
+    """One parsed model request to invoke a named tool."""
+
+    call_id: str
+    name: str
+    arguments: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class CompletionResult:
+    """A model completion containing text, one tool call, or neither."""
+
+    content: str | None
+    tool_calls: tuple[ToolCall, ...] = ()

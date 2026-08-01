@@ -11,7 +11,12 @@ from industrial_agent.llm.errors import (
     LLMResponseError,
     LLMServiceError,
 )
-from industrial_agent.llm.types import ChatMessage
+from industrial_agent.llm.types import (
+    ChatMessage,
+    CompletionResult,
+    ToolCall,
+    ToolDefinition,
+)
 
 
 class OpenAICompatibleChatAdapter:
@@ -89,6 +94,83 @@ class OpenAICompatibleChatAdapter:
                 "LLM service returned empty assistant content"
             )
         return content.strip()
+
+    def complete_with_tools(
+        self,
+        messages: Sequence[ChatMessage],
+        *,
+        tools: Sequence[ToolDefinition],
+    ) -> CompletionResult:
+        """Return text or one parsed OpenAI-compatible tool call."""
+        if not messages:
+            raise ValueError("At least one chat message is required")
+        try:
+            response = self._client.post(
+                "chat/completions",
+                json={
+                    "model": self._model,
+                    "messages": [
+                        {
+                            "role": message.role,
+                            "content": message.content,
+                        }
+                        for message in messages
+                    ],
+                    "tools": [tool.as_payload() for tool in tools],
+                    "stream": False,
+                },
+            )
+        except (httpx.TimeoutException, httpx.TransportError) as error:
+            raise LLMConnectionError("Unable to reach LLM service") from error
+        if not response.is_success:
+            raise LLMServiceError(response.status_code)
+        try:
+            payload = response.json()
+            message = payload["choices"][0]["message"]
+            raw_tool_calls = message.get("tool_calls", [])
+            content = message.get("content")
+        except (KeyError, IndexError, TypeError, ValueError) as error:
+            raise LLMResponseError(
+                "LLM service returned an invalid tool response"
+            ) from error
+        if not isinstance(raw_tool_calls, list):
+            raise LLMResponseError("LLM service returned invalid tool calls")
+        if len(raw_tool_calls) > 1:
+            raise LLMResponseError("Only one tool call is supported")
+        if content is not None and not isinstance(content, str):
+            raise LLMResponseError("LLM service returned invalid assistant content")
+        if not raw_tool_calls:
+            if not isinstance(content, str) or not content.strip():
+                raise LLMResponseError(
+                    "LLM service returned empty assistant content"
+                )
+            return CompletionResult(content=content.strip())
+        try:
+            raw_call = raw_tool_calls[0]
+            function = raw_call["function"]
+            call_id = raw_call["id"]
+            name = function["name"]
+            arguments = json.loads(function["arguments"])
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+            raise LLMResponseError(
+                "LLM service returned invalid tool arguments"
+            ) from error
+        if (
+            not isinstance(call_id, str)
+            or not call_id.strip()
+            or not isinstance(name, str)
+            or not name.strip()
+            or not isinstance(arguments, dict)
+        ):
+            raise LLMResponseError("LLM service returned invalid tool arguments")
+        return CompletionResult(
+            content=(
+                content.strip()
+                if isinstance(content, str) and content.strip()
+                else None
+            ),
+            tool_calls=(ToolCall(call_id=call_id, name=name, arguments=arguments),),
+        )
 
     def stream(self, messages: Sequence[ChatMessage]) -> Iterator[str]:
         """Yield text deltas from an OpenAI-compatible SSE response."""
