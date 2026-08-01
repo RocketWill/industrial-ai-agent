@@ -131,6 +131,59 @@ def test_stream_message_returns_ordered_sse_events(
     ]
 
 
+def test_stream_production_message_emits_tool_events(
+    conversation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conversation = create_conversation(conversation_client)
+
+    class FakeAdapter:
+        def __enter__(self) -> "FakeAdapter":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def complete_with_tools(self, messages, *, tools, tool_call=None):
+            from industrial_agent.llm.types import CompletionResult, ToolCall
+
+            if tool_call is None:
+                return CompletionResult(
+                    content=None,
+                    tool_calls=(
+                        ToolCall(
+                            call_id="call-001",
+                            name="get_production_summary",
+                            arguments={
+                                "equipment_id": "AOI-WAFER-01",
+                                "start": "2026-01-15T13:00:00Z",
+                                "end": "2026-01-15T17:00:00Z",
+                            },
+                        ),
+                    ),
+                )
+            return CompletionResult(content="Yield is 92.5%.")
+
+    monkeypatch.setattr(
+        OpenAICompatibleChatAdapter,
+        "from_settings",
+        classmethod(lambda cls, settings: FakeAdapter()),
+    )
+    response = conversation_client.post(
+        f"/conversations/{conversation['id']}/messages/stream",
+        json={"content": "What is the production yield?"},
+    )
+    assert response.status_code == 200
+    events = [line for line in response.text.splitlines() if line.startswith("event:")]
+    assert events == [
+        "event: message_started",
+        "event: tool_call_started",
+        "event: tool_result",
+        "event: token",
+        "event: message_completed",
+    ]
+
+
 def test_created_message_persists_across_requests(
     conversation_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,

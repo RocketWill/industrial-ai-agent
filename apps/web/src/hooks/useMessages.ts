@@ -57,6 +57,8 @@ export function useMessages(conversationId: string | null, api: MessageApi = def
           setMessages((current) => { assistantIndex = current.length + 1; return [...current, event.user_message, placeholder]; });
         } else if (event.type === "token") {
           setMessages((current) => current.map((message, index) => index === assistantIndex ? { ...message, content: message.content + event.text } : message));
+        } else if (event.type === "tool_result") {
+          setEvidence(event.evidence);
         } else if (event.type === "message_completed") {
           setMessages((current) => current.map((message, index) => index === assistantIndex ? event.assistant_message : message)); setDraft("");
         } else if (event.type === "error") { throw new Error(event.message); }

@@ -21,6 +21,8 @@ export type ProductionEvidence = {
 export type MessageExchange = { user_message: Message; assistant_message: Message; evidence: ProductionEvidence | null };
 export type MessageStreamEvent =
   | { type: "message_started"; user_message: Message }
+  | { type: "tool_call_started"; name: string; arguments: Record<string, unknown> }
+  | { type: "tool_result"; evidence: ProductionEvidence }
   | { type: "token"; text: string }
   | { type: "message_completed"; assistant_message: Message }
   | { type: "error"; code: string; message: string };
@@ -52,6 +54,8 @@ function parseStreamEvent(event: string, data: string): MessageStreamEvent {
   const value: unknown = JSON.parse(data);
   if (event === "message_started" && typeof value === "object" && value !== null && isMessage((value as { user_message: unknown }).user_message)) return { type: event, user_message: (value as { user_message: Message }).user_message };
   if (event === "token" && typeof value === "object" && value !== null && typeof (value as { text: unknown }).text === "string") return { type: event, text: (value as { text: string }).text };
+  if (event === "tool_call_started" && typeof value === "object" && value !== null && typeof (value as { name: unknown }).name === "string" && typeof (value as { arguments: unknown }).arguments === "object") return { type: event, name: (value as { name: string }).name, arguments: (value as { arguments: Record<string, unknown> }).arguments };
+  if (event === "tool_result" && typeof value === "object" && value !== null && isEvidence(value)) return { type: event, evidence: value };
   if (event === "message_completed" && typeof value === "object" && value !== null && isMessage((value as { assistant_message: unknown }).assistant_message)) return { type: event, assistant_message: (value as { assistant_message: Message }).assistant_message };
   if (event === "error" && typeof value === "object" && value !== null && typeof (value as { code: unknown }).code === "string" && typeof (value as { message: unknown }).message === "string") return { type: event, code: (value as { code: string }).code, message: (value as { message: string }).message };
   throw new Error("invalid streaming event");

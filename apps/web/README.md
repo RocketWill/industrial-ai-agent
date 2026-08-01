@@ -76,7 +76,10 @@ the committed npm lockfile and frontend test, typecheck, lint, and build
 commands.
 
 The conversation workflow keeps the synchronous Message API as a stable path
-and also supports the v0.1.1 streaming endpoint. Questions containing the
+and also supports the v0.1.1 streaming endpoint. The backend SSE contract now
+has production tool-stage events, although the browser continues to route
+production keywords through the synchronous path until token streaming for
+that branch is complete. Questions containing the
 current English production, yield, defect, alarm, or inspection terms use the
 synchronous path so the backend can execute its production-summary tool. Other
 questions use streaming. The browser keeps draft text after failed submissions

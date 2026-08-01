@@ -10,7 +10,12 @@ from sqlalchemy.orm import Session
 from industrial_agent.config.settings import Settings
 from industrial_agent.database.session import get_db_session
 from industrial_agent.graph.errors import GraphExecutionError
-from industrial_agent.graph.runner import run_stream_exchange, run_sync_exchange
+from industrial_agent.graph.runner import (
+    run_stream_exchange,
+    run_stream_tool_exchange,
+    run_sync_exchange,
+)
+from industrial_agent.graph.workflow import PRODUCTION_TOOL, _is_production_question
 from industrial_agent.llm.errors import (
     LLMConfigurationError,
     LLMConnectionError,
@@ -144,12 +149,30 @@ def stream_user_message(
                 yield from adapter.stream(messages)
 
         try:
-            events = run_stream_exchange(
-                session,
-                conversation_id=conversation_id,
-                content=payload.content,
-                stream=stream,
-            )
+            if _is_production_question(
+                [ChatMessage(role="user", content=payload.content)]
+            ):
+                def complete_with_tools(messages, tools, *, tool_call=None):
+                    with OpenAICompatibleChatAdapter.from_settings(
+                        Settings()
+                    ) as adapter:
+                        return adapter.complete_with_tools(
+                            messages, tools=tools, tool_call=tool_call
+                        )
+                events = run_stream_tool_exchange(
+                    session,
+                    conversation_id=conversation_id,
+                    content=payload.content,
+                    complete_with_tools=complete_with_tools,
+                    tool_definition=PRODUCTION_TOOL,
+                )
+            else:
+                events = run_stream_exchange(
+                    session,
+                    conversation_id=conversation_id,
+                    content=payload.content,
+                    stream=stream,
+                )
             for event in events:
                 if event.kind == "user_message":
                     message = MessageRead.model_validate(event.payload)
@@ -159,6 +182,13 @@ def stream_user_message(
                     )
                 elif event.kind == "token":
                     yield _sse_event("token", event.payload)
+                elif event.kind == "tool_call_started":
+                    yield _sse_event("tool_call_started", event.payload)
+                elif event.kind == "tool_result":
+                    evidence = EvidenceRead.model_validate(
+                        event.payload, from_attributes=True
+                    )
+                    yield _sse_event("tool_result", evidence.model_dump(mode="json"))
                 elif event.kind == "assistant_message":
                     message = MessageRead.model_validate(event.payload)
                     yield _sse_event(
