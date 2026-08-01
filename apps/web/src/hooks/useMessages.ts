@@ -44,27 +44,32 @@ export function useMessages(conversationId: string | null, api: MessageApi = def
   const send = useCallback(async () => {
     const id = conversationId; const content = draft.trim();
     if (!id || !content || busy.current) return false;
-    busy.current = true; setSending(true); setError(null);
+    busy.current = true; setSending(true); setError(null); setEvidence(null); setToolStatus(null);
     try {
       if (!api.streamMessage) {
         const exchange = await api.sendMessage(id, content); setMessages((current) => [...current, exchange.user_message, exchange.assistant_message]); setEvidence(exchange.evidence); setDraft(""); return true;
       }
       const abortController = new AbortController(); controller.current = abortController; setStreaming(true);
-      let assistantIndex = -1;
+      const placeholder: Message = { id: "00000000-0000-1000-8000-000000000000", conversation_id: id, role: "assistant", content: "", created_at: new Date().toISOString() };
+      setMessages((current) => [...current, placeholder]);
       for await (const event of api.streamMessage(id, content, abortController.signal)) {
         if (activeConversation.current !== id) break;
         if (event.type === "message_started") {
-          const placeholder: Message = { id: "00000000-0000-1000-8000-000000000000", conversation_id: id, role: "assistant", content: "", created_at: new Date().toISOString() };
-          setMessages((current) => { assistantIndex = current.length + 1; return [...current, event.user_message, placeholder]; });
+          setMessages((current) => {
+            const next = [...current];
+            const placeholderIndex = next.findIndex((message) => message.id === placeholder.id);
+            next.splice(placeholderIndex < 0 ? next.length : placeholderIndex, 0, event.user_message);
+            return next;
+          });
         } else if (event.type === "token") {
-          setMessages((current) => current.map((message, index) => index === assistantIndex ? { ...message, content: message.content + event.text } : message));
+          setMessages((current) => current.map((message) => message.id === placeholder.id ? { ...message, content: message.content + event.text } : message));
         } else if (event.type === "tool_call_started") {
           setToolStatus(`Calling ${event.name}`);
         } else if (event.type === "tool_result") {
           setEvidence(event.evidence);
           setToolStatus("Production evidence received");
         } else if (event.type === "message_completed") {
-          setMessages((current) => current.map((message, index) => index === assistantIndex ? event.assistant_message : message)); setDraft("");
+          setMessages((current) => current.map((message) => message.id === placeholder.id ? event.assistant_message : message)); setDraft("");
         } else if (event.type === "error") { throw new Error(event.message); }
       }
       return true;
