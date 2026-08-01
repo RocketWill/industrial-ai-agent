@@ -47,3 +47,24 @@ _Avoid_: Pass rate
 A deterministic aggregation of Inspection Records, Defect Counts, and Alarm
 Events for one Equipment and Time Range.
 _Avoid_: Analysis answer, report
+
+**Production Summary Tool**:
+The application tool that retrieves a structured Production Summary for a
+validated Equipment, Time Range, and optional Production Lot.
+_Avoid_: Production answer, data lookup
+
+**Tool Call**:
+A structured request from the model to invoke one named application tool with
+validated arguments.
+_Avoid_: Function guess, prompt command
+
+**Evidence State**:
+The typed graph state that holds recorded tool results for the current answer.
+It is separate from the conversation's user and assistant message history.
+_Avoid_: Chat message, model memory
+
+**Tool Error**:
+A safe, typed indication that a Production Summary Tool request could not be
+validated or completed. It must not expose implementation details or invent a
+production value.
+_Avoid_: Exception text, fallback result

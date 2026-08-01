@@ -119,11 +119,26 @@ Remaining milestone work:
 
 ## v0.4 — Production Data Tools
 
-**Status: Planned**
+**Status: In Progress**
 
 Implement a small set of schema-driven tools for equipment status, yield
 summary, and defect distribution. Keep domain logic independent of LangGraph
 and preserve tool evidence for display.
+
+Implemented first slice:
+
+- [x] Add typed `get_production_summary` request and result contracts.
+- [x] Filter the synthetic AOI dataset by Equipment, Time Range, and optional
+  Production Lot.
+- [x] Preserve deterministic Yield Rate, Defect Counts, Alarm Events, and
+  explicit empty-result limitations.
+
+Remaining slices:
+
+- [ ] Integrate the production tool with LangGraph using a verified tool-call
+  protocol.
+- [ ] Expose structured tool evidence through the message contract.
+- [ ] Add a focused UI result surface after backend behavior is stable.
 
 ## v0.5 — Self-built RAG
 
