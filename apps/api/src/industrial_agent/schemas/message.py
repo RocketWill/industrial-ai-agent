@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from industrial_agent.models.message import MessageRole
+from industrial_agent.tools.production import ProductionSummaryResult
 
 
 class MessageCreate(BaseModel):
@@ -32,6 +33,17 @@ class MessageRead(BaseModel):
         return value.astimezone(UTC)
 
 
+class ToolErrorRead(BaseModel):
+    code: str
+    message: str
+
+
+class EvidenceRead(BaseModel):
+    production_summary: ProductionSummaryResult | None = None
+    tool_error: ToolErrorRead | None = None
+
+
 class MessageExchangeRead(BaseModel):
     user_message: MessageRead
     assistant_message: MessageRead
+    evidence: EvidenceRead | None = None

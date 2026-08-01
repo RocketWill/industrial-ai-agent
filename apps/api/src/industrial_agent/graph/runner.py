@@ -29,7 +29,7 @@ def run_sync_exchange(
         conversation_id=conversation_id,
         content=content,
     )
-    build_workflow(
+    final_state = build_workflow(
         session,
         complete,
         complete_with_tools=complete_with_tools,
@@ -38,6 +38,7 @@ def run_sync_exchange(
     return MessageExchange(
         user_message=messages[-2],
         assistant_message=messages[-1],
+        evidence=final_state.get("evidence"),
     )
 
 

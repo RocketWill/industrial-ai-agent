@@ -7,8 +7,18 @@ export type Message = {
   content: string;
   created_at: string;
 };
+export type ProductionEvidence = {
+  production_summary: {
+    equipment_id: string; lot_id: string | null; start: string; end: string;
+    inspected_wafers: number; passed_wafers: number; failed_wafers: number;
+    yield_rate: number | null; defect_counts: { category: string; count: number }[];
+    alarm_events: { event_id: string; code: string; started_at: string; ended_at: string }[];
+    limitations: string[];
+  } | null;
+  tool_error: { code: string; message: string } | null;
+};
 
-export type MessageExchange = { user_message: Message; assistant_message: Message };
+export type MessageExchange = { user_message: Message; assistant_message: Message; evidence: ProductionEvidence | null };
 export type MessageStreamEvent =
   | { type: "message_started"; user_message: Message }
   | { type: "token"; text: string }
@@ -27,7 +37,16 @@ function isMessage(value: unknown): value is Message {
   return UUID.test(item.id) && UUID.test(item.conversation_id) && (item.role === "user" || item.role === "assistant") && typeof item.content === "string" && item.content.trim().length > 0 && item.content.length <= 10000 && typeof item.created_at === "string" && !Number.isNaN(Date.parse(item.created_at));
 }
 function isExchange(value: unknown): value is MessageExchange {
-  return typeof value === "object" && value !== null && isMessage((value as MessageExchange).user_message) && isMessage((value as MessageExchange).assistant_message);
+  return typeof value === "object" && value !== null && isMessage((value as MessageExchange).user_message) && isMessage((value as MessageExchange).assistant_message) && isEvidence((value as MessageExchange).evidence);
+}
+function isEvidence(value: unknown): value is ProductionEvidence | null {
+  if (value === null) return true;
+  if (typeof value !== "object") return false;
+  const item = value as ProductionEvidence;
+  if (item.tool_error !== null && (typeof item.tool_error !== "object" || typeof item.tool_error.code !== "string" || typeof item.tool_error.message !== "string")) return false;
+  if (item.production_summary === null) return item.tool_error !== null;
+  const summary = item.production_summary;
+  return typeof summary === "object" && typeof summary.equipment_id === "string" && (summary.lot_id === null || typeof summary.lot_id === "string") && typeof summary.start === "string" && typeof summary.end === "string" && Number.isInteger(summary.inspected_wafers) && Number.isInteger(summary.passed_wafers) && Number.isInteger(summary.failed_wafers) && (summary.yield_rate === null || typeof summary.yield_rate === "number") && Array.isArray(summary.defect_counts) && Array.isArray(summary.alarm_events) && Array.isArray(summary.limitations) && summary.limitations.every((item) => typeof item === "string");
 }
 function parseStreamEvent(event: string, data: string): MessageStreamEvent {
   const value: unknown = JSON.parse(data);

@@ -20,9 +20,9 @@ describe("messages API", () => {
     const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
     const fetchImplementation = async (input: RequestInfo | URL, init?: RequestInit) => {
       requests.push({ input, init });
-      return new Response(JSON.stringify({ user_message: message, assistant_message: assistant }), { status: 201 });
+      return new Response(JSON.stringify({ user_message: message, assistant_message: assistant, evidence: null }), { status: 201 });
     };
-    await expect(sendMessage(id, "  Check status  ", fetchImplementation)).resolves.toEqual({ user_message: message, assistant_message: assistant });
+    await expect(sendMessage(id, "  Check status  ", fetchImplementation)).resolves.toEqual({ user_message: message, assistant_message: assistant, evidence: null });
     expect(requests[0]).toEqual({ input: `/api/conversations/${id}/messages`, init: { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify({ content: "Check status" }) } });
   });
 });
