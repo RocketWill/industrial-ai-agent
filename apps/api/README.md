@@ -240,9 +240,10 @@ The adapter can call a configured compatible service, including one supported
 tool-call exchange, but has no retries, system prompts, or model-discovery
 behavior. The configured model must implement the compatible tool-call
 protocol. LangGraph provides a compiled synchronous workflow with focused
-production-query detection and production-summary execution. Streaming reuses
-the graph state, context-loading step, and persistence step but emits token
-events from its runner and does not execute tools. Message history
+production-query detection and production-summary execution. The SSE endpoint
+also executes that production tool and emits `tool_call_started`, `tool_result`,
+final text, and completion events. Its production answer is currently one
+completed text event rather than provider token deltas. Message history
 has no pagination or individual mutation operations. The health
 endpoint reports API-process availability only and does not check the database
 or LLM service. The synchronous endpoint remains available. The v0.1.1

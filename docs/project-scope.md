@@ -70,10 +70,10 @@ summarization, and one fictional AOI wafer-inspection dataset.
 The current backend includes explicit SQLite migrations, Conversation and
 Message persistence, synchronous and streaming OpenAI-compatible chat flows,
 conversation-bound workspace context, a deterministic fictional device
-catalog, and a synchronous production-summary tool flow. The React application
+catalog, and synchronous plus SSE production-summary tool flows. The React application
 provides API-process health, conversation and message workflows, streaming
-controls, responsive navigation, context editing, and a synchronous fallback
-for a small set of English production-query terms.
+controls, responsive navigation, context editing, and SSE tool events for a
+small set of English production-query terms.
 
 Streaming and the refined workspace are recorded as completed v0.1.1 and
 v0.1.2 extensions.
@@ -94,10 +94,10 @@ Keeping it separate allowed client cancellation, partial-response handling,
 and the completed-response persistence boundary to be specified together.
 
 The active implementation milestone is v0.4. It connects the first typed
-production tool to synchronous LangGraph execution without moving numeric
-logic into the model. Structured evidence delivery, workspace-context
-resolution, broader intent handling, and SSE tool execution remain outside the
-implemented boundary.
+production tool to synchronous and SSE execution without moving numeric logic
+into the model. Workspace-context resolution and current-exchange structured
+evidence delivery are implemented. Broader intent handling, persisted evidence,
+and provider token streaming after tool execution remain outside the boundary.
 
 ## Publication safety
 
