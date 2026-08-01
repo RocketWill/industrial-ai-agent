@@ -164,6 +164,10 @@ def test_stream_production_message_emits_tool_events(
                 )
             return CompletionResult(content="Yield is 92.5%.")
 
+        def stream_with_tool_result(self, messages, *, tools, tool_call):
+            yield "Yield is "
+            yield "92.5%."
+
     monkeypatch.setattr(
         OpenAICompatibleChatAdapter,
         "from_settings",
@@ -180,8 +184,63 @@ def test_stream_production_message_emits_tool_events(
         "event: tool_call_started",
         "event: tool_result",
         "event: token",
+        "event: token",
         "event: message_completed",
     ]
+    assert 'data: {"text":"Yield is "}' in response.text
+    assert 'data: {"text":"92.5%."}' in response.text
+
+
+def test_stream_production_tool_error_persists_safe_response(
+    conversation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conversation = create_conversation(conversation_client)
+
+    class FakeAdapter:
+        def __enter__(self) -> "FakeAdapter":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def complete_with_tools(self, messages, *, tools, tool_call=None):
+            from industrial_agent.llm.types import CompletionResult, ToolCall
+
+            return CompletionResult(
+                content=None,
+                tool_calls=(
+                    ToolCall(
+                        call_id="call-001",
+                        name="get_production_summary",
+                        arguments={
+                            "equipment_id": "UNKNOWN-DEVICE",
+                            "start": "2026-01-15T13:00:00Z",
+                            "end": "2026-01-15T17:00:00Z",
+                        },
+                    ),
+                ),
+            )
+
+        def stream_with_tool_result(self, messages, *, tools, tool_call):
+            raise AssertionError("Tool errors must not call the provider stream")
+
+    monkeypatch.setattr(
+        OpenAICompatibleChatAdapter,
+        "from_settings",
+        classmethod(lambda cls, settings: FakeAdapter()),
+    )
+    response = conversation_client.post(
+        f"/conversations/{conversation['id']}/messages/stream",
+        json={"content": "What is the production yield?"},
+    )
+
+    assert response.status_code == 200
+    assert 'data: {"text":"The requested Equipment is not available."}' in response.text
+    history = conversation_client.get(
+        f"/conversations/{conversation['id']}/messages"
+    ).json()
+    assert history[-1]["content"] == "The requested Equipment is not available."
 
 
 def test_created_message_persists_across_requests(

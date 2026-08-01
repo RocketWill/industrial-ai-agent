@@ -159,12 +159,23 @@ def stream_user_message(
                         return adapter.complete_with_tools(
                             messages, tools=tools, tool_call=tool_call
                         )
+
+                def stream_with_tool_result(messages, tool_call):
+                    with OpenAICompatibleChatAdapter.from_settings(
+                        Settings()
+                    ) as adapter:
+                        yield from adapter.stream_with_tool_result(
+                            messages,
+                            tools=(PRODUCTION_TOOL,),
+                            tool_call=tool_call,
+                        )
+
                 events = run_stream_tool_exchange(
                     session,
                     conversation_id=conversation_id,
                     content=payload.content,
                     complete_with_tools=complete_with_tools,
-                    tool_definition=PRODUCTION_TOOL,
+                    stream_with_tool_result=stream_with_tool_result,
                 )
             else:
                 events = run_stream_exchange(

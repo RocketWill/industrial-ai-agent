@@ -252,6 +252,83 @@ class OpenAICompatibleChatAdapter:
         except (httpx.TimeoutException, httpx.TransportError) as error:
             raise LLMConnectionError("Unable to reach LLM service") from error
 
+    def stream_with_tool_result(
+        self,
+        messages: Sequence[ChatMessage],
+        *,
+        tools: Sequence[ToolDefinition],
+        tool_call: ToolResult,
+    ) -> Iterator[str]:
+        """Stream a final answer after one OpenAI-compatible tool result."""
+        request_messages: list[dict[str, object]] = [
+            {"role": message.role, "content": message.content}
+            for message in messages
+        ]
+        request_messages.extend(
+            [
+                {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [
+                        {
+                            "id": tool_call.call_id,
+                            "type": "function",
+                            "function": {
+                                "name": tool_call.name,
+                                "arguments": json.dumps(
+                                    tool_call.arguments,
+                                    separators=(",", ":"),
+                                ),
+                            },
+                        }
+                    ],
+                },
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call.call_id,
+                    "content": tool_call.content,
+                },
+            ]
+        )
+        try:
+            with self._client.stream(
+                "POST",
+                "chat/completions",
+                json={
+                    "model": self._model,
+                    "messages": request_messages,
+                    "tools": [tool.as_payload() for tool in tools],
+                    "stream": True,
+                },
+            ) as response:
+                if not response.is_success:
+                    raise LLMServiceError(response.status_code)
+                yielded_text = False
+                saw_done = False
+                for line in response.iter_lines():
+                    if not line or not line.startswith("data:"):
+                        continue
+                    payload = line[5:].strip()
+                    if payload == "[DONE]":
+                        saw_done = True
+                        break
+                    try:
+                        chunk = json.loads(payload)
+                        delta = chunk["choices"][0]["delta"].get("content")
+                    except (KeyError, IndexError, TypeError, ValueError) as error:
+                        raise LLMResponseError(
+                            "LLM service returned an invalid streaming response"
+                        ) from error
+                    if isinstance(delta, str) and delta:
+                        yielded_text = yielded_text or bool(delta.strip())
+                        yield delta
+                if not saw_done or not yielded_text:
+                    raise LLMResponseError(
+                        "LLM service returned an incomplete streaming response"
+                    )
+        except (httpx.TimeoutException, httpx.TransportError) as error:
+            raise LLMConnectionError("Unable to reach LLM service") from error
+
     @property
     def is_closed(self) -> bool:
         return self._client.is_closed
