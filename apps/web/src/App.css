@@ -174,6 +174,12 @@
 .evidence-alarm-list li { display: grid; gap: 2px; }
 .evidence-alarm-list span { font-size: 12px; }
 .evidence-limitations { display: block; margin-top: 12px; }
+.defect-distribution-list { border-top: 1px solid var(--color-border-subtle); display: grid; gap: 12px; margin-top: 14px; padding-top: 12px; }
+.defect-distribution-item { display: grid; gap: 5px; }
+.defect-distribution-label { align-items: center; display: flex; gap: 12px; justify-content: space-between; }
+.defect-distribution-label > div { align-items: center; display: flex; gap: 8px; }
+.defect-rank-tag { margin: 0; }
+.defect-distribution-value { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
 
 .scroll-bottom-button { bottom: 14px; left: 50%; position: absolute; transform: translateX(-50%); z-index: 2; }
 .composer-shell { background: var(--color-surface); border-top: 1px solid var(--color-border-subtle); flex: 0 0 auto; padding: 14px 24px 12px; }

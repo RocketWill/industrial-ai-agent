@@ -22,6 +22,13 @@ export type ProductionEvidence = {
     source_event_id: string | null; reason_code: string | null;
     limitations: string[];
   } | null;
+  defect_distribution?: {
+    equipment_id: string; lot_id: string | null; start: string; end: string;
+    failed_wafers: number; classified_defect_count: number;
+    unclassified_failed_wafers: number;
+    items: { category: string; count: number; share: number | null; rank: number }[];
+    limitations: string[];
+  } | null;
   tool_error: { code: string; message: string } | null;
 };
 
@@ -57,7 +64,9 @@ function isEvidence(value: unknown): value is ProductionEvidence | null {
   const validSummary = summary !== null && typeof summary === "object" && typeof summary.equipment_id === "string" && (summary.lot_id === null || typeof summary.lot_id === "string") && typeof summary.start === "string" && typeof summary.end === "string" && Number.isInteger(summary.inspected_wafers) && Number.isInteger(summary.passed_wafers) && Number.isInteger(summary.failed_wafers) && (summary.yield_rate === null || typeof summary.yield_rate === "number") && Array.isArray(summary.defect_counts) && Array.isArray(summary.alarm_events) && Array.isArray(summary.limitations) && summary.limitations.every((item) => typeof item === "string");
   const status = item.equipment_status;
   const validStatus = status !== null && status !== undefined && typeof status === "object" && typeof status.equipment_id === "string" && typeof status.observed_at === "string" && ["running", "idle", "warning", "down", "maintenance", "unknown"].includes(status.status) && (status.effective_start === null || typeof status.effective_start === "string") && (status.effective_end === null || typeof status.effective_end === "string") && (status.source_event_id === null || typeof status.source_event_id === "string") && (status.reason_code === null || typeof status.reason_code === "string") && Array.isArray(status.limitations) && status.limitations.every((limitation) => typeof limitation === "string");
-  return validSummary || validStatus || item.tool_error !== null;
+  const distribution = item.defect_distribution;
+  const validDistribution = distribution !== null && distribution !== undefined && typeof distribution === "object" && typeof distribution.equipment_id === "string" && (distribution.lot_id === null || typeof distribution.lot_id === "string") && typeof distribution.start === "string" && typeof distribution.end === "string" && Number.isInteger(distribution.failed_wafers) && Number.isInteger(distribution.classified_defect_count) && Number.isInteger(distribution.unclassified_failed_wafers) && Array.isArray(distribution.items) && distribution.items.every((entry) => typeof entry.category === "string" && Number.isInteger(entry.count) && (entry.share === null || typeof entry.share === "number") && Number.isInteger(entry.rank)) && Array.isArray(distribution.limitations) && distribution.limitations.every((limitation) => typeof limitation === "string");
+  return validSummary || validStatus || validDistribution || item.tool_error !== null;
 }
 function parseStreamEvent(event: string, data: string): MessageStreamEvent {
   const value: unknown = JSON.parse(data);

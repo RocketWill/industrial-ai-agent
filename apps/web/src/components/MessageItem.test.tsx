@@ -107,6 +107,64 @@ describe("MessageItem", () => {
     expect(screen.getAllByText("Unavailable")).toHaveLength(2);
   });
 
+  it("renders ranked defect-distribution evidence", () => {
+    render(
+      <MessageItem
+        message={message}
+        evidence={{
+          production_summary: null,
+          defect_distribution: {
+            equipment_id: "AOI-WAFER-01",
+            lot_id: "LOT-DEMO-001",
+            start: "2026-01-15T13:00:00Z",
+            end: "2026-01-15T17:00:00Z",
+            failed_wafers: 30,
+            classified_defect_count: 30,
+            unclassified_failed_wafers: 0,
+            items: [
+              { category: "edge-chip", count: 19, share: 19 / 30, rank: 1 },
+              { category: "scratch", count: 11, share: 11 / 30, rank: 2 },
+            ],
+            limitations: [],
+          },
+          tool_error: null,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Defect distribution")).toBeInTheDocument();
+    expect(screen.getByText("edge-chip")).toBeInTheDocument();
+    expect(screen.getByText(/63\.3%/)).toBeInTheDocument();
+    expect(screen.getByText("Rank 1")).toBeInTheDocument();
+    expect(screen.getByText("Synthetic Demo")).toBeInTheDocument();
+  });
+
+  it("renders an empty defect distribution with its limitation", () => {
+    render(
+      <MessageItem
+        message={message}
+        evidence={{
+          production_summary: null,
+          defect_distribution: {
+            equipment_id: "AOI-WAFER-01",
+            lot_id: null,
+            start: "2026-01-15T18:00:00Z",
+            end: "2026-01-15T19:00:00Z",
+            failed_wafers: 0,
+            classified_defect_count: 0,
+            unclassified_failed_wafers: 0,
+            items: [],
+            limitations: ["no_inspection_records"],
+          },
+          tool_error: null,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("No classified defects returned.")).toBeInTheDocument();
+    expect(screen.getByText("no_inspection_records")).toBeInTheDocument();
+  });
+
   it("renders production defects, alarms, and explicit empty states", () => {
     const summary = {
       equipment_id: "AOI-WAFER-01", lot_id: "LOT-DEMO-001", start: "2026-01-15T13:00:00Z", end: "2026-01-15T17:00:00Z",

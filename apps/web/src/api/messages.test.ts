@@ -52,4 +52,36 @@ describe("messages API", () => {
       evidence,
     });
   });
+
+  it("accepts deterministic defect-distribution evidence", async () => {
+    const evidence = {
+      production_summary: null,
+      equipment_status: null,
+      defect_distribution: {
+        equipment_id: "AOI-WAFER-01",
+        lot_id: "LOT-DEMO-001",
+        start: "2026-01-15T13:00:00Z",
+        end: "2026-01-15T17:00:00Z",
+        failed_wafers: 30,
+        classified_defect_count: 30,
+        unclassified_failed_wafers: 0,
+        items: [
+          { category: "edge-chip", count: 19, share: 19 / 30, rank: 1 },
+          { category: "scratch", count: 11, share: 11 / 30, rank: 2 },
+        ],
+        limitations: [],
+      },
+      tool_error: null,
+    };
+    const fetchImplementation = async () => new Response(
+      JSON.stringify({ user_message: message, assistant_message: assistant, evidence }),
+      { status: 201 },
+    );
+
+    await expect(sendMessage(id, "Show defect distribution", fetchImplementation)).resolves.toEqual({
+      user_message: message,
+      assistant_message: assistant,
+      evidence,
+    });
+  });
 });
