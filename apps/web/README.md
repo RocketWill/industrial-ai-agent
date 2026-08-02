@@ -19,6 +19,8 @@ workbench implemented across the frontend milestones.
   observation time, including its effective interval and limitations;
 - deterministic Defect Distribution evidence with ranked categories, shares,
   classified counts, unclassified failures, and limitations;
+- retrieved Sources evidence with fictional document title, section, excerpt,
+  match score, stable source ID, and repository-relative path;
 - SSE streaming assistant responses with a keyboard-accessible Stop action;
 - conversation-bound context display and editing;
 - deterministic fictional device selection, lot validation, and time-range
@@ -93,10 +95,10 @@ failed submissions and does not persist partial assistant output.
 
 ## Non-responsibilities
 
-Complete agent traces, tool timelines, RAG sources, manufacturing charts,
-authentication, and administrative interfaces remain outside the implemented
-frontend scope. Streaming was added in v0.1.1, while the current production
-tool stages and evidence surface depend on the later v0.4 contracts.
+Complete agent traces, tool timelines, a full-document source viewer,
+manufacturing charts, authentication, and administrative interfaces remain
+outside the implemented frontend scope. Streaming was added in v0.1.1; current
+production and source evidence depend on the later v0.4 and v0.5 contracts.
 
 ## Current status
 
@@ -114,8 +116,8 @@ Reset restores the latest server state, and unsaved changes are guarded before
 navigation. The source and environment metadata remain read-only.
 
 Grounded production results appear as final assistant text with a compact
-structured summary, recorded status, or ranked defect distribution attached to
-the assistant bubble that produced it. Pending
+structured summary, recorded status, ranked defect distribution, or retrieved
+fictional sources attached to the assistant bubble that produced it. Pending
 assistant bubbles use an accessible three-dot processing indicator and an
 Ant Design BorderBeam while a response is active. Completed bubbles retain a
 static multicolor bottom accent. Generating and production-tool stages remain

@@ -19,16 +19,13 @@ contracts.
 
 ## Status
 
-The v0.1 foundation, streaming v0.1.1, Industrial Chat Workspace UI v0.1.2,
-and minimal LangGraph orchestration v0.2 are implemented. v0.3 Manufacturing
-Domain remains in progress with its deterministic AOI analysis slice
-implemented. v0.4 Production Data Tools is the active milestone: the first
-tool contract, OpenAI-compatible tool-call protocol, workspace-context
-resolution, synchronous grounded answers, SSE tool events, and current-exchange
-structured evidence display and provider token streaming after tool execution
-are implemented. The frontend now uses Ant Design 6.5.1, Ant Design X 2.9.0,
-and XMarkdown 2.9.0 for a responsive three-surface analysis workbench.
-Persisted evidence remains open.
+The v0.1 foundation and its streaming and workspace extensions are implemented,
+along with v0.2 LangGraph orchestration, v0.3 Manufacturing Domain, and v0.4
+Production Data Tools. v0.5 Self-built RAG is active. Its first slice parses one
+fictional Markdown alarm guide, builds deterministic local vectors, retrieves
+sources through synchronous and SSE tool flows, and renders current-exchange
+citation metadata. Broader ingestion, retrieval evaluation, source viewing,
+and persisted evidence remain open.
 
 Architecture notes and engineering decisions should be added only when the
 corresponding code or approved decision exists. Local PRDs, specs, and plans
