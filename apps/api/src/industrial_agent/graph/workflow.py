@@ -27,6 +27,10 @@ from industrial_agent.tools.defect_distribution import (
     DefectDistributionToolError,
     get_defect_distribution,
 )
+from industrial_agent.tools.document_search import (
+    DocumentSearchRequest,
+    search_documents,
+)
 from industrial_agent.tools.equipment_status import (
     EquipmentStatusRequest,
     EquipmentStatusToolError,
@@ -83,6 +87,33 @@ def _is_defect_distribution_question(messages: Sequence[ChatMessage]) -> bool:
             "defect categories",
             "top defect",
         )
+    )
+
+
+def _is_document_question(messages: Sequence[ChatMessage]) -> bool:
+    question = messages[-1].content.lower()
+    procedural = any(
+        term in question
+        for term in (
+            "operator check",
+            "troubleshoot",
+            "manual",
+            "procedure",
+            "recovery boundary",
+        )
+    )
+    known_alarm_procedure = "optical-signal-low" in question and any(
+        term in question for term in ("check", "should", "recover", "respond")
+    )
+    return procedural or known_alarm_procedure
+
+
+def build_document_search_call(messages: Sequence[ChatMessage]) -> ToolCall:
+    """Build the selected retrieval call from the exact user question."""
+    return ToolCall(
+        call_id="document-search-route",
+        name="search_documents",
+        arguments={"query": messages[-1].content, "limit": 3},
     )
 
 
@@ -156,6 +187,20 @@ DEFECT_DISTRIBUTION_TOOL = ToolDefinition(
             "end": {"type": "string", "format": "date-time"},
         },
         "required": [],
+        "additionalProperties": False,
+    },
+)
+
+DOCUMENT_SEARCH_TOOL = ToolDefinition(
+    name="search_documents",
+    description="Retrieve evidence from fictional local equipment documents.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string"},
+            "limit": {"type": "integer", "minimum": 1, "maximum": 3},
+        },
+        "required": ["query"],
         "additionalProperties": False,
     },
 )
@@ -444,6 +489,48 @@ def execute_defect_distribution_tool(
     }
 
 
+def execute_document_search_tool(
+    state: GraphState,
+    result: CompletionResult,
+) -> GraphState:
+    """Execute one parsed document-search Tool Call into Evidence State."""
+    if len(result.tool_calls) != 1:
+        return {
+            **state,
+            "evidence": EvidenceState(
+                tool_error=ToolError(code="UNSUPPORTED_TOOL_CALL_PATTERN")
+            ),
+        }
+    call = result.tool_calls[0]
+    if call.name != DOCUMENT_SEARCH_TOOL.name:
+        return {
+            **state,
+            "evidence": EvidenceState(
+                tool_error=ToolError(code="UNSUPPORTED_TOOL_CALL_PATTERN")
+            ),
+        }
+    try:
+        request = DocumentSearchRequest.model_validate(call.arguments)
+    except ValidationError:
+        return {
+            **state,
+            "evidence": EvidenceState(tool_error=ToolError(code="INVALID_INPUT")),
+        }
+    document_search = search_documents(request)
+    return {
+        **state,
+        "evidence": EvidenceState(document_search=document_search),
+        "tool_call": call,
+        "execution_events": [
+            *state["execution_events"],
+            ExecutionEvent(
+                kind="node_completed",
+                payload={"node": "execute_document_search_tool"},
+            ),
+        ],
+    }
+
+
 def answer_with_production_evidence(
     state: GraphState,
     *,
@@ -581,12 +668,61 @@ def answer_with_defect_distribution_evidence(
     }
 
 
+def answer_with_document_search_evidence(
+    state: GraphState,
+    *,
+    complete_with_tools: CompleteWithTools,
+    tool_call: ToolCall,
+) -> GraphState:
+    """Ask the model for a final answer using retrieved fictional sources."""
+    evidence = state["evidence"]
+    if evidence is None:
+        raise GraphExecutionError(code="empty_response")
+    if evidence.tool_error is not None:
+        return {**state, "assistant_content": evidence.tool_error.message}
+    if evidence.document_search is None:
+        raise GraphExecutionError(code="empty_response")
+    result = complete_with_tools(
+        state["messages"],
+        (DOCUMENT_SEARCH_TOOL,),
+        tool_call=ToolResult(
+            call_id=tool_call.call_id,
+            name=tool_call.name,
+            arguments=tool_call.arguments,
+            content=evidence.document_search.model_dump_json(),
+        ),
+    )
+    if result.tool_calls or not result.content or not result.content.strip():
+        raise GraphExecutionError(code="empty_response")
+    return {
+        **state,
+        "assistant_content": result.content.strip(),
+        "execution_events": [
+            *state["execution_events"],
+            ExecutionEvent(
+                kind="node_completed", payload={"node": "answer_with_evidence"}
+            ),
+        ],
+    }
+
+
 def _call_llm(
     state: GraphState,
     *,
     complete: Complete,
     complete_with_tools: CompleteWithTools | None = None,
 ) -> GraphState:
+    if complete_with_tools is not None and _is_document_question(state["messages"]):
+        call = build_document_search_call(state["messages"])
+        tool_state = execute_document_search_tool(
+            state,
+            CompletionResult(content=None, tool_calls=(call,)),
+        )
+        return answer_with_document_search_evidence(
+            tool_state,
+            complete_with_tools=complete_with_tools,
+            tool_call=call,
+        )
     if complete_with_tools is not None and _is_equipment_status_question(
         state["messages"]
     ):

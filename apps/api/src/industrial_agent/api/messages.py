@@ -17,9 +17,11 @@ from industrial_agent.graph.runner import (
 )
 from industrial_agent.graph.workflow import (
     DEFECT_DISTRIBUTION_TOOL,
+    DOCUMENT_SEARCH_TOOL,
     EQUIPMENT_STATUS_TOOL,
     PRODUCTION_TOOL,
     _is_defect_distribution_question,
+    _is_document_question,
     _is_equipment_status_question,
     _is_production_question,
 )
@@ -159,13 +161,17 @@ def stream_user_message(
             question = [ChatMessage(role="user", content=payload.content)]
             is_equipment_status = _is_equipment_status_question(question)
             is_defect_distribution = _is_defect_distribution_question(question)
+            is_document_search = _is_document_question(question)
             if (
-                is_equipment_status
+                is_document_search
+                or is_equipment_status
                 or is_defect_distribution
                 or _is_production_question(question)
             ):
                 selected_tool = (
-                    EQUIPMENT_STATUS_TOOL
+                    DOCUMENT_SEARCH_TOOL
+                    if is_document_search
+                    else EQUIPMENT_STATUS_TOOL
                     if is_equipment_status
                     else DEFECT_DISTRIBUTION_TOOL
                     if is_defect_distribution

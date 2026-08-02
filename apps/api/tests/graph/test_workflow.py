@@ -465,3 +465,34 @@ def test_sync_runner_executes_defect_distribution_before_production_summary(
     assert exchange.assistant_message.content == (
         "Edge-chip is the top recorded defect."
     )
+
+
+def test_sync_runner_retrieves_document_sources_for_procedural_question(
+    database_session,
+) -> None:
+    conversation = create_conversation(database_session, title="Alarm procedure")
+    selected_tools = []
+
+    def complete(messages):
+        raise AssertionError("procedural question should use document retrieval")
+
+    def complete_with_tools(messages, tools, *, tool_call=None):
+        selected_tools.append(tools[0].name)
+        assert tool_call is not None
+        assert '"section":"OPTICAL-SIGNAL-LOW"' in tool_call.content
+        return CompletionResult(content="Check the fictional optical lens cover.")
+
+    exchange = run_sync_exchange(
+        database_session,
+        conversation_id=conversation.id,
+        content="What should an operator check when OPTICAL-SIGNAL-LOW occurs?",
+        complete=complete,
+        complete_with_tools=complete_with_tools,
+    )
+
+    assert selected_tools == ["search_documents"]
+    assert exchange.evidence is not None
+    assert exchange.evidence.document_search is not None
+    assert exchange.evidence.document_search.sources[0].section == (
+        "OPTICAL-SIGNAL-LOW"
+    )
