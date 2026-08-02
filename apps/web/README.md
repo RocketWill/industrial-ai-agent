@@ -15,6 +15,8 @@ workbench implemented across the frontend milestones.
 - synchronous production-question fallback for a focused English keyword set;
 - deterministic Production Summary result surface for the current exchange,
   including Defect Counts, Alarm Events, provenance, and empty states;
+- deterministic Equipment Status evidence for an explicit synthetic
+  observation time, including its effective interval and limitations;
 - SSE streaming assistant responses with a keyboard-accessible Stop action;
 - conversation-bound context display and editing;
 - deterministic fictional device selection, lot validation, and time-range

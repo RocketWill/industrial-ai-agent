@@ -126,10 +126,11 @@ Implemented slices:
 - [x] Aggregate yield, defects, and overlapping alarms deterministically.
 - [x] Add a reproducible fictional AOI wafer-inspection dataset without a
   causal claim.
+- [x] Define explicit UTC equipment-state intervals and deterministic
+  point-in-time lookup with an `unknown` result when no state is recorded.
 
 Remaining milestone work:
 
-- [ ] Decide and specify equipment-status semantics.
 - [ ] Decide whether throughput belongs in this milestone's domain contract.
 - [ ] Complete milestone documentation and acceptance review.
 
@@ -141,7 +142,7 @@ Implement a small set of schema-driven tools for equipment status, yield
 summary, and defect distribution. Keep domain logic independent of LangGraph
 and preserve tool evidence for display.
 
-Implemented first slice:
+Implemented slices:
 
 - [x] Add typed `get_production_summary` request and result contracts.
 - [x] Filter the synthetic AOI dataset by Equipment, Time Range, and optional
@@ -164,11 +165,18 @@ Implemented first slice:
   successful tool result.
 - [x] Add a focused UI result surface for the current Production Summary,
   Defect Counts, Alarm Events, provenance, and empty states.
+- [x] Add a typed `get_equipment_status` contract backed only by explicit
+  synthetic state intervals.
+- [x] Resolve a missing status timestamp from the saved Workspace Context end,
+  execute the tool through synchronous and SSE flows, and return `unknown`
+  when no recorded interval covers the timestamp.
+- [x] Render current-exchange Equipment Status evidence with effective
+  boundaries, reason code, provenance, and limitations.
 
 Remaining slices:
 
-- [ ] Decide the next production-data tool slice after the v0.4 acceptance
-  review.
+- [ ] Complete the v0.4 acceptance review and decide whether defect
+  distribution should become the next production-data tool.
 
 ## v0.5 — Self-built RAG
 

@@ -223,9 +223,10 @@ the committed uv lockfile, migrations, and backend test suite.
 ## Non-responsibilities
 
 RAG, MCP, authentication, and distributed deployment remain outside the
-implemented scope. The first manufacturing summary tool is an in-progress
-v0.4 capability. Both Message endpoints can execute it for requests matched by
-the focused production-question heuristic.
+implemented scope. The v0.4 tool slice supports deterministic production
+summaries and recorded synthetic equipment status. Both Message endpoints can
+execute one selected tool for requests matched by the focused English
+heuristics.
 
 ## Dependency management
 
@@ -236,13 +237,14 @@ records the resolved environment.
 ## Current limitations
 
 The API persists Conversation, user Message, and assistant Message records.
-The adapter can call a configured compatible service, including one supported
+The adapter can call a configured compatible service for one supported
 tool-call exchange, but has no retries, system prompts, or model-discovery
 behavior. The configured model must implement the compatible tool-call
 protocol. LangGraph provides a compiled synchronous workflow with focused
-production-query detection and production-summary execution. The SSE endpoint
-also executes that production tool and emits `tool_call_started`, `tool_result`,
-final text, and completion events. Its production answer is forwarded as a
+manufacturing-query detection and one selected tool execution. The SSE endpoint
+supports production summaries and recorded equipment status, emitting
+`tool_call_started`, `tool_result`, final text, and completion events. Its
+grounded answer is forwarded as a
 provider-token stream after a successful tool result. Message history
 has no pagination or individual mutation operations. The health
 endpoint reports API-process availability only and does not check the database
@@ -259,5 +261,6 @@ device, lot, and time-range values with truthful synthetic defaults. It does
 not query production systems or infer context automatically.
 
 `GET /devices` returns a deterministic catalog of fictional synthetic device
-identifiers for context selection. The catalog contains identity metadata only;
-it does not represent live equipment status or production records.
+identifiers for context selection. The catalog contains identity metadata only.
+Recorded status evidence comes from the separate synthetic scenario and does
+not represent live connectivity or current production machinery.
