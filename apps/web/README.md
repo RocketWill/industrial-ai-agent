@@ -17,6 +17,8 @@ workbench implemented across the frontend milestones.
   including Defect Counts, Alarm Events, provenance, and empty states;
 - deterministic Equipment Status evidence for an explicit synthetic
   observation time, including its effective interval and limitations;
+- deterministic Defect Distribution evidence with ranked categories, shares,
+  classified counts, unclassified failures, and limitations;
 - SSE streaming assistant responses with a keyboard-accessible Stop action;
 - conversation-bound context display and editing;
 - deterministic fictional device selection, lot validation, and time-range
@@ -112,7 +114,8 @@ Reset restores the latest server state, and unsaved changes are guarded before
 navigation. The source and environment metadata remain read-only.
 
 Grounded production results appear as final assistant text with a compact
-structured summary attached to the assistant bubble that produced it. Pending
+structured summary, recorded status, or ranked defect distribution attached to
+the assistant bubble that produced it. Pending
 assistant bubbles use an accessible three-dot processing indicator and an
 Ant Design BorderBeam while a response is active. Completed bubbles retain a
 static multicolor bottom accent. Generating and production-tool stages remain
