@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -6,8 +7,10 @@ import pytest
 from industrial_agent.domain.manufacturing import (
     AlarmEvent,
     DefectCount,
+    EquipmentStateInterval,
     InspectionRecord,
     TimeRange,
+    get_equipment_status_at,
     summarize_production,
 )
 from industrial_agent.domain.synthetic_data import load_synthetic_scenario
@@ -23,6 +26,68 @@ def test_time_range_uses_a_utc_half_open_interval() -> None:
 
     assert time_range.contains(datetime(2026, 1, 15, 8, tzinfo=UTC))
     assert not time_range.contains(datetime(2026, 1, 15, 9, tzinfo=UTC))
+
+
+def test_equipment_status_lookup_uses_recorded_half_open_intervals() -> None:
+    interval = EquipmentStateInterval(
+        event_id="state-001",
+        equipment_id="AOI-WAFER-01",
+        status="running",
+        started_at=datetime(2026, 1, 15, 8, tzinfo=UTC),
+        ended_at=datetime(2026, 1, 15, 9, tzinfo=UTC),
+        reason_code="SCHEDULED-RUN",
+    )
+
+    recorded = get_equipment_status_at(
+        intervals=(interval,),
+        equipment_id="AOI-WAFER-01",
+        observed_at=datetime(2026, 1, 15, 8, tzinfo=UTC),
+    )
+    unknown = get_equipment_status_at(
+        intervals=(interval,),
+        equipment_id="AOI-WAFER-01",
+        observed_at=datetime(2026, 1, 15, 9, tzinfo=UTC),
+    )
+
+    assert recorded.status == "running"
+    assert recorded.source_interval == interval
+    assert recorded.limitations == ()
+    assert unknown.status == "unknown"
+    assert unknown.source_interval is None
+    assert unknown.limitations == ("no_recorded_equipment_state",)
+
+
+def test_equipment_status_lookup_rejects_overlapping_recorded_states() -> None:
+    intervals = tuple(
+        EquipmentStateInterval(
+            event_id=f"state-{index}",
+            equipment_id="AOI-WAFER-01",
+            status=status,
+            started_at=start,
+            ended_at=end,
+        )
+        for index, status, start, end in (
+            (
+                1,
+                "running",
+                datetime(2026, 1, 15, 8, tzinfo=UTC),
+                datetime(2026, 1, 15, 10, tzinfo=UTC),
+            ),
+            (
+                2,
+                "warning",
+                datetime(2026, 1, 15, 9, tzinfo=UTC),
+                datetime(2026, 1, 15, 11, tzinfo=UTC),
+            ),
+        )
+    )
+
+    with pytest.raises(ValueError, match="overlapping Equipment State Intervals"):
+        get_equipment_status_at(
+            intervals=intervals,
+            equipment_id="AOI-WAFER-01",
+            observed_at=datetime(2026, 1, 15, 9, 30, tzinfo=UTC),
+        )
 
 
 def test_inspection_record_rejects_inconsistent_counts() -> None:
@@ -133,7 +198,30 @@ def test_synthetic_aoi_scenario_preserves_observations_without_claiming_cause() 
         2026, 1, 15, 17, tzinfo=UTC
     )
     assert scenario.alarm_events[0].code == "OPTICAL-SIGNAL-LOW"
+    assert scenario.equipment_state_intervals[1].status == "warning"
+    assert scenario.equipment_state_intervals[1].started_at == datetime(
+        2026, 1, 15, 15, tzinfo=UTC
+    )
     assert scenario.causal_claim is None
+
+
+def test_synthetic_loader_rejects_overlapping_equipment_states(tmp_path) -> None:
+    source = REPOSITORY_ROOT / "data/synthetic/aoi-wafer-inspection-v1.json"
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    payload["equipment_state_intervals"].append(
+        {
+            "event_id": "state-overlap",
+            "status": "maintenance",
+            "started_at": "2026-01-15T14:30:00Z",
+            "ended_at": "2026-01-15T15:30:00Z",
+            "reason_code": "SYNTHETIC-MAINTENANCE",
+        }
+    )
+    candidate = tmp_path / "overlapping.json"
+    candidate.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="overlapping Equipment State Intervals"):
+        load_synthetic_scenario(candidate)
 
 
 def test_empty_production_summary_keeps_overlapping_alarm_as_recorded_fact() -> None:

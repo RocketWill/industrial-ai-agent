@@ -15,7 +15,12 @@ from industrial_agent.graph.runner import (
     run_stream_tool_exchange,
     run_sync_exchange,
 )
-from industrial_agent.graph.workflow import PRODUCTION_TOOL, _is_production_question
+from industrial_agent.graph.workflow import (
+    EQUIPMENT_STATUS_TOOL,
+    PRODUCTION_TOOL,
+    _is_equipment_status_question,
+    _is_production_question,
+)
 from industrial_agent.llm.errors import (
     LLMConfigurationError,
     LLMConnectionError,
@@ -149,9 +154,14 @@ def stream_user_message(
                 yield from adapter.stream(messages)
 
         try:
-            if _is_production_question(
-                [ChatMessage(role="user", content=payload.content)]
-            ):
+            question = [ChatMessage(role="user", content=payload.content)]
+            is_equipment_status = _is_equipment_status_question(question)
+            if is_equipment_status or _is_production_question(question):
+                selected_tool = (
+                    EQUIPMENT_STATUS_TOOL
+                    if is_equipment_status
+                    else PRODUCTION_TOOL
+                )
                 def complete_with_tools(messages, tools, *, tool_call=None):
                     with OpenAICompatibleChatAdapter.from_settings(
                         Settings()
@@ -166,7 +176,7 @@ def stream_user_message(
                     ) as adapter:
                         yield from adapter.stream_with_tool_result(
                             messages,
-                            tools=(PRODUCTION_TOOL,),
+                            tools=(selected_tool,),
                             tool_call=tool_call,
                         )
 

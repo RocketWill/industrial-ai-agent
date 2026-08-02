@@ -3,6 +3,14 @@
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import Literal
+
+EquipmentStatus = Literal[
+    "running", "idle", "warning", "down", "maintenance", "unknown"
+]
+RECORDED_EQUIPMENT_STATUSES = frozenset(
+    {"running", "idle", "warning", "down", "maintenance"}
+)
 
 
 @dataclass(frozen=True)
@@ -10,6 +18,65 @@ class Equipment:
     """A fictional machine that processes or inspects production units."""
 
     equipment_id: str
+
+
+@dataclass(frozen=True)
+class EquipmentStateInterval:
+    """An explicitly recorded synthetic equipment state over a UTC interval."""
+
+    event_id: str
+    equipment_id: str
+    status: EquipmentStatus
+    started_at: datetime
+    ended_at: datetime
+    reason_code: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.status not in RECORDED_EQUIPMENT_STATUSES:
+            raise ValueError("Equipment State Interval status must be recorded")
+        if self.started_at.tzinfo is not UTC or self.ended_at.tzinfo is not UTC:
+            raise ValueError("Equipment State Interval boundaries must use UTC")
+        if self.started_at >= self.ended_at:
+            raise ValueError("Equipment State Interval start must be before end")
+
+    def contains(self, timestamp: datetime) -> bool:
+        """Return whether the timestamp is inside this half-open interval."""
+        return self.started_at <= timestamp < self.ended_at
+
+
+@dataclass(frozen=True)
+class EquipmentStatusObservation:
+    """Deterministic equipment status evidence for one requested timestamp."""
+
+    equipment_id: str
+    observed_at: datetime
+    status: EquipmentStatus
+    source_interval: EquipmentStateInterval | None
+    limitations: tuple[str, ...]
+
+
+def get_equipment_status_at(
+    *,
+    intervals: tuple[EquipmentStateInterval, ...],
+    equipment_id: str,
+    observed_at: datetime,
+) -> EquipmentStatusObservation:
+    """Return an explicitly recorded status or an unknown evidence result."""
+    matching = tuple(
+        interval
+        for interval in intervals
+        if interval.equipment_id == equipment_id and interval.contains(observed_at)
+    )
+    if len(matching) > 1:
+        raise ValueError("overlapping Equipment State Intervals")
+    source = matching[0] if matching else None
+    return EquipmentStatusObservation(
+        equipment_id=equipment_id,
+        observed_at=observed_at,
+        status=source.status if source else "unknown",
+        source_interval=source,
+        limitations=() if source else ("no_recorded_equipment_state",),
+    )
 
 
 @dataclass(frozen=True)
