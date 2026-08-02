@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getWorkspaceContext, updateWorkspaceContext, type WorkspaceContext, type WorkspaceContextUpdate } from "../api/context";
 import { listSyntheticDevices, type SyntheticDevice } from "../api/devices";
 
-type State = { context: WorkspaceContext | null; devices: SyntheticDevice[]; devicesLoading: boolean; devicesError: string | null; isLoading: boolean; isSaving: boolean; error: string | null; reload: () => Promise<void>; save: (update: WorkspaceContextUpdate) => Promise<boolean> };
+export type WorkspaceContextState = { context: WorkspaceContext | null; devices: SyntheticDevice[]; devicesLoading: boolean; devicesError: string | null; isLoading: boolean; isSaving: boolean; error: string | null; reload: () => Promise<void>; save: (update: WorkspaceContextUpdate) => Promise<boolean> };
 
-export function useWorkspaceContext(conversationId: string | null): State {
+export function useWorkspaceContext(conversationId: string | null): WorkspaceContextState {
   const [context, setContext] = useState<WorkspaceContext | null>(null);
   const [isLoading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

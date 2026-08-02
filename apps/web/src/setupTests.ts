@@ -33,6 +33,39 @@ if (typeof window.matchMedia !== "function") {
   })) as typeof window.matchMedia;
 }
 
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+
+if (typeof globalThis.IntersectionObserver === "undefined") {
+  globalThis.IntersectionObserver = class IntersectionObserver {
+    readonly root = null;
+    readonly rootMargin = "0px";
+    readonly thresholds = [0];
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords() { return []; }
+  } as unknown as typeof IntersectionObserver;
+}
+
+if (typeof globalThis.Notification === "undefined") {
+  globalThis.Notification = class Notification {
+    static permission: NotificationPermission = "denied";
+    static requestPermission = async () => "denied" as NotificationPermission;
+    readonly title: string;
+    constructor(title: string) { this.title = title; }
+    close() {}
+    addEventListener() {}
+    removeEventListener() {}
+    dispatchEvent() { return false; }
+  } as unknown as typeof Notification;
+}
+
 afterEach(() => {
   cleanup();
 });

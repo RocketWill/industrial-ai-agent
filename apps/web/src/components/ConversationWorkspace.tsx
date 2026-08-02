@@ -1,49 +1,165 @@
-import { Alert, Button, Drawer, Input, List, Select, Skeleton, Tag, Typography } from "antd";
-import { ArrowDownOutlined, SendOutlined, StopOutlined } from "@ant-design/icons";
+import { Alert, Avatar, Button, Skeleton, Tag, Typography } from "antd";
+import { ArrowDownOutlined, MenuOutlined, RobotOutlined, SettingOutlined, UserOutlined } from "@ant-design/icons";
+import { Bubble, Sender } from "@ant-design/x";
+import type { BubbleItemType } from "@ant-design/x";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ElementRef, type UIEvent } from "react";
+
 import { useMessages } from "../hooks/useMessages";
-import { useWorkspaceContext } from "../hooks/useWorkspaceContext";
-import { useEffect, useRef, useState } from "react";
 import EmptyConversation from "./EmptyConversation";
 import MessageItem from "./MessageItem";
 
-type Props = { conversationId: string | null };
+type Props = {
+  conversationId: string | null;
+  conversationTitle: string | null;
+  onOpenNavigation: () => void;
+  onOpenContext: () => void;
+};
 
-export default function ConversationWorkspace({ conversationId }: Props) {
+const placeholderId = "00000000-0000-1000-8000-000000000000";
+
+export default function ConversationWorkspace({ conversationId, conversationTitle, onOpenNavigation, onOpenContext }: Props) {
   const state = useMessages(conversationId);
-  const contextState = useWorkspaceContext(conversationId);
-  const context = contextState.context;
-  const [contextOpen, setContextOpen] = useState(false);
-  const [device, setDevice] = useState("");
-  const [lot, setLot] = useState("");
-  const [timeRange, setTimeRange] = useState("");
-  const [lotError, setLotError] = useState<string | null>(null);
-  const [showScrollButton, setShowScrollButton] = useState(false);
-  const messageListRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<ElementRef<typeof Bubble.List>>(null);
   const pendingInitialScroll = useRef(true);
+  const initialScrollFrame = useRef<number | null>(null);
+  const lastScrolledMessageKey = useRef("");
+  const [followLatest, setFollowLatest] = useState(true);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const latestMessage = state.messages[state.messages.length - 1];
   const latestMessageKey = latestMessage ? `${latestMessage.id}:${latestMessage.content.length}` : "";
-  useEffect(() => { setDevice(context?.device ?? ""); setLot(context?.lot ?? ""); setTimeRange(context?.time_range ?? ""); }, [context]);
-  useEffect(() => { pendingInitialScroll.current = true; }, [conversationId]);
-  useEffect(() => {
-    if (!state.isLoading && pendingInitialScroll.current && state.messages.length > 0) {
+
+  const items = useMemo<BubbleItemType[]>(() => state.messages.map((message, index) => {
+    const isActiveAssistant = message.id === placeholderId;
+    const evidence = index === state.messages.length - 1 && message.role === "assistant" ? state.evidence : null;
+    const status = isActiveAssistant
+      ? state.runState.phase === "failed" ? "error"
+        : state.runState.phase === "cancelled" ? "abort"
+          : "updating"
+      : "success";
+    return {
+      key: message.id,
+      role: message.role === "user" ? "user" : "ai",
+      content: message.content,
+      status,
+      streaming: isActiveAssistant && state.isStreaming,
+      avatar: <Avatar icon={message.role === "user" ? <UserOutlined /> : <RobotOutlined />} />,
+      contentRender: () => (
+        <MessageItem
+          message={message}
+          evidence={evidence}
+          isStreaming={isActiveAssistant && state.isStreaming}
+          runLabel={isActiveAssistant ? state.runState.label : null}
+        />
+      ),
+    };
+  }), [state.evidence, state.isStreaming, state.messages, state.runState]);
+
+  useLayoutEffect(() => {
+    pendingInitialScroll.current = true;
+    setFollowLatest(true);
+    setShowScrollButton(false);
+  }, [conversationId]);
+
+  useLayoutEffect(() => {
+    if (!state.isLoading && state.messages.length > 0 && pendingInitialScroll.current) {
       pendingInitialScroll.current = false;
-      requestAnimationFrame(() => messageListRef.current?.scrollTo({ top: messageListRef.current.scrollHeight }));
+      if (initialScrollFrame.current !== null) cancelAnimationFrame(initialScrollFrame.current);
+      initialScrollFrame.current = requestAnimationFrame(() => {
+        listRef.current?.scrollTo({ top: "bottom", behavior: "auto" });
+        lastScrolledMessageKey.current = latestMessageKey;
+        initialScrollFrame.current = null;
+      });
     }
-  }, [state.isLoading, state.messages.length]);
-  useEffect(() => {
-    if (latestMessageKey) requestAnimationFrame(() => messageListRef.current?.scrollTo({ top: messageListRef.current.scrollHeight, behavior: "smooth" }));
-  }, [latestMessageKey]);
-  const submit = () => { void state.send(); requestAnimationFrame(() => messageListRef.current?.scrollTo({ top: messageListRef.current.scrollHeight, behavior: "smooth" })); };
-  const scrollToBottom = () => { messageListRef.current?.scrollTo({ top: messageListRef.current.scrollHeight, behavior: "smooth" }); };
-  const saveContext = async () => { if (lot.trim().length > 200) { setLotError("Lot must be 200 characters or fewer."); return; } setLotError(null); const saved = await contextState.save({ device: device.trim() || null, lot: lot.trim() || null, time_range: timeRange.trim() || null }); if (saved) setContextOpen(false); };
-  return <section className="conversation-workspace" aria-label="Conversation workspace">
-    <div className="conversation-heading"><div><Typography.Text className="workspace-eyebrow">Current analysis</Typography.Text><Typography.Title level={2}>{conversationId ? "Conversation" : "Select a conversation"}</Typography.Title></div>{conversationId && <Button type="link" size="small" onClick={() => setContextOpen(true)}>Edit context</Button>}</div>
-    <div className="context-bar" aria-label="Current analysis context"><div className="context-value"><Typography.Text type="secondary">Device</Typography.Text><Typography.Text>{context?.device ?? "Not configured"}</Typography.Text></div><div className="context-value"><Typography.Text type="secondary">Lot</Typography.Text><Typography.Text>{context?.lot ?? "Not configured"}</Typography.Text></div><div className="context-value"><Typography.Text type="secondary">Time range</Typography.Text><Typography.Text>{context?.time_range ?? "Not configured"}</Typography.Text></div><Tag color="cyan">Synthetic Demo</Tag></div>
-    {state.error && <Alert type="error" showIcon message={state.error} action={<Button size="small" onClick={() => void state.reload()}>Retry</Button>} />}
-    {state.toolStatus && state.isStreaming && <Typography.Text className="tool-status" type="secondary" aria-live="polite">{state.toolStatus}</Typography.Text>}
-    {state.isLoading ? <Skeleton active paragraph={{ rows: 5 }} /> : !conversationId ? <div className="conversation-empty-select">Select a conversation from the sidebar.</div> : state.messages.length === 0 ? <EmptyConversation onPromptSelect={state.setDraft} /> : <div ref={messageListRef} className="message-list" onScroll={(event) => setShowScrollButton(event.currentTarget.scrollHeight - event.currentTarget.scrollTop - event.currentTarget.clientHeight > 96)}><List dataSource={state.messages} renderItem={(message, index) => <List.Item className="message-row"><MessageItem message={message} evidence={index === state.messages.length - 1 && message.role === "assistant" ? state.evidence : null} isStreaming={state.isStreaming && message.id === "00000000-0000-1000-8000-000000000000"} /></List.Item>} /></div>}
-    {showScrollButton && <Button className="scroll-bottom-button" shape="circle" icon={<ArrowDownOutlined />} aria-label="Scroll to bottom" onClick={scrollToBottom} />}
-    <div className="message-composer"><Input.TextArea aria-label="Message" value={state.draft} onChange={(event) => state.setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); } }} disabled={!conversationId || state.isSending} placeholder={conversationId ? "Ask a question about this synthetic analysis…" : "Select a conversation first"} autoSize={{ minRows: 2, maxRows: 6 }} />{state.isStreaming ? <Button danger icon={<StopOutlined />} aria-label="Stop generation" onClick={state.cancelStreaming}>Stop</Button> : <Button type="primary" icon={<SendOutlined />} loading={state.isSending} disabled={!conversationId || !state.draft.trim()} onClick={submit}>Send</Button>}</div>
-    <Drawer title="Analysis context" open={contextOpen} onClose={() => setContextOpen(false)} extra={<Button type="primary" loading={contextState.isSaving} onClick={() => void saveContext()}>Save</Button>}><Typography.Paragraph type="secondary">These values describe the current analysis context. Data source remains Synthetic Demo.</Typography.Paragraph><label className="context-field">Device<Select aria-label="Device" allowClear loading={contextState.devicesLoading} status={contextState.devicesError ? "error" : undefined} placeholder="Not selected" value={device || undefined} onChange={(value) => setDevice(value ?? "")} options={contextState.devices.map((item) => ({ value: item.id, label: `${item.name} · ${item.category}` }))} /></label><label className="context-field">Lot<Input status={lotError ? "error" : undefined} value={lot} onChange={(event) => setLot(event.target.value)} placeholder="Optional" />{lotError && <Typography.Text type="danger">{lotError}</Typography.Text>}</label><label className="context-field">Time range<Select aria-label="Time range" allowClear placeholder="Not selected" value={timeRange || undefined} onChange={(value) => setTimeRange(value ?? "")} options={["Last 1 hour", "Last 4 hours", "Last 8 hours", "Last 24 hours", "Custom"].map((value) => ({ value, label: value }))} /></label><Tag color="cyan">Data source: Synthetic Demo</Tag>{contextState.devicesError && <Alert type="error" showIcon message={contextState.devicesError} />}{contextState.error && <Alert type="error" showIcon message={contextState.error} />}</Drawer>
-  </section>;
+    return () => {
+      if (initialScrollFrame.current !== null) cancelAnimationFrame(initialScrollFrame.current);
+      initialScrollFrame.current = null;
+    };
+  }, [conversationId, latestMessageKey, state.isLoading, state.messages.length]);
+
+  useLayoutEffect(() => {
+    if (followLatest && state.isStreaming && latestMessageKey && lastScrolledMessageKey.current !== latestMessageKey) {
+      listRef.current?.scrollTo({ top: "bottom", behavior: "auto" });
+      lastScrolledMessageKey.current = latestMessageKey;
+    }
+  }, [followLatest, latestMessageKey, state.isStreaming]);
+
+  const handleScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
+    const nearLatest = Math.abs(event.currentTarget.scrollTop) <= 96;
+    setFollowLatest(nearLatest);
+    setShowScrollButton(!nearLatest);
+  }, []);
+
+  const submit = (value?: string) => {
+    if (value !== undefined && value !== state.draft) state.setDraft(value);
+    setFollowLatest(true);
+    setShowScrollButton(false);
+    listRef.current?.scrollTo({ top: "bottom", behavior: "auto" });
+    void state.send(value);
+  };
+
+  const scrollToBottom = () => {
+    setFollowLatest(true);
+    setShowScrollButton(false);
+    listRef.current?.scrollTo({ top: "bottom", behavior: "auto" });
+    lastScrolledMessageKey.current = latestMessageKey;
+  };
+
+  return (
+    <section className="conversation-workspace" aria-label="Conversation workspace">
+      <header className="chat-header">
+        <Button className="navigation-trigger" variant="text" shape="circle" icon={<MenuOutlined />} aria-label="Open navigation" onClick={onOpenNavigation} />
+        <div className="chat-title">
+          <Typography.Text className="section-label">Current conversation</Typography.Text>
+          <Typography.Title level={2}>{conversationTitle ?? "Select a conversation"}</Typography.Title>
+        </div>
+        <div className="chat-header-actions">
+          <Tag color="cyan">Synthetic Demo</Tag>
+          <Button className="context-trigger" variant="text" shape="circle" icon={<SettingOutlined />} aria-label="Open analysis context" disabled={!conversationId} onClick={onOpenContext} />
+        </div>
+      </header>
+      {state.error && <Alert className="workspace-alert" type="error" showIcon title={state.error} action={<Button size="small" onClick={() => void state.reload()}>Reload history</Button>} />}
+      <div className="chat-canvas">
+        {state.isLoading ? (
+          <Skeleton className="message-skeleton" active paragraph={{ rows: 7 }} />
+        ) : !conversationId ? (
+          <div className="conversation-empty-select">Select or create a conversation to begin.</div>
+        ) : state.messages.length === 0 ? (
+          <EmptyConversation onPromptSelect={state.setDraft} />
+        ) : (
+          <Bubble.List
+            ref={listRef}
+            className="message-list"
+            items={items}
+            autoScroll
+            onScroll={handleScroll}
+            classNames={{ scroll: "message-scroll-region" }}
+            role={{
+              user: { placement: "end", variant: "filled", shape: "corner" },
+              ai: {
+                placement: "start",
+                variant: "outlined",
+                shape: "default",
+                classNames: { content: "assistant-bubble-content" },
+              },
+            }}
+          />
+        )}
+        {showScrollButton && <Button className="scroll-bottom-button" shape="circle" icon={<ArrowDownOutlined />} aria-label="Jump to latest message" onClick={scrollToBottom} />}
+      </div>
+      <div className="composer-shell">
+        <Sender
+          value={state.draft}
+          onChange={state.setDraft}
+          onSubmit={submit}
+          onCancel={state.cancelStreaming}
+          loading={state.isStreaming}
+          disabled={!conversationId || state.isSending}
+          submitType="enter"
+          placeholder={conversationId ? "Ask about this synthetic analysis" : "Select a conversation first"}
+          autoSize={{ minRows: 2, maxRows: 6 }}
+        />
+        <Typography.Text type="secondary" className="composer-hint">Enter to send. Shift+Enter for a new line.</Typography.Text>
+      </div>
+    </section>
+  );
 }

@@ -1,4 +1,5 @@
 import { theme, type ThemeConfig } from "antd";
+import type { XProviderProps } from "@ant-design/x";
 import { colors } from "./colors";
 
 export const spacing = {
@@ -72,5 +73,33 @@ export const antdTheme: ThemeConfig = {
     Card: { colorBgContainer: colors.bgContainer },
     Modal: { contentBg: colors.bgContainer, headerBg: colors.bgContainer },
     List: { colorText: colors.textPrimary },
+  },
+};
+
+export const workbenchTheme: XProviderProps["theme"] = {
+  ...antdTheme,
+  components: {
+    ...antdTheme.components,
+    Conversations: {
+      creationBgColor: colors.input,
+      creationBorderColor: colors.border,
+      creationHoverColor: colors.bgElevated,
+      shortcutKeyTextColor: colors.textDescription,
+    },
+    Sender: {
+      colorBorderInput: colors.border,
+      colorBgSlot: colors.bgElevated,
+      colorTextSlot: colors.textSecondary,
+      colorTextSlotPlaceholder: colors.textDescription,
+      colorBorderSlot: colors.border,
+      colorBorderSlotHover: colors.primary,
+      switchCheckedBg: colors.primary,
+      switchCheckedHoverBg: colors.primaryHover,
+      switchUncheckedHoverBg: colors.bgElevated,
+      colorBgSkill: colors.bgElevated,
+      colorBgSkillHover: colors.fillAlter,
+      colorTextActionsDisabled: colors.textDisabled,
+      colorBgActionsDisabled: colors.bgElevated,
+    },
   },
 };

@@ -1,16 +1,35 @@
-import { Avatar, Button, Descriptions, Tag, Typography } from "antd";
-import { CopyOutlined, RobotOutlined, UserOutlined } from "@ant-design/icons";
+import { Button, Descriptions, Tag, Typography } from "antd";
+import { CopyOutlined } from "@ant-design/icons";
+import { lazy, Suspense } from "react";
 import type { Message, ProductionEvidence } from "../api/messages";
 import { normalizeAssistantContent } from "../utils/normalizeAssistantContent";
+
+const XMarkdown = lazy(() => import("@ant-design/x-markdown").then((module) => ({ default: module.XMarkdown })));
 
 type Props = {
   message: Message;
   isStreaming?: boolean;
   evidence?: ProductionEvidence | null;
+  runLabel?: string | null;
 };
 
 function displayTime(value: string): string {
   return new Date(value).toLocaleString();
+}
+
+function ThinkingIndicator({ label }: { label: string }) {
+  const showLabel = label !== "Generating response";
+
+  return (
+    <div className="thinking-status" role="status" aria-live="polite" aria-label={label}>
+      <span className="thinking-dots" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </span>
+      {showLabel && <span className="thinking-label">{label}</span>}
+    </div>
+  );
 }
 
 function ProductionEvidenceCard({ evidence }: { evidence: ProductionEvidence }) {
@@ -26,31 +45,20 @@ function ProductionEvidenceCard({ evidence }: { evidence: ProductionEvidence }) 
           <Tag> Synthetic Demo </Tag>
         </div>
       </div>
-      <Descriptions size="small" column={2} className="evidence-summary">
-        <Descriptions.Item label="Equipment">
-          {summary.equipment_id}
-        </Descriptions.Item>
-        <Descriptions.Item label="Lot">
-          {summary.lot_id ?? "All lots"}
-        </Descriptions.Item>
-        <Descriptions.Item label="Time range" span={2}>
-          {displayTime(summary.start)} – {displayTime(summary.end)}
-        </Descriptions.Item>
-        <Descriptions.Item label="Yield">
-          {summary.yield_rate === null
-            ? "No data"
-            : `${(summary.yield_rate * 100).toFixed(2)}%`}
-        </Descriptions.Item>
-        <Descriptions.Item label="Inspected">
-          {summary.inspected_wafers}
-        </Descriptions.Item>
-        <Descriptions.Item label="Passed">
-          {summary.passed_wafers}
-        </Descriptions.Item>
-        <Descriptions.Item label="Failed">
-          {summary.failed_wafers}
-        </Descriptions.Item>
-      </Descriptions>
+      <Descriptions
+        size="small"
+        column={2}
+        className="evidence-summary"
+        items={[
+          { key: "equipment", label: "Equipment", children: summary.equipment_id },
+          { key: "lot", label: "Lot", children: summary.lot_id ?? "All lots" },
+          { key: "range", label: "Time range", span: 2, children: `${displayTime(summary.start)} - ${displayTime(summary.end)}` },
+          { key: "yield", label: "Yield", children: summary.yield_rate === null ? "No data" : `${(summary.yield_rate * 100).toFixed(2)}%` },
+          { key: "inspected", label: "Inspected", children: summary.inspected_wafers },
+          { key: "passed", label: "Passed", children: summary.passed_wafers },
+          { key: "failed", label: "Failed", children: summary.failed_wafers },
+        ]}
+      />
       <div className="evidence-details">
         <section className="evidence-detail-section" aria-labelledby="defect-counts">
           <Typography.Title level={5} id="defect-counts">
@@ -85,7 +93,7 @@ function ProductionEvidenceCard({ evidence }: { evidence: ProductionEvidence }) 
                 <li key={alarm.event_id}>
                   <Typography.Text strong>{alarm.code}</Typography.Text>
                   <Typography.Text type="secondary">
-                    {displayTime(alarm.started_at)} – {displayTime(alarm.ended_at)}
+                    {displayTime(alarm.started_at)} - {displayTime(alarm.ended_at)}
                   </Typography.Text>
                 </li>
               ))}
@@ -106,6 +114,7 @@ export default function MessageItem({
   message,
   isStreaming = false,
   evidence = null,
+  runLabel = null,
 }: Props) {
   const isUser = message.role === "user";
   const content = isUser
@@ -117,10 +126,6 @@ export default function MessageItem({
       className={`chat-message ${message.role}`}
       aria-label={`${isUser ? "You" : "Industrial AI Agent"} message`}
     >
-      <Avatar
-        className="message-avatar"
-        icon={isUser ? <UserOutlined /> : <RobotOutlined />}
-      />
       <div className="message-content">
         <div className="message-heading">
           <Typography.Text strong>
@@ -130,15 +135,27 @@ export default function MessageItem({
             {displayTime(message.created_at)}
           </Typography.Text>
         </div>
-        <Typography.Paragraph
-          className={`message-body${isStreaming ? " streaming" : ""}`}
-        >
-          {content || (isStreaming ? "Generating response…" : "")}
-        </Typography.Paragraph>
+        {isUser ? (
+          <Typography.Paragraph className="message-body user-message-body">
+            {content}
+          </Typography.Paragraph>
+        ) : content ? (
+          <Suspense fallback={<Typography.Paragraph className="message-body">{content}</Typography.Paragraph>}>
+            <XMarkdown
+              rootClassName="message-body assistant-markdown"
+              content={content}
+              escapeRawHtml
+              openLinksInNewTab
+              streaming={isStreaming ? { hasNextChunk: true, tail: true, enableAnimation: false } : undefined}
+            />
+          </Suspense>
+        ) : (
+          <ThinkingIndicator label={runLabel ?? "Generating response"} />
+        )}
         {!isStreaming && content && (
           <Button
             className="message-copy"
-            type="text"
+            variant="text"
             size="small"
             icon={<CopyOutlined />}
             aria-label="Copy message"
