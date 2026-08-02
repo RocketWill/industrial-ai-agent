@@ -30,7 +30,7 @@ path to query the fictional AOI dataset, calculate a deterministic production
 summary, and pass that evidence back to the model for the final answer. General
 questions use the same SSE transport without manufacturing evidence.
 
-The workbench now uses Ant Design 6.1.1, Ant Design X 2.9.0, and XMarkdown
+The workbench now uses Ant Design 6.5.1, Ant Design X 2.9.0, and XMarkdown
 2.9.0. Its dark-first responsive layout separates conversation navigation,
 the message stream, and editable analysis context without adding unsupported
 manufacturing dashboards or charts.

@@ -106,9 +106,49 @@ describe("ConversationWorkspace scrolling", () => {
     expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0, behavior: "auto" }));
   });
 
-  it("marks every assistant bubble with the semantic rainbow class", () => {
+  it("keeps the completed assistant accent static and excludes user bubbles", () => {
     const { container } = render(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
     expect(container.querySelectorAll(".assistant-bubble-content")).toHaveLength(1);
+    expect(container.querySelector(".assistant-bubble-streaming")).toBeNull();
     expect(container.querySelector(".user-bubble-content")).toBeNull();
+  });
+
+  it("adds the animated frame only to the active streaming assistant bubble", () => {
+    const view = render(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
+    currentState = state({
+      messages: [
+        messages[0],
+        {
+          ...messages[1],
+          id: "00000000-0000-1000-8000-000000000000",
+          content: "Partial answer",
+        },
+      ],
+      isStreaming: true,
+      runState: { phase: "generating", label: "Generating response" },
+    });
+
+    view.rerender(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
+    const assistantBubble = view.container.querySelector(".assistant-bubble-content");
+    expect(assistantBubble).toHaveClass("assistant-bubble-streaming");
+    expect(assistantBubble?.querySelector(".assistant-beam-host")).toBeInTheDocument();
+  });
+
+  it("removes the animated frame from a failed assistant run", () => {
+    currentState = state({
+      messages: [
+        messages[0],
+        {
+          ...messages[1],
+          id: "00000000-0000-1000-8000-000000000000",
+          content: "Generation failed.",
+        },
+      ],
+      isStreaming: false,
+      runState: { phase: "failed", label: "Generation failed" },
+    });
+
+    const { container } = render(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
+    expect(container.querySelector(".assistant-bubble-content")).not.toHaveClass("assistant-bubble-streaming");
   });
 });

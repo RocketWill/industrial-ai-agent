@@ -1,4 +1,5 @@
-import { Alert, Avatar, Button, Skeleton, Tag, Typography } from "antd";
+import { Alert, Avatar, BorderBeam, Button, Skeleton, Tag, Typography } from "antd";
+import type { BorderBeamGradient } from "antd";
 import { ArrowDownOutlined, MenuOutlined, RobotOutlined, SettingOutlined, UserOutlined } from "@ant-design/icons";
 import { Bubble, Sender } from "@ant-design/x";
 import type { BubbleItemType } from "@ant-design/x";
@@ -16,6 +17,13 @@ type Props = {
 };
 
 const placeholderId = "00000000-0000-1000-8000-000000000000";
+const assistantBeamColor: BorderBeamGradient = [
+  { color: "#ff7a45", percent: 0 },
+  { color: "#f759ab", percent: 24 },
+  { color: "#9254de", percent: 50 },
+  { color: "#597ef7", percent: 76 },
+  { color: "#36cfc9", percent: 100 },
+];
 
 export default function ConversationWorkspace({ conversationId, conversationTitle, onOpenNavigation, onOpenContext }: Props) {
   const state = useMessages(conversationId);
@@ -36,21 +44,34 @@ export default function ConversationWorkspace({ conversationId, conversationTitl
         : state.runState.phase === "cancelled" ? "abort"
           : "updating"
       : "success";
+    const isAnimatedAssistant = message.role === "assistant" && status === "updating" && state.isStreaming;
     return {
       key: message.id,
       role: message.role === "user" ? "user" : "ai",
       content: message.content,
       status,
       streaming: isActiveAssistant && state.isStreaming,
+      classNames: message.role === "assistant"
+        ? { content: `assistant-bubble-content${isAnimatedAssistant ? " assistant-bubble-streaming" : ""}` }
+        : undefined,
+      styles: isAnimatedAssistant ? { content: { padding: 0 } } : undefined,
       avatar: <Avatar icon={message.role === "user" ? <UserOutlined /> : <RobotOutlined />} />,
-      contentRender: () => (
+      contentRender: () => {
+        const messageItem = (
         <MessageItem
           message={message}
           evidence={evidence}
           isStreaming={isActiveAssistant && state.isStreaming}
           runLabel={isActiveAssistant ? state.runState.label : null}
         />
-      ),
+        );
+
+        return isAnimatedAssistant ? (
+          <BorderBeam color={assistantBeamColor} duration={6.5} lineWidth={1} outset={0} size={100}>
+            <div className="assistant-beam-host">{messageItem}</div>
+          </BorderBeam>
+        ) : messageItem;
+      },
     };
   }), [state.evidence, state.isStreaming, state.messages, state.runState]);
 
@@ -139,7 +160,6 @@ export default function ConversationWorkspace({ conversationId, conversationTitl
                 placement: "start",
                 variant: "outlined",
                 shape: "default",
-                classNames: { content: "assistant-bubble-content" },
               },
             }}
           />
