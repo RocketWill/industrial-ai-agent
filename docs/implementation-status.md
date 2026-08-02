@@ -2,7 +2,7 @@
 
 This document is the code-backed feature inventory for the repository. It was
 reviewed against the application code, migrations, tests, and public
-documentation on 2026-08-01.
+documentation on 2026-08-02.
 
 ## Status rules
 
@@ -25,11 +25,11 @@ matrix. Application README files own setup and contract usage.
 | Synchronous assistant response | Implemented | Persist the user message, send complete conversation history to an OpenAI-compatible model, optionally execute one supported production-summary tool call, return optional structured evidence, and persist one successful final assistant response. | No system prompt, retry policy, model discovery, or persisted evidence history. |
 | Streaming assistant response | Implemented | Send SSE events for the persisted user message, token deltas, completion, safe errors, and production tool stages (`tool_call_started`, `tool_result`) on the production path. After a successful production tool result, final model text is forwarded as provider token deltas. The browser uses this path for general and production questions. | Client disconnect persistence behavior does not yet have an integration test. |
 | Conversation continuity | Implemented | Previous user and assistant messages from the selected conversation are included in the next model request. | Workspace context is stored separately and is not yet included in the model prompt. |
-| Workspace context API | Implemented | Read and partially update conversation-bound environment, device, lot, time range, and data source; the synchronous production path resolves saved device, lot, and supported synthetic time presets when tool arguments are missing. | Context is not injected into the general model prompt. Custom or unrecognized time-range labels still require clarification. |
+| Workspace context API | Implemented | Read and partially update conversation-bound environment, device, lot, time range, and data source; synchronous and SSE production paths resolve saved device, lot, and supported synthetic time presets when tool arguments are missing. | Context is not injected into the general model prompt. Custom or unrecognized time-range labels still require clarification. |
 | Synthetic device catalog | Implemented | `GET /devices` returns three deterministic fictional device identities and validates selected device IDs. | No live status, telemetry, production records, or mutable catalog. |
 | React conversation workflow | Implemented | Load, create, select, and delete conversations; reload history; send messages through SSE; display incremental responses and tool stages; stop generation; and report failures. | Production routing uses a focused English keyword heuristic. There is no structured intent contract, message editing, regeneration, new-response counter, or pagination. |
-| Industrial workspace shell | Implemented | Dithered Ant Design theme, desktop sidebar, mobile Drawer, analysis workspace header, explicit synthetic context strip, fixed composer, one main message scrollbar, responsive reading widths, automatic latest-message following, centered scroll-to-bottom control, immediate streaming placeholder, and a current-exchange Production Summary result surface with Defect Counts, Alarm Events, provenance, and empty states. | Tool timelines, sources, and manufacturing charts are not displayed; evidence is available only for the current exchange. |
-| Context editor | Implemented | Select a fictional device, enter an optional lot, choose a time-range preset, and save conversation context. | Source remains read-only Synthetic Demo; `Custom` does not provide start/end controls. |
+| Industrial workspace shell | Implemented | Ant Design 6.1.1 and Ant Design X 2.9.0 provide a dark-first three-column desktop workbench, a two-column tablet layout, focused mobile Drawers, grouped conversations, Bubble message rendering, a controlled Sender, XMarkdown assistant content, accessible three-dot processing state, stable latest-message following, a jump-to-latest control, and a current-exchange Production Summary surface. | Full tool timelines, sources, and manufacturing charts are not displayed; evidence is available only for the current exchange. |
+| Context editor | Implemented | Select a fictional device, enter an optional lot, choose an executable 1, 4, 8, or 24 hour preset, keep edits in a local draft, Save or Reset explicitly, and guard navigation while changes are unsaved. Loading and failures remain visible in the inspector. | Data source and environment remain read-only synthetic metadata; arbitrary UTC start and end entry is not implemented. |
 | Manufacturing domain | In Progress | Immutable Equipment, Production Lot, Inspection Record, Defect Count, Alarm Event, Time Range, and Production Summary types; deterministic yield and defect aggregation; overlapping alarm selection; explicit empty-result behavior; and one fictional AOI dataset. | No database persistence, equipment-status semantics, throughput calculation, live data, or causal inference. |
 | Production summary tool | In Progress | Typed `get_production_summary` request/result boundary filters the synthetic AOI dataset, delegates numeric work to the manufacturing domain, participates in synchronous and SSE grounded-answer flows, resolves missing arguments from supported workspace context, and returns current-exchange evidence. | Evidence is not persisted in history; custom or unrecognized time-range labels require clarification. |
 | LangGraph orchestration | Implemented | The synchronous path invokes a compiled typed graph with context loading, focused production-query detection, one supported tool execution, evidence handoff, final model completion, and persistence. The SSE production runner exposes tool-call, evidence, final-text, and completion events. | No persisted runs, general intent router, retries, checkpoints, resume behavior, or graph visualization. Tool execution currently occurs within the model-call step rather than a separate graph node. |
@@ -55,23 +55,29 @@ matrix. Application README files own setup and contract usage.
 
 ## Verification record
 
-The latest full local verification on 2026-08-01 produced:
+The latest local verification on 2026-08-02 produced:
 
-- API: 151 Pytest tests passed and Ruff passed. Package build was not rerun in
+- API: 153 Pytest tests passed and Ruff passed. Package build was not rerun in
   the current environment because its virtual environment does not include the
   `build` module; the prior clean-copy source and wheel build remains recorded.
-- Web: 37 Vitest tests passed, TypeScript checking passed, ESLint passed, and
-  the Vite production build completed.
-- Browser: desktop and mobile shell checks confirmed viewport-bound layout,
-  hidden body overflow, mobile navigation switching, and the conversation list
-  as the primary vertical scroll region.
+- Web: 48 Vitest tests passed, TypeScript checking passed, ESLint passed, and
+  the Vite production build completed. Ant Design CLI doctor reported 16 of 16
+  checks passing, and its deprecated, accessibility, and performance lint
+  categories reported no issues.
+- Browser: desktop, tablet, and mobile checks confirmed the three responsive
+  layouts, hidden body overflow, navigation and context Drawers, live backend
+  data, independent workbench scroll regions, reverse-scroll stability,
+  initial and streaming latest-message following, the jump-to-latest control,
+  and the assistant processing indicator.
 - Clean copy: git archive output installed API and Web dependencies from the
   committed lockfiles, applied all migrations, and reran the API and Web test
   suites successfully.
 
-The Vite build reports a JavaScript chunk-size warning above 500 kB. This is a
-build warning rather than a failed verification, and code splitting has not
-yet been introduced.
+The Vite build reports a JavaScript chunk-size warning above 500 kB. The main
+JavaScript output is 872.93 kB, or 281.90 kB gzip, while XMarkdown is split into
+a 125.66 kB lazy chunk, or 41.52 kB gzip. The initial JavaScript gzip size is
+about 15.5 percent above the recorded 244.02 kB baseline and remains within the
+20 percent review threshold for this UI change.
 
 ## Remaining hardening
 

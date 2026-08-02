@@ -70,10 +70,11 @@ summarization, and one fictional AOI wafer-inspection dataset.
 The current backend includes explicit SQLite migrations, Conversation and
 Message persistence, synchronous and streaming OpenAI-compatible chat flows,
 conversation-bound workspace context, a deterministic fictional device
-catalog, and synchronous plus SSE production-summary tool flows. The React application
-provides API-process health, conversation and message workflows, streaming
-controls, responsive navigation, context editing, and SSE tool events for a
-small set of English production-query terms.
+catalog, and synchronous plus SSE production-summary tool flows. The React
+application provides API-process health, conversation and message workflows,
+streaming controls, responsive conversation navigation, draft-based context
+editing, Markdown assistant rendering, and current-exchange production tool
+stages and evidence for a small set of English production-query terms.
 
 Streaming and the refined workspace are recorded as completed v0.1.1 and
 v0.1.2 extensions.

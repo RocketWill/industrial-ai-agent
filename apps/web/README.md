@@ -2,11 +2,13 @@
 
 ## Purpose
 
-This directory contains the React and TypeScript v0.1 conversation foundation.
+This directory contains the React and TypeScript conversation and analysis
+workbench implemented across the frontend milestones.
 
 ## Implemented
 
-- Vite, React, TypeScript, Ant Design, Vitest, and React Testing Library;
+- Vite, React, TypeScript, Ant Design 6.1.1, Ant Design X 2.9.0, XMarkdown
+  2.9.0, Vitest, and React Testing Library;
 - a `GET /health` client with runtime response validation;
 - conversation loading, creation, selection, and deletion through the existing API;
 - persisted message history and synchronous user/assistant exchanges;
@@ -17,10 +19,13 @@ This directory contains the React and TypeScript v0.1 conversation foundation.
 - conversation-bound context display and editing;
 - deterministic fictional device selection, lot validation, and time-range
   presets;
-- desktop sidebar navigation and a mobile Drawer;
-- a viewport-bound shell with one primary conversation scrollbar;
-- assistant reasoning-tag suppression, message copy, empty states, and a
-  scroll-to-bottom control;
+- a dark-first three-column desktop workbench, two-column tablet layout, and
+  focused navigation and context Drawers on mobile;
+- grouped conversations and a draft-based context inspector with Save, Reset,
+  validation, and unsaved-change protection;
+- a viewport-bound message stream with Markdown assistant responses, pending
+  tool stages, current-exchange evidence, stable latest-message following, and
+  a jump-to-latest control;
 - local `/api` proxying to `http://127.0.0.1:8000` during Vite development;
 - checking, connected, and unavailable API-process states; and
 - a user-initiated `Check again` action that prevents duplicate in-flight
@@ -37,8 +42,9 @@ From `apps/web`:
 npm ci
 ```
 
-The current project uses versions compatible with the local Node.js 16 runtime.
-The lockfile records the exact dependency graph.
+The lockfile records the exact dependency graph. Use a currently supported
+Node.js release rather than relying on the previously documented Node.js 16
+environment.
 
 ## Run
 
@@ -83,9 +89,10 @@ failed submissions and does not persist partial assistant output.
 
 ## Non-responsibilities
 
-Agent traces, tool timelines, RAG sources, manufacturing charts, authentication,
-and administrative interfaces are outside v0.1. Streaming is implemented in
-the separate v0.1.1 milestone.
+Complete agent traces, tool timelines, RAG sources, manufacturing charts,
+authentication, and administrative interfaces remain outside the implemented
+frontend scope. Streaming was added in v0.1.1, while the current production
+tool stages and evidence surface depend on the later v0.4 contracts.
 
 ## Current status
 
@@ -96,14 +103,18 @@ assistant text as persisted; the backend creates the record only after it
 consumes a complete non-empty stream. Client-disconnect persistence still
 needs a dedicated integration test.
 
-The context bar loads conversation-bound metadata from the API. Its Drawer
-allows a device to be selected from the fictional catalog and optional lot and
-time-range values to be saved. Empty values appear as `Not configured`, and the
-source remains read-only `Synthetic Demo`.
+The analysis context inspector loads conversation-bound metadata from the API.
+It allows a device to be selected from the fictional catalog and optional lot
+and supported time-range values to be saved. Changes remain local until Save,
+Reset restores the latest server state, and unsaved changes are guarded before
+navigation. The source and environment metadata remain read-only.
 
-The sidebar exposes only the implemented analysis workspace. Grounded
-production results appear as final assistant text with a compact structured
-summary for the current exchange. Evidence is not persisted across
-reloads, and the browser does not display tool activity or manufacturing charts.
-Its keyword heuristic does not yet cover Chinese production terms or distinguish
-every conceptual question from a data query.
+Grounded production results appear as final assistant text with a compact
+structured summary attached to the assistant bubble that produced it. Pending
+assistant bubbles use an accessible three-dot processing indicator, while all
+assistant bubbles retain a static multicolor accent. Generating and
+production-tool stages remain distinguishable through text and ARIA state.
+Evidence is not persisted across reloads, and the browser does not display a
+full tool timeline or manufacturing charts. Its keyword heuristic does not yet
+cover Chinese production terms or distinguish every conceptual question from
+a data query.
