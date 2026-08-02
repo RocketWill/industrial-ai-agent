@@ -6,13 +6,16 @@ from sqlalchemy.orm import Session
 from industrial_agent.graph.errors import GraphExecutionError
 from industrial_agent.graph.state import ExecutionEvent, GraphState
 from industrial_agent.graph.workflow import (
+    DEFECT_DISTRIBUTION_TOOL,
     EQUIPMENT_STATUS_TOOL,
     PRODUCTION_TOOL,
     Complete,
     CompleteWithTools,
+    _is_defect_distribution_question,
     _is_equipment_status_question,
     _messages_with_production_context,
     build_workflow,
+    execute_defect_distribution_tool,
     execute_equipment_status_tool,
     execute_production_tool,
     load_context,
@@ -75,7 +78,14 @@ def run_stream_tool_exchange(
     user_message = message_service.list_messages(session, conversation_id)[-1]
     yield ExecutionEvent(kind="user_message", payload=user_message)
     is_equipment_status = _is_equipment_status_question(state["messages"])
-    selected_tool = EQUIPMENT_STATUS_TOOL if is_equipment_status else PRODUCTION_TOOL
+    is_defect_distribution = _is_defect_distribution_question(state["messages"])
+    selected_tool = (
+        EQUIPMENT_STATUS_TOOL
+        if is_equipment_status
+        else DEFECT_DISTRIBUTION_TOOL
+        if is_defect_distribution
+        else PRODUCTION_TOOL
+    )
     first = complete_with_tools(
         _messages_with_production_context(state), (selected_tool,)
     )
@@ -88,11 +98,12 @@ def run_stream_tool_exchange(
         )
         yield ExecutionEvent(kind="assistant_message", payload=assistant_message)
         return
-    tool_state = (
-        execute_equipment_status_tool(state, first)
-        if is_equipment_status
-        else execute_production_tool(state, first)
-    )
+    if is_equipment_status:
+        tool_state = execute_equipment_status_tool(state, first)
+    elif is_defect_distribution:
+        tool_state = execute_defect_distribution_tool(state, first)
+    else:
+        tool_state = execute_production_tool(state, first)
     call = first.tool_calls[0]
     yield ExecutionEvent(
         kind="tool_call_started",
@@ -119,6 +130,8 @@ def run_stream_tool_exchange(
     result_payload = (
         evidence.equipment_status
         if is_equipment_status
+        else evidence.defect_distribution
+        if is_defect_distribution
         else evidence.production_summary
     )
     if result_payload is None:

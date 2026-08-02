@@ -414,3 +414,54 @@ def test_sync_runner_executes_equipment_status_tool_with_context(
     assert exchange.evidence.equipment_status.status == "running"
     assert calls[0][1] is None
     assert calls[1][1] is not None
+
+
+def test_sync_runner_executes_defect_distribution_before_production_summary(
+    database_session,
+) -> None:
+    conversation = create_conversation(database_session, title="Defects")
+    update_workspace_context(
+        database_session,
+        conversation.id,
+        update=WorkspaceContextUpdate(
+            device="AOI-WAFER-01",
+            lot="LOT-DEMO-001",
+            time_range="Last 4 hours",
+        ),
+    )
+    selected_tools = []
+
+    def complete(messages):
+        raise AssertionError("defect distribution should use its selected tool")
+
+    def complete_with_tools(messages, tools, *, tool_call=None):
+        selected_tools.append(tools[0].name)
+        if tool_call is None:
+            return CompletionResult(
+                content=None,
+                tool_calls=(
+                    ToolCall(
+                        call_id="call-defects",
+                        name="get_defect_distribution",
+                        arguments={},
+                    ),
+                ),
+            )
+        assert '"classified_defect_count":30' in tool_call.content
+        return CompletionResult(content="Edge-chip is the top recorded defect.")
+
+    exchange = run_sync_exchange(
+        database_session,
+        conversation_id=conversation.id,
+        content="Show the defect distribution.",
+        complete=complete,
+        complete_with_tools=complete_with_tools,
+    )
+
+    assert selected_tools == ["get_defect_distribution", "get_defect_distribution"]
+    assert exchange.evidence is not None
+    assert exchange.evidence.defect_distribution is not None
+    assert exchange.evidence.defect_distribution.items[0].category == "edge-chip"
+    assert exchange.assistant_message.content == (
+        "Edge-chip is the top recorded defect."
+    )

@@ -176,6 +176,79 @@ class ProductionSummary:
     limitations: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class DefectDistributionItem:
+    """One ranked category in a deterministic defect distribution."""
+
+    category: str
+    count: int
+    share: float | None
+    rank: int
+
+
+@dataclass(frozen=True)
+class DefectDistribution:
+    """Recorded defect-category distribution for one Equipment and Time Range."""
+
+    equipment_id: str
+    time_range: TimeRange
+    failed_wafers: int
+    classified_defect_count: int
+    unclassified_failed_wafers: int
+    items: tuple[DefectDistributionItem, ...]
+    limitations: tuple[str, ...]
+
+
+def summarize_defect_distribution(
+    *,
+    records: tuple[InspectionRecord, ...],
+    equipment_id: str,
+    time_range: TimeRange,
+) -> DefectDistribution:
+    """Aggregate recorded categories without inferring missing classifications."""
+    matching_records = tuple(
+        record
+        for record in records
+        if record.equipment_id == equipment_id
+        and time_range.contains(record.observed_at)
+    )
+    failed_wafers = sum(record.failed_wafers for record in matching_records)
+    totals: Counter[str] = Counter()
+    for record in matching_records:
+        for defect in record.defect_counts:
+            totals[defect.category] += defect.count
+    classified = sum(totals.values())
+    unclassified = failed_wafers - classified
+    if unclassified < 0:
+        raise ValueError("classified defects cannot exceed failed wafers")
+    ordered = sorted(totals.items(), key=lambda item: (-item[1], item[0]))
+    items = tuple(
+        DefectDistributionItem(
+            category=category,
+            count=count,
+            share=count / classified if classified else None,
+            rank=index,
+        )
+        for index, (category, count) in enumerate(ordered, start=1)
+    )
+    limitations: list[str] = []
+    if not matching_records:
+        limitations.append("no_inspection_records")
+    elif classified == 0:
+        limitations.append("no_classified_defects")
+    if unclassified > 0:
+        limitations.append("incomplete_defect_classification")
+    return DefectDistribution(
+        equipment_id=equipment_id,
+        time_range=time_range,
+        failed_wafers=failed_wafers,
+        classified_defect_count=classified,
+        unclassified_failed_wafers=unclassified,
+        items=items,
+        limitations=tuple(limitations),
+    )
+
+
 def summarize_production(
     *,
     records: tuple[InspectionRecord, ...],

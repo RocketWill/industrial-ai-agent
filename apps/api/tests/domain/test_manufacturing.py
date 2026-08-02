@@ -11,6 +11,7 @@ from industrial_agent.domain.manufacturing import (
     InspectionRecord,
     TimeRange,
     get_equipment_status_at,
+    summarize_defect_distribution,
     summarize_production,
 )
 from industrial_agent.domain.synthetic_data import load_synthetic_scenario
@@ -181,6 +182,74 @@ def test_production_summary_aggregates_only_matching_observations() -> None:
     )
     assert summary.alarm_events == alarms
     assert summary.limitations == ()
+
+
+def test_defect_distribution_reports_classified_shares_and_rank() -> None:
+    scenario = load_synthetic_scenario(
+        REPOSITORY_ROOT / "data/synthetic/aoi-wafer-inspection-v1.json"
+    )
+
+    distribution = summarize_defect_distribution(
+        records=scenario.inspection_records,
+        equipment_id="AOI-WAFER-01",
+        time_range=TimeRange(
+            start=datetime(2026, 1, 15, 13, tzinfo=UTC),
+            end=datetime(2026, 1, 15, 17, tzinfo=UTC),
+        ),
+    )
+
+    assert distribution.failed_wafers == 30
+    assert distribution.classified_defect_count == 30
+    assert distribution.unclassified_failed_wafers == 0
+    assert distribution.items[0].category == "edge-chip"
+    assert distribution.items[0].count == 19
+    assert distribution.items[0].share == pytest.approx(19 / 30)
+    assert distribution.items[0].rank == 1
+    assert distribution.items[1].category == "scratch"
+    assert distribution.items[1].count == 11
+    assert distribution.items[1].share == pytest.approx(11 / 30)
+    assert distribution.items[1].rank == 2
+    assert distribution.limitations == ()
+
+
+def test_defect_distribution_reports_incomplete_classification() -> None:
+    record = InspectionRecord(
+        record_id="inspection-001",
+        equipment_id="AOI-WAFER-01",
+        lot_id="LOT-DEMO-001",
+        observed_at=datetime(2026, 1, 15, 15, tzinfo=UTC),
+        inspected_wafers=10,
+        passed_wafers=6,
+        failed_wafers=4,
+        defect_counts=(DefectCount(category="scratch", count=3),),
+    )
+
+    distribution = summarize_defect_distribution(
+        records=(record,),
+        equipment_id="AOI-WAFER-01",
+        time_range=TimeRange(
+            start=datetime(2026, 1, 15, 14, tzinfo=UTC),
+            end=datetime(2026, 1, 15, 16, tzinfo=UTC),
+        ),
+    )
+
+    assert distribution.unclassified_failed_wafers == 1
+    assert distribution.limitations == ("incomplete_defect_classification",)
+
+
+def test_defect_distribution_reports_empty_time_range() -> None:
+    distribution = summarize_defect_distribution(
+        records=(),
+        equipment_id="AOI-WAFER-01",
+        time_range=TimeRange(
+            start=datetime(2026, 1, 15, 14, tzinfo=UTC),
+            end=datetime(2026, 1, 15, 16, tzinfo=UTC),
+        ),
+    )
+
+    assert distribution.items == ()
+    assert distribution.failed_wafers == 0
+    assert distribution.limitations == ("no_inspection_records",)
 
 
 def test_synthetic_aoi_scenario_preserves_observations_without_claiming_cause() -> None:

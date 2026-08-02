@@ -4,6 +4,7 @@ from uuid import UUID
 
 from industrial_agent.llm.types import ChatMessage, ToolCall
 from industrial_agent.schemas.context import WorkspaceContextRead
+from industrial_agent.tools.defect_distribution import DefectDistributionResult
 from industrial_agent.tools.equipment_status import EquipmentStatusResult
 from industrial_agent.tools.production import ProductionSummaryResult
 
@@ -55,6 +56,7 @@ class EvidenceState:
 
     production_summary: ProductionSummaryResult | None = None
     equipment_status: EquipmentStatusResult | None = None
+    defect_distribution: DefectDistributionResult | None = None
     tool_error: ToolError | None = None
 
     def __post_init__(self) -> None:
@@ -63,6 +65,7 @@ class EvidenceState:
             for item in (
                 self.production_summary,
                 self.equipment_status,
+                self.defect_distribution,
                 self.tool_error,
             )
         )
