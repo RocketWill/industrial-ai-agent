@@ -25,4 +25,31 @@ describe("messages API", () => {
     await expect(sendMessage(id, "  Check status  ", fetchImplementation)).resolves.toEqual({ user_message: message, assistant_message: assistant, evidence: null });
     expect(requests[0]).toEqual({ input: `/api/conversations/${id}/messages`, init: { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify({ content: "Check status" }) } });
   });
+
+  it("accepts deterministic equipment-status evidence", async () => {
+    const evidence = {
+      production_summary: null,
+      equipment_status: {
+        equipment_id: "AOI-WAFER-01",
+        observed_at: "2026-01-15T17:00:00Z",
+        status: "running",
+        effective_start: "2026-01-15T16:00:00Z",
+        effective_end: "2026-01-15T18:00:00Z",
+        source_event_id: "state-003",
+        reason_code: "SYNTHETIC-SCHEDULED-RUN",
+        limitations: [],
+      },
+      tool_error: null,
+    };
+    const fetchImplementation = async () => new Response(
+      JSON.stringify({ user_message: message, assistant_message: assistant, evidence }),
+      { status: 201 },
+    );
+
+    await expect(sendMessage(id, "Check status", fetchImplementation)).resolves.toEqual({
+      user_message: message,
+      assistant_message: assistant,
+      evidence,
+    });
+  });
 });

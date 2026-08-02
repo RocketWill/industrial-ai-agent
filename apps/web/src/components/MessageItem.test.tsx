@@ -53,6 +53,60 @@ describe("MessageItem", () => {
     expect(screen.getByText("Deterministic")).toBeInTheDocument();
   });
 
+  it("renders deterministic equipment-status evidence", () => {
+    render(
+      <MessageItem
+        message={message}
+        evidence={{
+          production_summary: null,
+          equipment_status: {
+            equipment_id: "AOI-WAFER-01",
+            observed_at: "2026-01-15T17:00:00Z",
+            status: "running",
+            effective_start: "2026-01-15T16:00:00Z",
+            effective_end: "2026-01-15T18:00:00Z",
+            source_event_id: "state-003",
+            reason_code: "SYNTHETIC-SCHEDULED-RUN",
+            limitations: [],
+          },
+          tool_error: null,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Equipment status")).toBeInTheDocument();
+    expect(screen.getByText("running")).toBeInTheDocument();
+    expect(screen.getByText("SYNTHETIC-SCHEDULED-RUN")).toBeInTheDocument();
+    expect(screen.getByText("Deterministic")).toBeInTheDocument();
+    expect(screen.getByText("Synthetic Demo")).toBeInTheDocument();
+  });
+
+  it("renders unknown equipment status with its explicit limitation", () => {
+    render(
+      <MessageItem
+        message={message}
+        evidence={{
+          production_summary: null,
+          equipment_status: {
+            equipment_id: "AOI-WAFER-01",
+            observed_at: "2026-01-15T19:00:00Z",
+            status: "unknown",
+            effective_start: null,
+            effective_end: null,
+            source_event_id: null,
+            reason_code: null,
+            limitations: ["no_recorded_equipment_state"],
+          },
+          tool_error: null,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("unknown")).toBeInTheDocument();
+    expect(screen.getByText("no_recorded_equipment_state")).toBeInTheDocument();
+    expect(screen.getAllByText("Unavailable")).toHaveLength(2);
+  });
+
   it("renders production defects, alarms, and explicit empty states", () => {
     const summary = {
       equipment_id: "AOI-WAFER-01", lot_id: "LOT-DEMO-001", start: "2026-01-15T13:00:00Z", end: "2026-01-15T17:00:00Z",

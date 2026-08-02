@@ -110,6 +110,41 @@ function ProductionEvidenceCard({ evidence }: { evidence: ProductionEvidence }) 
   );
 }
 
+function EquipmentStatusCard({ evidence }: { evidence: ProductionEvidence }) {
+  const status = evidence.equipment_status;
+  if (!status) return null;
+
+  return (
+    <section className="evidence-card equipment-status-card" aria-label="Equipment status evidence">
+      <div className="evidence-heading">
+        <Typography.Text strong>Equipment status</Typography.Text>
+        <div className="evidence-tags">
+          <Tag color="cyan">Deterministic</Tag>
+          <Tag>Synthetic Demo</Tag>
+        </div>
+      </div>
+      <Descriptions
+        size="small"
+        column={2}
+        className="evidence-summary"
+        items={[
+          { key: "equipment", label: "Equipment", children: status.equipment_id },
+          { key: "status", label: "Recorded state", children: <Tag>{status.status}</Tag> },
+          { key: "observed", label: "Observed at", span: 2, children: displayTime(status.observed_at) },
+          { key: "effective-start", label: "Effective start", children: status.effective_start ? displayTime(status.effective_start) : "Unavailable" },
+          { key: "effective-end", label: "Effective end", children: status.effective_end ? displayTime(status.effective_end) : "Unavailable" },
+          { key: "reason", label: "Reason code", span: 2, children: status.reason_code ?? "Not recorded" },
+        ]}
+      />
+      {status.limitations.length > 0 && (
+        <Typography.Text className="evidence-limitations" type="secondary">
+          {status.limitations.join(" ")}
+        </Typography.Text>
+      )}
+    </section>
+  );
+}
+
 export default function MessageItem({
   message,
   isStreaming = false,
@@ -166,6 +201,9 @@ export default function MessageItem({
         )}
         {!isUser && !isStreaming && evidence?.production_summary && (
           <ProductionEvidenceCard evidence={evidence} />
+        )}
+        {!isUser && !isStreaming && evidence?.equipment_status && (
+          <EquipmentStatusCard evidence={evidence} />
         )}
       </div>
     </article>
