@@ -10,7 +10,12 @@ from numbers import Real
 from pydantic import BaseModel
 
 from industrial_agent.domain.routing import ExtractedContext, RouteDecision, RouteIntent
+from industrial_agent.graph.combined import (
+    CombinedEvidenceOutcome,
+    EvidencePathStatus,
+)
 from industrial_agent.graph.state import EvidenceState
+from industrial_agent.tools.document_search import DocumentSearchResult
 
 NUMBER_PATTERN = re.compile(r"(?<![\w-])-?\d+(?:\.\d+)?%?")
 ANSWER_NUMBER_PATTERN = re.compile(
@@ -41,6 +46,12 @@ SAFE_ANSWER_FAILURES = {
         "verified. Review the retrieved sources below."
     ),
 }
+
+CAUSAL_CLAIM_PATTERN = re.compile(
+    r"\b(?:caused?|causing|responsible for|root cause|resulted in)\b|"
+    r"(?:造成|導致|根因)",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,6 +119,44 @@ def validate_answer(
     if not answer_numbers <= evidence_numbers:
         return _unverified(route.intent)
     return EvidenceDecision(sufficient=True)
+
+
+def validate_combined_answer(
+    outcome: CombinedEvidenceOutcome,
+    answer: str,
+) -> bool:
+    """Accept only cited, numerically grounded, non-causal combined prose."""
+    if not answer.strip() or CAUSAL_CLAIM_PATTERN.search(answer):
+        return False
+    available_results = tuple(
+        path.result
+        for path in (outcome.manufacturing, outcome.documents)
+        if path.status in {EvidencePathStatus.SUCCEEDED, EvidencePathStatus.EMPTY}
+        and path.result is not None
+    )
+    if not available_results:
+        return False
+    evidence_numbers = set().union(
+        *(
+            _numeric_tokens(result.model_dump(mode="json"))
+            for result in available_results
+        )
+    )
+    answer_numbers = {
+        token.casefold().replace(" percent", "%")
+        for token in ANSWER_NUMBER_PATTERN.findall(answer)
+    }
+    if not answer_numbers <= evidence_numbers:
+        return False
+    document_result = outcome.documents.result
+    if (
+        outcome.documents.status is EvidencePathStatus.SUCCEEDED
+        and isinstance(document_result, DocumentSearchResult)
+    ):
+        source_ids = {source.source_id for source in document_result.sources}
+        if not any(source_id in answer for source_id in source_ids):
+            return False
+    return True
 
 
 def _context_matches(context: ExtractedContext, result: BaseModel) -> bool:

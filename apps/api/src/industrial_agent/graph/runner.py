@@ -1,12 +1,21 @@
+import json
 from collections.abc import Callable, Iterator, Sequence
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from industrial_agent.domain.routing import FallbackState, RouteIntent
+from industrial_agent.domain.routing import EvidenceKind, FallbackState, RouteIntent
+from industrial_agent.graph.combined import (
+    CombinedAnswerStatus,
+    CombinedExchangeEvidence,
+    combined_evidence_payload,
+    stream_combined_evidence,
+    synthesize_combined_answer,
+)
 from industrial_agent.graph.errors import GraphExecutionError
 from industrial_agent.graph.state import EvidenceState, ExecutionEvent, GraphState
 from industrial_agent.graph.workflow import (
+    COMBINED_EVIDENCE_TOOL,
     DEFECT_DISTRIBUTION_TOOL,
     DOCUMENT_SEARCH_TOOL,
     EQUIPMENT_STATUS_TOOL,
@@ -35,7 +44,11 @@ from industrial_agent.llm.types import (
 from industrial_agent.schemas.message import SuggestedAction
 from industrial_agent.services import message as message_service
 from industrial_agent.services.documents import DocumentCorpusService
-from industrial_agent.services.evidence import validate_answer, validate_evidence
+from industrial_agent.services.evidence import (
+    validate_answer,
+    validate_combined_answer,
+    validate_evidence,
+)
 from industrial_agent.services.message import MessageExchange
 from industrial_agent.services.routing import RoutingOutcome
 
@@ -69,15 +82,14 @@ def run_sync_exchange(
         user_message=messages[-2],
         assistant_message=messages[-1],
         evidence=final_state.get("evidence"),
+        combined_evidence=final_state.get("combined_evidence"),
     )
 
 
 Stream = Callable[[Sequence[ChatMessage]], Iterator[str]]
 ToolComplete = Callable[..., CompletionResult]
 ToolStream = Callable[[Sequence[ChatMessage], ToolResult], Iterator[str]]
-RoutedToolStream = Callable[
-    [Sequence[ChatMessage], ToolResult, object], Iterator[str]
-]
+RoutedToolStream = Callable[[Sequence[ChatMessage], ToolResult, object], Iterator[str]]
 
 
 def run_stream_routed_exchange(
@@ -89,11 +101,10 @@ def run_stream_routed_exchange(
     stream: Stream,
     stream_with_tool_result: RoutedToolStream,
     document_corpus_service: DocumentCorpusService | None = None,
+    is_cancelled: Callable[[], bool] = lambda: False,
 ) -> Iterator[ExecutionEvent]:
     """Run SSE through the same authoritative route and evidence policy."""
-    state = load_context(
-        session, conversation_id=conversation_id, content=content
-    )
+    state = load_context(session, conversation_id=conversation_id, content=content)
     user_message = message_service.list_messages(session, conversation_id)[-1]
     yield ExecutionEvent(kind="user_message", payload=user_message)
     yield ExecutionEvent(
@@ -149,6 +160,107 @@ def run_stream_routed_exchange(
             if part:
                 yield ExecutionEvent(kind="token", payload={"text": part})
         yield from _persist_stream_text(session, state, content_text, emit_token=False)
+        return
+    if decision.intent is RouteIntent.COMBINED:
+        combined = None
+        progress = stream_combined_evidence(
+            decision=decision,
+            original_query=state["messages"][-1].content,
+            document_corpus_service=document_corpus_service,
+            is_cancelled=is_cancelled,
+        )
+        manufacturing_names = {
+            EvidenceKind.PRODUCTION: PRODUCTION_TOOL.name,
+            EvidenceKind.EQUIPMENT_STATUS: EQUIPMENT_STATUS_TOOL.name,
+            EvidenceKind.DEFECT_DISTRIBUTION: DEFECT_DISTRIBUTION_TOOL.name,
+        }
+        for step in progress:
+            if step.phase == "started" and step.path == "manufacturing":
+                yield ExecutionEvent(
+                    kind="tool_call_started",
+                    payload={
+                        "path": "manufacturing",
+                        "name": manufacturing_names[step.manufacturing_kind],
+                        "arguments": decision.resolved_context.model_dump(mode="json"),
+                    },
+                )
+            elif step.phase == "started" and step.path == "documents":
+                yield ExecutionEvent(
+                    kind="tool_call_started",
+                    payload={
+                        "path": "documents",
+                        "name": DOCUMENT_SEARCH_TOOL.name,
+                        "arguments": {"query": step.document_query, "limit": 3},
+                    },
+                )
+            elif (
+                step.phase == "completed"
+                and step.path is not None
+                and step.outcome is not None
+                and step.manufacturing_kind is not None
+            ):
+                path_payload = (
+                    combined_evidence_payload(step.completed)[step.path]
+                    if step.completed is not None
+                    else {
+                        "status": step.outcome.status.value,
+                        "result": step.outcome.result.model_dump(mode="json")
+                        if step.outcome.result is not None
+                        else None,
+                        "error_code": step.outcome.error_code,
+                    }
+                )
+                yield ExecutionEvent(
+                    kind="combined_tool_result",
+                    payload={
+                        "path": step.path,
+                        "manufacturing_kind": step.manufacturing_kind.value,
+                        **path_payload,
+                    },
+                )
+            elif step.completed is not None:
+                combined = step.completed
+        if combined is None:
+            raise RuntimeError("combined execution ended without a result")
+        parts: list[str] = []
+
+        def generate(payload: dict[str, object]) -> str:
+            tool_result = ToolResult(
+                call_id="combined-evidence-route",
+                name=COMBINED_EVIDENCE_TOOL.name,
+                arguments={},
+                content=json.dumps(payload, separators=(",", ":")),
+            )
+            parts.extend(
+                stream_with_tool_result(
+                    state["messages"], tool_result, COMBINED_EVIDENCE_TOOL
+                )
+            )
+            return "".join(parts)
+
+        answer = synthesize_combined_answer(
+            combined, generate=generate, validate=validate_combined_answer
+        )
+        if answer.status is CombinedAnswerStatus.SUCCEEDED:
+            for part in parts:
+                if part:
+                    yield ExecutionEvent(kind="token", payload={"text": part})
+        combined_state = {
+            **state,
+            "combined_evidence": CombinedExchangeEvidence(
+                evidence=combined, answer_status=answer.status
+            ),
+        }
+        yield ExecutionEvent(
+            kind="combined_evidence_completed",
+            payload={"answer_status": answer.status.value},
+        )
+        yield from _persist_stream_text(
+            session,
+            combined_state,
+            answer.text,
+            emit_token=answer.status is CombinedAnswerStatus.FALLBACK,
+        )
         return
 
     call = _tool_call_for_route(state, outcome)
@@ -211,9 +323,7 @@ def _execute_routed_tool(
     if intent is RouteIntent.EQUIPMENT_STATUS:
         return EQUIPMENT_STATUS_TOOL, execute_equipment_status_tool(state, result)
     if intent is RouteIntent.DEFECT_DISTRIBUTION:
-        return DEFECT_DISTRIBUTION_TOOL, execute_defect_distribution_tool(
-            state, result
-        )
+        return DEFECT_DISTRIBUTION_TOOL, execute_defect_distribution_tool(state, result)
     return DOCUMENT_SEARCH_TOOL, execute_document_search_tool(
         state, result, document_corpus_service=document_corpus_service
     )
@@ -250,7 +360,7 @@ def _routing_label(intent: RouteIntent) -> str:
         RouteIntent.EQUIPMENT_STATUS: "Selecting equipment status",
         RouteIntent.DEFECT_DISTRIBUTION: "Selecting defect distribution",
         RouteIntent.DOCUMENT_SEARCH: "Selecting document search",
-        RouteIntent.COMBINED: "Clarification required",
+        RouteIntent.COMBINED: "Selecting combined evidence",
         RouteIntent.CLARIFICATION: "Clarification required",
         RouteIntent.UNSUPPORTED: "Unsupported request",
     }[intent]

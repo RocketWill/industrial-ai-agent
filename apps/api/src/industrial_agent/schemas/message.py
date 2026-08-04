@@ -1,10 +1,11 @@
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Self
+from typing import Literal, Self
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from industrial_agent.domain.routing import EvidenceKind
 from industrial_agent.models.message import MessageRole
 from industrial_agent.tools.defect_distribution import DefectDistributionResult
 from industrial_agent.tools.document_search import DocumentSearchResult
@@ -100,3 +101,45 @@ class MessageExchangeRead(BaseModel):
     user_message: MessageRead
     assistant_message: MessageRead
     evidence: EvidenceRead | None = None
+    combined_evidence: "CombinedEvidenceRead | None" = None
+
+
+class CombinedEvidencePathRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    status: Literal["succeeded", "empty", "failed", "not_run"]
+    result: (
+        ProductionSummaryResult
+        | EquipmentStatusResult
+        | DefectDistributionResult
+        | DocumentSearchResult
+        | None
+    ) = None
+    error_code: str | None = None
+
+
+class CombinedEvidenceRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    manufacturing_kind: EvidenceKind
+    manufacturing: CombinedEvidencePathRead
+    documents: CombinedEvidencePathRead
+    document_query: str
+    answer_status: Literal["succeeded", "fallback"]
+
+    @model_validator(mode="after")
+    def validate_path_result_types(self) -> Self:
+        expected_type = {
+            EvidenceKind.PRODUCTION: ProductionSummaryResult,
+            EvidenceKind.EQUIPMENT_STATUS: EquipmentStatusResult,
+            EvidenceKind.DEFECT_DISTRIBUTION: DefectDistributionResult,
+        }[self.manufacturing_kind]
+        if self.manufacturing.result is not None and not isinstance(
+            self.manufacturing.result, expected_type
+        ):
+            raise ValueError("manufacturing result does not match its evidence kind")
+        if self.documents.result is not None and not isinstance(
+            self.documents.result, DocumentSearchResult
+        ):
+            raise ValueError("document path requires a document search result")
+        return self

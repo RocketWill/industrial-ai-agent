@@ -100,6 +100,7 @@
     "language": "en",
     "question": "Show today's yield and find the manual for optical signal alarms.",
     "category": "combined",
+    "saved_context": {"equipment_id": "AOI-WAFER-01"},
     "expected_intent": "combined",
     "expected_gate": "combined"
   },
@@ -108,6 +109,7 @@
     "language": "zh-TW",
     "question": "請查詢今天的良率，並搜尋光學訊號警報指南。",
     "category": "combined",
+    "saved_context": {"equipment_id": "AOI-WAFER-01"},
     "expected_intent": "combined",
     "expected_gate": "combined"
   },

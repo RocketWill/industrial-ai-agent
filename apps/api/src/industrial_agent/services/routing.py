@@ -17,6 +17,7 @@ from industrial_agent.domain.routing import (
     SafeAction,
     deterministic_gate,
     resolve_exchange_context,
+    safe_action_for_intent,
 )
 from industrial_agent.schemas.message import SuggestedAction, SuggestedActionId
 from industrial_agent.services.routing_classifier import (
@@ -41,8 +42,7 @@ COMBINED_MESSAGE = (
     "Please choose which evidence path to run first."
 )
 UNSUPPORTED_MESSAGE = (
-    "That request is outside this synthetic portfolio project's supported "
-    "capabilities."
+    "That request is outside this synthetic portfolio project's supported capabilities."
 )
 COMBINED_SUGGESTED_ACTIONS = (
     SuggestedAction(
@@ -107,9 +107,7 @@ def route_exchange(
     except RoutingClassifierError:
         decision = RouteDecision(
             intent=RouteIntent.GENERAL,
-            resolved_context=resolve_exchange_context(
-                current_context, saved_context
-            ),
+            resolved_context=resolve_exchange_context(current_context, saved_context),
             decision_source=DecisionSource.FALLBACK,
             reason_code=ReasonCode.AMBIGUOUS_REQUEST,
             retry_count=1,
@@ -146,21 +144,6 @@ def route_deterministically(
     )
     if decision is None:
         return None
-    if decision.intent is RouteIntent.COMBINED:
-        decision = RouteDecision(
-            intent=RouteIntent.CLARIFICATION,
-            resolved_context=decision.resolved_context,
-            decision_source=decision.decision_source,
-            reason_code=ReasonCode.CLARIFICATION_REQUIRED,
-            retry_count=decision.retry_count,
-            fallback_state=decision.fallback_state,
-            safe_action=SafeAction.REQUEST_CLARIFICATION,
-        )
-        outcome = RoutingOutcome(
-            decision, COMBINED_MESSAGE, COMBINED_SUGGESTED_ACTIONS
-        )
-        _log_decision(outcome.decision, conversation_id, trace_id)
-        return outcome
     outcome = _outcome_for_decision(decision)
     _log_decision(outcome.decision, conversation_id, trace_id)
     return outcome
@@ -191,19 +174,9 @@ def _resolve_candidate(
     if EvidenceKind.DOCUMENTS in candidate.requested_evidence.kinds:
         if not resolved.document_query:
             missing.add(MissingField.DOCUMENT_QUERY)
-    if missing or candidate.ambiguities or intent is RouteIntent.COMBINED:
+    if missing or candidate.ambiguities:
         intent = RouteIntent.CLARIFICATION
-    action = {
-        RouteIntent.GENERAL: SafeAction.ANSWER_GENERAL,
-        RouteIntent.PRODUCTION_SUMMARY: SafeAction.EXECUTE_PRODUCTION_SUMMARY,
-        RouteIntent.EQUIPMENT_STATUS: SafeAction.EXECUTE_EQUIPMENT_STATUS,
-        RouteIntent.DEFECT_DISTRIBUTION: (
-            SafeAction.EXECUTE_DEFECT_DISTRIBUTION
-        ),
-        RouteIntent.DOCUMENT_SEARCH: SafeAction.EXECUTE_DOCUMENT_SEARCH,
-        RouteIntent.CLARIFICATION: SafeAction.REQUEST_CLARIFICATION,
-        RouteIntent.UNSUPPORTED: SafeAction.REPORT_UNSUPPORTED,
-    }[intent]
+    action = safe_action_for_intent(intent)
     reason = (
         ReasonCode.CLARIFICATION_REQUIRED
         if intent is RouteIntent.CLARIFICATION
@@ -211,7 +184,9 @@ def _resolve_candidate(
     )
     return RouteDecision(
         intent=intent,
+        requested_evidence=candidate.requested_evidence,
         resolved_context=resolved,
+        missing_fields=tuple(field for field in MissingField if field in missing),
         decision_source=DecisionSource.CLASSIFIER,
         reason_code=reason,
         retry_count=retry_count,
@@ -227,11 +202,9 @@ def _outcome_for_decision(
         return RoutingOutcome(decision, UNSUPPORTED_MESSAGE)
     if decision.intent is not RouteIntent.CLARIFICATION:
         return RoutingOutcome(decision)
-    if candidate is not None and candidate.intent is RouteIntent.COMBINED:
-        return RoutingOutcome(
-            decision, COMBINED_MESSAGE, COMBINED_SUGGESTED_ACTIONS
-        )
-    missing = candidate.missing_fields if candidate is not None else ()
+    missing = decision.missing_fields or (
+        candidate.missing_fields if candidate is not None else ()
+    )
     message = next(
         (CLARIFICATION_MESSAGES[field] for field in missing),
         "Please clarify which supported evidence you want to use.",

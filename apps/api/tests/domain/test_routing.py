@@ -142,12 +142,33 @@ def test_route_candidate_rejects_invalid_evidence_and_forbidden_model_fields() -
             reason_code=ReasonCode.PRODUCTION_REQUEST,
         )
 
-    with pytest.raises(ValidationError, match="at least two"):
+    with pytest.raises(ValidationError, match="documents and exactly one"):
         RouteCandidate(
             intent=RouteIntent.COMBINED,
             requested_evidence={"production": True},
             reason_code=ReasonCode.COMBINED_REQUEST,
         )
+
+    with pytest.raises(ValidationError, match="documents and exactly one"):
+        RouteCandidate(
+            intent=RouteIntent.COMBINED,
+            requested_evidence={
+                "production": True,
+                "equipment_status": True,
+                "documents": True,
+            },
+            reason_code=ReasonCode.COMBINED_REQUEST,
+        )
+
+    combined = RouteCandidate(
+        intent=RouteIntent.COMBINED,
+        requested_evidence={"equipment_status": True, "documents": True},
+        reason_code=ReasonCode.COMBINED_REQUEST,
+    )
+    assert combined.requested_evidence.kinds == {
+        EvidenceKind.EQUIPMENT_STATUS,
+        EvidenceKind.DOCUMENTS,
+    }
 
     with pytest.raises(ValidationError, match="unsupported"):
         RouteCandidate(
@@ -229,6 +250,30 @@ def test_route_decision_validates_action_source_retry_and_fallback_alignment() -
             fallback_state=FallbackState.USED,
             safe_action=SafeAction.ANSWER_GENERAL,
         )
+
+
+@pytest.mark.parametrize(
+    "question",
+    (
+        "Show yield and equipment status from the documents.",
+        "Show yield and equipment status.",
+    ),
+)
+def test_deterministic_gate_clarifies_multiple_manufacturing_intents(
+    question: str,
+) -> None:
+    decision = deterministic_gate(
+        question,
+        saved_context=ExtractedContext(
+            equipment_id="AOI-WAFER-01",
+            time_preset=TimePreset.TODAY,
+            document_query="status procedure",
+        ),
+    )
+
+    assert decision is not None
+    assert decision.intent is RouteIntent.CLARIFICATION
+    assert decision.safe_action is SafeAction.REQUEST_CLARIFICATION
 
 
 def test_deterministic_gate_handles_high_confidence_english_routes() -> None:

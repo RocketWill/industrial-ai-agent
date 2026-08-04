@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
@@ -7,6 +8,11 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from industrial_agent.domain.routing import RouteIntent, TimePreset
+from industrial_agent.graph.combined import (
+    CombinedExchangeEvidence,
+    execute_combined_evidence,
+    synthesize_combined_answer,
+)
 from industrial_agent.graph.errors import GraphExecutionError
 from industrial_agent.graph.state import (
     EvidenceState,
@@ -24,8 +30,14 @@ from industrial_agent.llm.types import (
 from industrial_agent.services import conversation as conversation_service
 from industrial_agent.services import message as message_service
 from industrial_agent.services.documents import DocumentCorpusService
-from industrial_agent.services.evidence import validate_answer, validate_evidence
-from industrial_agent.services.routing import RoutingOutcome
+from industrial_agent.services.evidence import (
+    validate_answer,
+    validate_combined_answer,
+    validate_evidence,
+)
+from industrial_agent.services.routing import (
+    RoutingOutcome,
+)
 from industrial_agent.tools.defect_distribution import (
     DefectDistributionRequest,
     DefectDistributionToolError,
@@ -72,13 +84,10 @@ def _is_equipment_status_question(messages: Sequence[ChatMessage]) -> bool:
             "machine down",
         )
     )
-    state_about_named_equipment = (
-        any(
-            term in question
-            for term in ("running", "idle", "warning", "down", "maintenance")
-        )
-        and any(term in question for term in ("equipment", "machine", "aoi-wafer"))
-    )
+    state_about_named_equipment = any(
+        term in question
+        for term in ("running", "idle", "warning", "down", "maintenance")
+    ) and any(term in question for term in ("equipment", "machine", "aoi-wafer"))
     return explicit_status_term or state_about_named_equipment
 
 
@@ -150,6 +159,7 @@ def _messages_with_production_context(state: GraphState) -> list[ChatMessage]:
     )
     return messages
 
+
 PRODUCTION_TOOL = ToolDefinition(
     name="get_production_summary",
     description="Read deterministic synthetic production evidence.",
@@ -210,6 +220,12 @@ DOCUMENT_SEARCH_TOOL = ToolDefinition(
     },
 )
 
+COMBINED_EVIDENCE_TOOL = ToolDefinition(
+    name="combined_evidence",
+    description="Synthesize bounded manufacturing and document evidence.",
+    parameters={"type": "object", "properties": {}, "additionalProperties": False},
+)
+
 _DEMO_SHIFT_END = datetime(2026, 1, 15, 17, tzinfo=UTC)
 _DEMO_PRESET_HOURS = {
     "Last 1 hour": 1,
@@ -239,8 +255,7 @@ def resolve_production_request(
         end = end_datetime.isoformat().replace("+00:00", "Z")
     if not equipment_id:
         return None, (
-            "Please specify an equipment ID or select a device in the analysis "
-            "context."
+            "Please specify an equipment ID or select a device in the analysis context."
         )
     if not start or not end:
         return None, (
@@ -258,8 +273,7 @@ def resolve_production_request(
         ), None
     except ValidationError:
         return None, (
-            "Please provide a valid UTC start and end time for the production "
-            "query."
+            "Please provide a valid UTC start and end time for the production query."
         )
 
 
@@ -276,8 +290,7 @@ def resolve_equipment_status_request(
         observed_at = _DEMO_SHIFT_END.isoformat().replace("+00:00", "Z")
     if not equipment_id:
         return None, (
-            "Please specify an equipment ID or select a device in the analysis "
-            "context."
+            "Please specify an equipment ID or select a device in the analysis context."
         )
     if not observed_at:
         return None, (
@@ -328,6 +341,7 @@ def load_context(
         "assistant_content": "",
         "suggested_actions": (),
         "evidence": None,
+        "combined_evidence": None,
         "tool_call": None,
         "execution_events": [
             ExecutionEvent(kind="node_completed", payload={"node": "load_context"})
@@ -364,9 +378,7 @@ def execute_production_tool(
     if request is None:
         return {
             **state,
-            "evidence": EvidenceState(
-                tool_error=ToolError(code="INVALID_INPUT")
-            ),
+            "evidence": EvidenceState(tool_error=ToolError(code="INVALID_INPUT")),
         }
     try:
         summary = get_production_summary(request)
@@ -426,9 +438,7 @@ def execute_equipment_status_tool(
     except EquipmentStatusToolError:
         return {
             **state,
-            "evidence": EvidenceState(
-                tool_error=ToolError(code="UNKNOWN_EQUIPMENT")
-            ),
+            "evidence": EvidenceState(tool_error=ToolError(code="UNKNOWN_EQUIPMENT")),
         }
     return {
         **state,
@@ -558,9 +568,7 @@ def answer_with_production_evidence(
             "assistant_content": evidence.tool_error.message,
             "execution_events": [
                 *state["execution_events"],
-                ExecutionEvent(
-                    kind="node_completed", payload={"node": "tool_error"}
-                ),
+                ExecutionEvent(kind="node_completed", payload={"node": "tool_error"}),
             ],
         }
     if evidence.production_summary is None:
@@ -767,9 +775,7 @@ def _call_llm(
                 "assistant_content": first_result.content.strip(),
                 "execution_events": [
                     *state["execution_events"],
-                    ExecutionEvent(
-                        kind="node_completed", payload={"node": "call_llm"}
-                    ),
+                    ExecutionEvent(kind="node_completed", payload={"node": "call_llm"}),
                 ],
             }
         raise GraphExecutionError(code="empty_response")
@@ -795,9 +801,7 @@ def _call_llm(
                 "assistant_content": first_result.content.strip(),
                 "execution_events": [
                     *state["execution_events"],
-                    ExecutionEvent(
-                        kind="node_completed", payload={"node": "call_llm"}
-                    ),
+                    ExecutionEvent(kind="node_completed", payload={"node": "call_llm"}),
                 ],
             }
         raise GraphExecutionError(code="empty_response")
@@ -821,9 +825,7 @@ def _call_llm(
                 "assistant_content": first_result.content.strip(),
                 "execution_events": [
                     *state["execution_events"],
-                    ExecutionEvent(
-                        kind="node_completed", payload={"node": "call_llm"}
-                    ),
+                    ExecutionEvent(kind="node_completed", payload={"node": "call_llm"}),
                 ],
             }
         raise GraphExecutionError(code="empty_response")
@@ -855,6 +857,42 @@ def _call_routed_exchange(
         }
     if decision.intent is RouteIntent.GENERAL:
         return {**state, "assistant_content": complete(state["messages"])}
+    if decision.intent is RouteIntent.COMBINED:
+        combined = execute_combined_evidence(
+            decision=decision,
+            original_query=state["messages"][-1].content,
+            document_corpus_service=document_corpus_service,
+        )
+
+        def generate(payload: dict[str, object]) -> str:
+            if complete_with_tools is None:
+                return ""
+            result = complete_with_tools(
+                state["messages"],
+                (COMBINED_EVIDENCE_TOOL,),
+                tool_call=ToolResult(
+                    call_id="combined-evidence-route",
+                    name=COMBINED_EVIDENCE_TOOL.name,
+                    arguments={},
+                    content=json.dumps(payload, separators=(",", ":")),
+                ),
+            )
+            return "" if result.tool_calls else (result.content or "")
+
+        answer = synthesize_combined_answer(
+            combined,
+            generate=generate if complete_with_tools is not None else None,
+            validate=validate_combined_answer,
+        )
+        return {
+            **state,
+            "assistant_content": answer.text,
+            "suggested_actions": (),
+            "combined_evidence": CombinedExchangeEvidence(
+                evidence=combined,
+                answer_status=answer.status,
+            ),
+        }
     if complete_with_tools is None:
         raise GraphExecutionError(code="empty_response")
 
@@ -893,17 +931,13 @@ def _call_routed_exchange(
         complete_with_tools=complete_with_tools,
         tool_call=call,
     )
-    post_check = validate_answer(
-        decision, evidence, answered["assistant_content"]
-    )
+    post_check = validate_answer(decision, evidence, answered["assistant_content"])
     if not post_check.sufficient:
         return {**answered, "assistant_content": post_check.response_text or ""}
     return answered
 
 
-def _tool_call_for_route(
-    state: GraphState, outcome: RoutingOutcome
-) -> ToolCall:
+def _tool_call_for_route(state: GraphState, outcome: RoutingOutcome) -> ToolCall:
     decision = outcome.decision
     context = decision.resolved_context
     arguments: dict[str, object] = {}
@@ -964,9 +998,7 @@ def persist_response(session: Session, state: GraphState) -> GraphState:
         "assistant_content": assistant_content,
         "execution_events": [
             *state["execution_events"],
-            ExecutionEvent(
-                kind="node_completed", payload={"node": "persist_response"}
-            ),
+            ExecutionEvent(kind="node_completed", payload={"node": "persist_response"}),
         ],
     }
 

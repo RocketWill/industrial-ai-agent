@@ -34,7 +34,7 @@ def test_formal_suite_uses_the_approved_closed_vocabularies() -> None:
         "defect_distribution",
         "document_retrieval",
         "general_response",
-        "combined_clarification",
+        "combined_evidence",
         "missing_context",
         "unsupported_request",
         "empty_evidence",
@@ -64,6 +64,9 @@ def test_formal_suite_uses_the_approved_closed_vocabularies() -> None:
         "return_invalid_numeric_claim",
         "return_invalid_citation",
         "return_general_answer",
+        "fail_manufacturing",
+        "fail_documents",
+        "return_empty_documents",
     }
 
 
@@ -235,7 +238,7 @@ def test_formal_suite_preserves_existing_retrieval_scenario_distribution() -> No
 def test_formal_suite_has_the_approved_matrix_size_and_coverage() -> None:
     suite = load_formal_evaluation_suite()
 
-    assert len(suite.scenarios) == 30
+    assert len(suite.scenarios) == 45
     assert {scenario.language for scenario in suite.scenarios} == {"en", "zh-TW"}
     assert {scenario.category for scenario in suite.scenarios} == set(
         ScenarioCategory

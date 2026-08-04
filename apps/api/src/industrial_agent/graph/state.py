@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, TypedDict
 from uuid import UUID
 
+from industrial_agent.graph.combined import CombinedExchangeEvidence
 from industrial_agent.llm.types import ChatMessage, ToolCall
 from industrial_agent.schemas.context import WorkspaceContextRead
 from industrial_agent.schemas.message import SuggestedAction
@@ -18,6 +19,8 @@ ExecutionEventKind = Literal[
     "assistant_message",
     "tool_call_started",
     "tool_result",
+    "combined_tool_result",
+    "combined_evidence_completed",
     "routing_started",
     "routing_retry",
     "routing_decided",
@@ -97,4 +100,5 @@ class GraphState(TypedDict):
     suggested_actions: tuple[SuggestedAction, ...]
     execution_events: list[ExecutionEvent]
     evidence: EvidenceState | None
+    combined_evidence: CombinedExchangeEvidence | None
     tool_call: ToolCall | None
