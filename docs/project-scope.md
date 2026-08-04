@@ -59,8 +59,9 @@ belongs in deterministic domain code rather than an LLM.
 
 ## Current milestone boundary
 
-The latest completed milestone is **v0.7 — MCP**. Its approved local stdio
-tool boundary is implemented. The v0.1 foundation,
+The latest completed milestone is **v0.8 — Evaluation and Observability**. Its
+approved deterministic offline suite and typed artifact boundary are
+implemented. The v0.1 foundation,
 v0.1.1 streaming extension, v0.1.2 workspace extension, and v0.2 minimal
 LangGraph orchestration are implemented, including clean-environment
 verification. v0.3 Manufacturing Domain is implemented; throughput is
@@ -89,6 +90,13 @@ native deterministic tool contracts and synthetic dataset without adding MCP
 to FastAPI, LangGraph, or the frontend. HTTP transport, authentication, remote
 deployment, document search, and live manufacturing access remain outside the
 v0.7 boundary.
+
+The evaluation entrypoint runs 30 fixed English and Traditional Chinese
+scenarios through existing routing, tool, retrieval, evidence, and answer
+validation seams. It records per-dimension assertions and local stage timing
+in an ignored JSON artifact. The command does not add an LLM judge, provider
+call, HTTP endpoint, frontend panel, persisted application trace, composite
+score, or latency gate.
 
 Streaming and the refined workspace are recorded as completed v0.1.1 and
 v0.1.2 extensions.

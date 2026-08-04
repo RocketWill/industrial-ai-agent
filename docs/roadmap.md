@@ -297,11 +297,24 @@ client-side workspace-context resolution, and live manufacturing data.
 
 ## v0.8 — Evaluation and Observability
 
-**Status: Planned**
+**Status: Implemented**
 
 Measure tool selection, retrieval relevance, answer grounding, citation
 correctness, failure recovery, latency, retries, and unsupported claims against
 a fixed synthetic scenario set.
+
+Implemented slices:
+
+- [x] Define one strict, package-owned 30-scenario English and Traditional
+  Chinese fixture, including the existing 12 retrieval cases.
+- [x] Execute routing, retry, fallback, native manufacturing tools, document
+  retrieval, evidence checks, and answer validation through existing seams.
+- [x] Keep route, tool, argument, evidence, retrieval, citation, safe-failure,
+  unsupported-claim, and retry outcomes as separate dimensions.
+- [x] Add `industrial-agent-eval`, filtered runs, exact exit behavior, and an
+  ignored typed JSON artifact with fixture digest and monotonic stage timing.
+- [x] Verify all formal thresholds without an LLM judge, external telemetry,
+  persisted application traces, a composite score, or a latency gate.
 
 ## v1.0 — Portfolio Release
 
