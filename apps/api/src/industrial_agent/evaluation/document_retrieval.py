@@ -1,9 +1,8 @@
 """Evaluate document retrieval against a machine-readable scenario fixture."""
 
-import json
 from dataclasses import dataclass
-from pathlib import Path
 
+from industrial_agent.evaluation.fixtures import load_formal_evaluation_suite
 from industrial_agent.tools.document_search import (
     DocumentSearchRequest,
     search_documents,
@@ -31,9 +30,13 @@ class RetrievalEvaluation:
     unrelated_rejections: int
 
 
-def evaluate_retrieval_fixture(fixture_path: Path) -> RetrievalEvaluation:
+def evaluate_retrieval_fixture() -> RetrievalEvaluation:
     """Run stable fixture queries through the public retrieval boundary."""
-    scenarios = json.loads(fixture_path.read_text(encoding="utf-8"))
+    scenarios = (
+        scenario
+        for scenario in load_formal_evaluation_suite().scenarios
+        if scenario.category == "document_retrieval"
+    )
     single_document_count = 0
     top_one_hits = 0
     top_three_hits = 0
@@ -42,10 +45,10 @@ def evaluate_retrieval_fixture(fixture_path: Path) -> RetrievalEvaluation:
 
     for scenario in scenarios:
         result = search_documents(
-            DocumentSearchRequest(query=scenario["query"], limit=3)
+            DocumentSearchRequest(query=scenario.input.message, limit=3)
         )
         document_ids = [source.source_id.split(":", 1)[0] for source in result.sources]
-        expected_source_id = scenario.get("expected_source_id")
+        expected_source_id = scenario.expected.source_id
         source_ids = tuple(source.source_id for source in result.sources)
         expected_rank = (
             source_ids.index(expected_source_id) + 1
@@ -54,18 +57,18 @@ def evaluate_retrieval_fixture(fixture_path: Path) -> RetrievalEvaluation:
         )
         scenario_results.append(
             ScenarioEvaluation(
-                scenario_id=scenario["id"],
+                scenario_id=scenario.id,
                 source_ids=source_ids,
                 scores=tuple(source.score for source in result.sources),
                 expected_rank=expected_rank,
             )
         )
-        if scenario["kind"] == "single_document":
+        if scenario.expected.retrieval_kind == "single_document":
             single_document_count += 1
-            expected = scenario["expected_document_id"]
+            expected = scenario.expected.document_ids[0]
             top_one_hits += bool(document_ids and document_ids[0] == expected)
             top_three_hits += expected in document_ids
-        elif scenario["kind"] == "unrelated":
+        elif scenario.expected.retrieval_kind == "unrelated":
             unrelated_rejections += not result.sources
 
     return RetrievalEvaluation(
