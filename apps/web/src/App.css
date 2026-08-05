@@ -175,6 +175,9 @@
 .chat-message:focus-within .message-copy { opacity: 1; }
 
 .evidence-card { background: rgba(55, 198, 208, 0.055); border: 1px solid rgba(55, 198, 208, 0.24); border-radius: 8px; margin-top: 14px; padding: 14px; }
+.combined-evidence { display: grid; gap: 12px; margin-top: 14px; }
+.combined-evidence .evidence-card { margin-top: 0; }
+.evidence-path-state { display: grid; gap: 4px; }
 .evidence-heading { align-items: center; display: flex; gap: 8px; justify-content: space-between; margin-bottom: 10px; }
 .evidence-tags { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
 .evidence-tags > span { margin: 0; }

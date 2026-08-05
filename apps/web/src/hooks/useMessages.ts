@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as messageApi from "../api/messages";
-import type { Message, MessageExchange, MessageStreamEvent, ProductionEvidence } from "../api/messages";
+import type { CombinedEvidence, CombinedEvidencePath, Message, MessageExchange, MessageStreamEvent, ProductionEvidence } from "../api/messages";
 
 export type MessageApi = {
   listMessages: (conversationId: string) => Promise<Message[]>;
@@ -8,7 +8,7 @@ export type MessageApi = {
   streamMessage?: (conversationId: string, content: string, signal: AbortSignal) => AsyncGenerator<MessageStreamEvent>;
 };
 export type MessageState = {
-  messages: Message[]; evidence: ProductionEvidence | null; runState: AssistantRunState; isLoading: boolean; isSending: boolean; isStreaming: boolean; error: string | null; draft: string;
+  messages: Message[]; evidence: ProductionEvidence | null; combinedEvidence: CombinedEvidence | null; runState: AssistantRunState; isLoading: boolean; isSending: boolean; isStreaming: boolean; error: string | null; draft: string;
   setDraft: (value: string) => void; reload: () => Promise<void>; send: (contentOverride?: string) => Promise<boolean>; cancelStreaming: () => void;
 };
 
@@ -28,6 +28,7 @@ const defaultApi: MessageApi = { listMessages: (id) => messageApi.listMessages(i
 export function useMessages(conversationId: string | null, api: MessageApi = defaultApi): MessageState {
   const [messages, setMessages] = useState<Message[]>([]);
   const [evidence, setEvidence] = useState<ProductionEvidence | null>(null);
+  const [combinedEvidence, setCombinedEvidence] = useState<CombinedEvidence | null>(null);
   const [runState, setRunState] = useState<AssistantRunState>(idleRun);
   const [isLoading, setLoading] = useState(false);
   const [isSending, setSending] = useState(false);
@@ -41,19 +42,19 @@ export function useMessages(conversationId: string | null, api: MessageApi = def
   useEffect(() => { activeConversation.current = conversationId; controller.current?.abort(); controller.current = null; setRunState(idleRun); setStreaming(false); setSending(false); busy.current = false; }, [conversationId]);
   const reload = useCallback(async () => {
     const id = conversationId; if (!id || busy.current) return;
-    const token = ++sequence.current; busy.current = true; setLoading(true); setError(null); setMessages([]);
+    const token = ++sequence.current; busy.current = true; setLoading(true); setError(null); setMessages([]); setEvidence(null); setCombinedEvidence(null);
     try { const next = await api.listMessages(id); if (token === sequence.current) setMessages(next); }
     catch { if (token === sequence.current) setError("Unable to load messages"); }
     finally { if (token === sequence.current) setLoading(false); busy.current = false; }
   }, [api, conversationId]);
-  useEffect(() => { setMessages([]); setEvidence(null); setRunState(idleRun); setError(null); if (conversationId) void reload(); }, [conversationId, reload]);
+  useEffect(() => { setMessages([]); setEvidence(null); setCombinedEvidence(null); setRunState(idleRun); setError(null); if (conversationId) void reload(); }, [conversationId, reload]);
   const send = useCallback(async (contentOverride?: string) => {
     const id = conversationId; const content = (contentOverride ?? draft).trim();
     if (!id || !content || busy.current) return false;
-    busy.current = true; setSending(true); setError(null); setEvidence(null); setRunState({ phase: "generating", label: "Generating response" });
+    busy.current = true; setSending(true); setError(null); setEvidence(null); setCombinedEvidence(null); setRunState({ phase: "generating", label: "Generating response" });
     try {
       if (!api.streamMessage) {
-        const exchange = await api.sendMessage(id, content); setMessages((current) => [...current, exchange.user_message, exchange.assistant_message]); setEvidence(exchange.evidence); setRunState({ phase: "success", label: null }); setDraft(""); return true;
+        const exchange = await api.sendMessage(id, content); setMessages((current) => [...current, exchange.user_message, exchange.assistant_message]); setEvidence(exchange.evidence); setCombinedEvidence(exchange.combined_evidence ?? null); setRunState({ phase: "success", label: null }); setDraft(""); return true;
       }
       const abortController = new AbortController(); controller.current = abortController; setStreaming(true);
       const placeholder: Message = { id: placeholderId, conversation_id: id, role: "assistant", content: "", created_at: new Date().toISOString(), suggested_actions: [] };
@@ -79,9 +80,30 @@ export function useMessages(conversationId: string | null, api: MessageApi = def
           setMessages((current) => current.map((message) => message.id === placeholder.id ? { ...message, content: message.content + event.text } : message));
         } else if (event.type === "tool_call_started") {
           setRunState({ phase: "calling_tool", label: `Calling ${event.name}` });
+          if (event.path === "manufacturing") {
+            const manufacturingKind = event.name === "get_equipment_status" ? "equipment_status" : event.name === "get_defect_distribution" ? "defect_distribution" : "production";
+            const loading: CombinedEvidencePath = { status: "loading", result: null, error_code: null };
+            const notRun: CombinedEvidencePath = { status: "not_run", result: null, error_code: null };
+            setCombinedEvidence({ manufacturing_kind: manufacturingKind, manufacturing: loading, documents: notRun, document_query: "", answer_status: "fallback" } as CombinedEvidence);
+          }
+          if (event.path === "documents" && typeof event.arguments.query === "string") {
+            setCombinedEvidence((current) => current ? { ...current, documents: { status: "loading", result: null, error_code: null }, document_query: event.arguments.query as string } as CombinedEvidence : current);
+          }
         } else if (event.type === "tool_result") {
           setEvidence(event.evidence);
           setRunState({ phase: "evidence_received", label: "Evidence received" });
+        } else if (event.type === "combined_tool_result") {
+          const notRun: CombinedEvidencePath = { status: "not_run", result: null, error_code: null };
+          setCombinedEvidence((current) => ({
+            manufacturing_kind: event.manufacturing_kind,
+            manufacturing: event.path === "manufacturing" ? event.outcome : current?.manufacturing ?? notRun,
+            documents: event.path === "documents" ? event.outcome : current?.documents ?? notRun,
+            document_query: current?.document_query ?? "",
+            answer_status: current?.answer_status ?? "fallback",
+          } as CombinedEvidence));
+          setRunState({ phase: "evidence_received", label: `${event.path === "manufacturing" ? "Manufacturing" : "Document"} evidence received` });
+        } else if (event.type === "combined_evidence_completed") {
+          setCombinedEvidence((current) => current ? { ...current, answer_status: event.answer_status } : current);
         } else if (event.type === "message_completed") {
           setMessages((current) => current.map((message) => message.id === placeholder.id ? event.assistant_message : message)); setRunState({ phase: "success", label: null }); setDraft("");
         } else if (event.type === "error") { throw new Error(event.message); }
@@ -106,5 +128,5 @@ export function useMessages(conversationId: string | null, api: MessageApi = def
     setRunState({ phase: "cancelled", label: "Generation stopped" });
     controller.current?.abort();
   }, []);
-  return { messages, evidence, runState, isLoading, isSending, isStreaming, error, draft, setDraft, reload, send, cancelStreaming };
+  return { messages, evidence, combinedEvidence, runState, isLoading, isSending, isStreaming, error, draft, setDraft, reload, send, cancelStreaming };
 }

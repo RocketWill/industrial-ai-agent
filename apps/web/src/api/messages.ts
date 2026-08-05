@@ -44,7 +44,26 @@ export type ProductionEvidence = {
   tool_error: { code: string; message: string } | null;
 };
 
-export type MessageExchange = { user_message: Message; assistant_message: Message; evidence: ProductionEvidence | null };
+export type ManufacturingEvidenceKind = "production" | "equipment_status" | "defect_distribution";
+export type EvidencePathStatus = "loading" | "succeeded" | "empty" | "failed" | "not_run";
+export type EvidenceResult =
+  | NonNullable<ProductionEvidence["production_summary"]>
+  | NonNullable<ProductionEvidence["equipment_status"]>
+  | NonNullable<ProductionEvidence["defect_distribution"]>
+  | NonNullable<ProductionEvidence["document_search"]>;
+export type CombinedEvidencePath<T extends EvidenceResult = EvidenceResult> = { status: EvidencePathStatus; result: T | null; error_code: string | null };
+type DocumentResult = NonNullable<ProductionEvidence["document_search"]>;
+type CombinedEvidenceBase = {
+  documents: CombinedEvidencePath<DocumentResult>;
+  document_query: string;
+  answer_status: "succeeded" | "fallback";
+};
+export type CombinedEvidence =
+  | (CombinedEvidenceBase & { manufacturing_kind: "production"; manufacturing: CombinedEvidencePath<NonNullable<ProductionEvidence["production_summary"]>> })
+  | (CombinedEvidenceBase & { manufacturing_kind: "equipment_status"; manufacturing: CombinedEvidencePath<NonNullable<ProductionEvidence["equipment_status"]>> })
+  | (CombinedEvidenceBase & { manufacturing_kind: "defect_distribution"; manufacturing: CombinedEvidencePath<NonNullable<ProductionEvidence["defect_distribution"]>> });
+
+export type MessageExchange = { user_message: Message; assistant_message: Message; evidence: ProductionEvidence | null; combined_evidence?: CombinedEvidence | null };
 export type RouteIntent =
   | "general"
   | "production_summary"
@@ -71,8 +90,10 @@ export type MessageStreamEvent =
   | { type: "routing_decided"; label: string; route: RouteIntent; reason_code: RoutingReasonCode; retry_count: number }
   | { type: "clarification_required"; label: string; reason_code: RoutingReasonCode }
   | { type: "routing_fallback_used"; label: string; reason_code: RoutingReasonCode }
-  | { type: "tool_call_started"; name: string; arguments: Record<string, unknown> }
+  | { type: "tool_call_started"; path?: "manufacturing" | "documents"; name: string; arguments: Record<string, unknown> }
   | { type: "tool_result"; evidence: ProductionEvidence }
+  | { type: "combined_tool_result"; path: "manufacturing" | "documents"; manufacturing_kind: ManufacturingEvidenceKind; outcome: CombinedEvidencePath }
+  | { type: "combined_evidence_completed"; answer_status: "succeeded" | "fallback" }
   | { type: "token"; text: string }
   | { type: "message_completed"; assistant_message: Message }
   | { type: "error"; code: string; message: string };
@@ -96,7 +117,7 @@ function isSuggestedAction(value: unknown): value is SuggestedAction {
     || (action.id === "document_evidence_first" && action.label === "Document evidence" && action.message === "Search the documents first.");
 }
 function isExchange(value: unknown): value is MessageExchange {
-  return typeof value === "object" && value !== null && isMessage((value as MessageExchange).user_message) && isMessage((value as MessageExchange).assistant_message) && isEvidence((value as MessageExchange).evidence);
+  return typeof value === "object" && value !== null && isMessage((value as MessageExchange).user_message) && isMessage((value as MessageExchange).assistant_message) && isEvidence((value as MessageExchange).evidence) && ((value as MessageExchange).combined_evidence === undefined || isCombinedEvidence((value as MessageExchange).combined_evidence));
 }
 function isEvidence(value: unknown): value is ProductionEvidence | null {
   if (value === null) return true;
@@ -113,6 +134,29 @@ function isEvidence(value: unknown): value is ProductionEvidence | null {
   const validDocumentSearch = documentSearch !== null && documentSearch !== undefined && typeof documentSearch === "object" && typeof documentSearch.query === "string" && Array.isArray(documentSearch.sources) && documentSearch.sources.every((source) => typeof source.source_id === "string" && (source.source === "built_in" || source.source === "local_upload") && typeof source.title === "string" && typeof source.section === "string" && typeof source.relative_path === "string" && typeof source.excerpt === "string" && typeof source.score === "number" && source.score >= 0 && source.score <= 1) && Array.isArray(documentSearch.limitations) && documentSearch.limitations.every((limitation) => typeof limitation === "string");
   return validSummary || validStatus || validDistribution || validDocumentSearch || item.tool_error !== null;
 }
+function isCombinedPath(value: unknown, isResult: (result: unknown) => boolean): value is CombinedEvidencePath {
+  if (typeof value !== "object" || value === null) return false;
+  const path = value as CombinedEvidencePath;
+  if (!["succeeded", "empty", "failed", "not_run"].includes(path.status)) return false;
+  if (path.error_code !== null && typeof path.error_code !== "string") return false;
+  return path.result === null || isResult(path.result);
+}
+function isManufacturingKind(value: unknown): value is ManufacturingEvidenceKind {
+  return value === "production" || value === "equipment_status" || value === "defect_distribution";
+}
+function isCombinedEvidence(value: unknown): value is CombinedEvidence | null {
+  if (value === null) return true;
+  if (typeof value !== "object") return false;
+  const item = value as CombinedEvidence;
+  if (!isManufacturingKind(item.manufacturing_kind) || typeof item.document_query !== "string" || (item.answer_status !== "succeeded" && item.answer_status !== "fallback")) return false;
+  const manufacturingValidator = {
+    production: (result: unknown) => isEvidence({ production_summary: result, tool_error: null }),
+    equipment_status: (result: unknown) => isEvidence({ production_summary: null, equipment_status: result, tool_error: null }),
+    defect_distribution: (result: unknown) => isEvidence({ production_summary: null, defect_distribution: result, tool_error: null }),
+  }[item.manufacturing_kind];
+  return isCombinedPath(item.manufacturing, manufacturingValidator)
+    && isCombinedPath(item.documents, (result) => isEvidence({ production_summary: null, document_search: result, tool_error: null }));
+}
 function parseStreamEvent(event: string, data: string): MessageStreamEvent {
   const value: unknown = JSON.parse(data);
   if (event === "message_started" && typeof value === "object" && value !== null && isMessage((value as { user_message: unknown }).user_message)) return { type: event, user_message: (value as { user_message: Message }).user_message };
@@ -122,8 +166,27 @@ function parseStreamEvent(event: string, data: string): MessageStreamEvent {
   if (event === "clarification_required" && isRoutingPayload(value) && isRoutingReasonCode(value.reason_code)) return { type: event, label: value.label, reason_code: value.reason_code };
   if (event === "routing_fallback_used" && isRoutingPayload(value) && isRoutingReasonCode(value.reason_code)) return { type: event, label: value.label, reason_code: value.reason_code };
   if (event === "token" && typeof value === "object" && value !== null && typeof (value as { text: unknown }).text === "string") return { type: event, text: (value as { text: string }).text };
-  if (event === "tool_call_started" && typeof value === "object" && value !== null && typeof (value as { name: unknown }).name === "string" && typeof (value as { arguments: unknown }).arguments === "object") return { type: event, name: (value as { name: string }).name, arguments: (value as { arguments: Record<string, unknown> }).arguments };
+  if (event === "tool_call_started" && typeof value === "object" && value !== null && typeof (value as { name: unknown }).name === "string" && typeof (value as { arguments: unknown }).arguments === "object" && ((value as { path?: unknown }).path === undefined || (value as { path?: unknown }).path === "manufacturing" || (value as { path?: unknown }).path === "documents")) return { type: event, path: (value as { path?: "manufacturing" | "documents" }).path, name: (value as { name: string }).name, arguments: (value as { arguments: Record<string, unknown> }).arguments };
   if (event === "tool_result" && typeof value === "object" && value !== null && isEvidence(value)) return { type: event, evidence: value };
+  if (event === "combined_tool_result" && typeof value === "object" && value !== null) {
+    const item = value as Record<string, unknown>;
+    const path = item.path;
+    const manufacturingKind = item.manufacturing_kind;
+    const pathValidator = path === "documents"
+      ? (result: unknown) => isEvidence({ production_summary: null, document_search: result, tool_error: null })
+      : manufacturingKind === "production"
+        ? (result: unknown) => isEvidence({ production_summary: result, tool_error: null })
+        : manufacturingKind === "equipment_status"
+          ? (result: unknown) => isEvidence({ production_summary: null, equipment_status: result, tool_error: null })
+          : (result: unknown) => isEvidence({ production_summary: null, defect_distribution: result, tool_error: null });
+    if ((path === "manufacturing" || path === "documents") && isManufacturingKind(manufacturingKind) && isCombinedPath(item, pathValidator)) {
+      return { type: event, path, manufacturing_kind: manufacturingKind, outcome: { status: item.status, result: item.result, error_code: item.error_code } };
+    }
+  }
+  if (event === "combined_evidence_completed" && typeof value === "object" && value !== null) {
+    const answerStatus = (value as { answer_status?: unknown }).answer_status;
+    if (answerStatus === "succeeded" || answerStatus === "fallback") return { type: event, answer_status: answerStatus };
+  }
   if (event === "message_completed" && typeof value === "object" && value !== null && isMessage((value as { assistant_message: unknown }).assistant_message)) return { type: event, assistant_message: (value as { assistant_message: Message }).assistant_message };
   if (event === "error" && typeof value === "object" && value !== null && typeof (value as { code: unknown }).code === "string" && typeof (value as { message: unknown }).message === "string") return { type: event, code: (value as { code: string }).code, message: (value as { message: string }).message };
   throw new Error("invalid streaming event");

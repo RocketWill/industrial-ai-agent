@@ -62,6 +62,7 @@ export default function ConversationWorkspace({ conversationId, conversationTitl
   const items = useMemo<BubbleItemType[]>(() => state.messages.map((message, index) => {
     const isActiveAssistant = message.id === placeholderId;
     const evidence = index === state.messages.length - 1 && message.role === "assistant" ? state.evidence : null;
+    const combinedEvidence = index === state.messages.length - 1 && message.role === "assistant" ? state.combinedEvidence : null;
     const status = isActiveAssistant
       ? state.runState.phase === "failed" ? "error"
         : state.runState.phase === "cancelled" ? "abort"
@@ -84,6 +85,7 @@ export default function ConversationWorkspace({ conversationId, conversationTitl
         <MessageItem
           message={message}
           evidence={evidence}
+          combinedEvidence={combinedEvidence}
           isStreaming={isActiveAssistant && state.isStreaming}
           runLabel={isActiveAssistant ? state.runState.label : null}
           showSuggestedActions={index === state.messages.length - 1 && message.role === "assistant"}
@@ -99,7 +101,7 @@ export default function ConversationWorkspace({ conversationId, conversationTitl
         ) : messageItem;
       },
     };
-  }), [state.evidence, state.isSending, state.isStreaming, state.messages, state.runState, submit]);
+  }), [state.combinedEvidence, state.evidence, state.isSending, state.isStreaming, state.messages, state.runState, submit]);
 
   useLayoutEffect(() => {
     pendingInitialScroll.current = true;

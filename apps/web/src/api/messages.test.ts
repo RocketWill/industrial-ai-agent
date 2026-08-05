@@ -161,6 +161,23 @@ describe("messages API", () => {
     ]);
   });
 
+  it("validates path-aware combined evidence events", async () => {
+    const result = {
+      equipment_id: "AOI-WAFER-01", lot_id: null,
+      start: "2026-01-15T13:00:00Z", end: "2026-01-15T17:00:00Z",
+      inspected_wafers: 300, passed_wafers: 257, failed_wafers: 43,
+      yield_rate: 257 / 300, defect_counts: [], alarm_events: [], limitations: [],
+    };
+    const body = `event: combined_tool_result\ndata: ${JSON.stringify({ path: "manufacturing", manufacturing_kind: "production", status: "succeeded", result, error_code: null })}\n\nevent: combined_evidence_completed\ndata: {"answer_status":"succeeded"}\n\n`;
+    const events = [];
+    for await (const event of streamMessage(id, "Analyze", new AbortController().signal, async () => new Response(body, { status: 200 }))) events.push(event);
+
+    expect(events).toEqual([
+      { type: "combined_tool_result", path: "manufacturing", manufacturing_kind: "production", outcome: { status: "succeeded", result, error_code: null } },
+      { type: "combined_evidence_completed", answer_status: "succeeded" },
+    ]);
+  });
+
   it("rejects routing events outside the public route contract", async () => {
     const fetchImplementation = async () => new Response(
       'event: routing_decided\ndata: {"label":"Unknown","route":"invented","reason_code":"general_request","retry_count":0}\n\n',

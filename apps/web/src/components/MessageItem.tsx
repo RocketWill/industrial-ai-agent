@@ -2,7 +2,7 @@ import { Button, Descriptions, Progress, Tag, Typography } from "antd";
 import { CopyOutlined } from "@ant-design/icons";
 import { Prompts } from "@ant-design/x";
 import { lazy, Suspense, useState } from "react";
-import type { Message, ProductionEvidence } from "../api/messages";
+import type { CombinedEvidence, CombinedEvidencePath, Message, ProductionEvidence } from "../api/messages";
 import { normalizeAssistantContent } from "../utils/normalizeAssistantContent";
 import DocumentViewer from "./DocumentViewer";
 import { parseCitation, type DocumentCitation } from "../utils/documentCitation";
@@ -13,11 +13,38 @@ type Props = {
   message: Message;
   isStreaming?: boolean;
   evidence?: ProductionEvidence | null;
+  combinedEvidence?: CombinedEvidence | null;
   runLabel?: string | null;
   showSuggestedActions?: boolean;
   suggestedActionsDisabled?: boolean;
   onSuggestedAction?: (message: string) => void;
 };
+
+function PathState({ label, path }: { label: string; path: CombinedEvidencePath }) {
+  if (path.status === "loading") return <section className="evidence-card evidence-path-state" role="status" aria-live="polite" aria-label={`${label} loading`}><Typography.Text strong>{label}</Typography.Text><Typography.Text type="secondary">Retrieving evidence…</Typography.Text></section>;
+  if (path.status === "failed") return <section className="evidence-card evidence-path-state" role="alert" aria-label={`${label} unavailable`}><Typography.Text strong>{label}</Typography.Text><Typography.Text type="secondary">Evidence could not be retrieved.</Typography.Text></section>;
+  if (path.status === "not_run") return <section className="evidence-card evidence-path-state" role="status" aria-label={`${label} pending`}><Typography.Text strong>{label}</Typography.Text><Typography.Text type="secondary">Waiting to run.</Typography.Text></section>;
+  return null;
+}
+
+function CombinedEvidencePanels({ combined }: { combined: CombinedEvidence }) {
+  const manufacturing: ProductionEvidence = {
+    production_summary: combined.manufacturing_kind === "production" ? combined.manufacturing.result : null,
+    equipment_status: combined.manufacturing_kind === "equipment_status" ? combined.manufacturing.result : null,
+    defect_distribution: combined.manufacturing_kind === "defect_distribution" ? combined.manufacturing.result : null,
+    document_search: null,
+    tool_error: null,
+  };
+  const documents: ProductionEvidence = { production_summary: null, document_search: combined.documents.result, tool_error: null };
+  return <div className="combined-evidence" role="region" aria-label="Combined evidence">
+    <PathState label="Manufacturing evidence" path={combined.manufacturing} />
+    {combined.manufacturing_kind === "production" && <ProductionEvidenceCard evidence={manufacturing} />}
+    {combined.manufacturing_kind === "equipment_status" && <EquipmentStatusCard evidence={manufacturing} />}
+    {combined.manufacturing_kind === "defect_distribution" && <DefectDistributionCard evidence={manufacturing} />}
+    <PathState label="Document evidence" path={combined.documents} />
+    {combined.documents.result && <DocumentSourcesCard evidence={documents} />}
+  </div>;
+}
 
 function displayTime(value: string): string {
   return new Date(value).toLocaleString();
@@ -268,6 +295,7 @@ export default function MessageItem({
   message,
   isStreaming = false,
   evidence = null,
+  combinedEvidence = null,
   runLabel = null,
   showSuggestedActions = false,
   suggestedActionsDisabled = false,
@@ -355,6 +383,7 @@ export default function MessageItem({
         {!isUser && !isStreaming && evidence?.document_search && (
           <DocumentSourcesCard evidence={evidence} />
         )}
+        {!isUser && combinedEvidence && <CombinedEvidencePanels combined={combinedEvidence} />}
       </div>
     </article>
   );
