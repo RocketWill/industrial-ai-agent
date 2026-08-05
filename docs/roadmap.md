@@ -244,7 +244,8 @@ Implemented slices:
 - [x] Expose bounded routing progress without adding a persistent trace
   timeline.
 
-Combined requests remain clarification-only. Evidence-tool retries, persisted
+At the v0.6 boundary, combined requests remained clarification-only.
+Evidence-tool retries, persisted
 routing traces, and broader multilingual support remain outside this milestone.
 
 ## v0.6.1 — Guided Routing Choices
@@ -315,6 +316,34 @@ Implemented slices:
   ignored typed JSON artifact with fixture digest and monotonic stage timing.
 - [x] Verify all formal thresholds without an LLM judge, external telemetry,
   persisted application traces, a composite score, or a latency gate.
+
+## v0.9 — Combined Evidence Workflow
+
+**Status: Implemented**
+
+Execute one bounded manufacturing evidence path followed by Document Search in
+a single assistant exchange. The manufacturing result may enrich retrieval
+with explicit recorded fields, while the answer keeps numeric manufacturing
+claims, document citations, limitations, and possible relationships separate.
+
+Implemented slices:
+
+- [x] Route explicit combined requests to exactly one Production Summary,
+  Equipment Status, or Defect Distribution path plus Document Search.
+- [x] Execute manufacturing first and enrich the document query only with
+  allowlisted recorded fields.
+- [x] Preserve independent succeeded, empty, failed, and current-exchange-only
+  path states across synchronous and ordered SSE contracts.
+- [x] Keep available evidence when one path or answer generation fails, without
+  inventing missing results, citations, or causal conclusions.
+- [x] Render one responsive assistant exchange with separate manufacturing and
+  document regions, including loading and failure semantics.
+- [x] Extend the deterministic bilingual suite to 45 scenarios covering the
+  combined pairings, clarification, partial and double failure, empty evidence,
+  citations, numeric grounding, and causal-claim rejection.
+
+This milestone does not add a planner, multiple manufacturing tools in one
+turn, persisted evidence history, evidence-tool retries, or causal analysis.
 
 ## v1.0 — Portfolio Release
 

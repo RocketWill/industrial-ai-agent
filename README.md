@@ -8,7 +8,7 @@ proprietary system material. The current domain model is centered on semiconduct
 
 ## Current status
 
-**Implemented — v0.8 Evaluation and Observability**
+**Implemented — v0.9 Combined Evidence Workflow**
 
 The conversation foundation is runnable and tested. It includes FastAPI,
 SQLite persistence, explicit Alembic migrations, an OpenAI-compatible chat
@@ -46,22 +46,24 @@ use a deterministic gate. Ambiguous requests use one typed
 unsupported requests, fallback, and insufficient evidence use deterministic
 safe responses.
 
-Combined-route clarifications now persist two application-owned continuations:
-`Production evidence` and `Document evidence`. The latest unresolved choices
-survive reload, and selecting one records a normal user message through the
-existing SSE and routing workflow. This does not execute both tools or accept
-model-generated actions.
+The v0.9 workflow executes one manufacturing evidence path and Document Search
+in sequence when a request explicitly needs both. Manufacturing evidence runs
+first, and only recorded alarm codes, equipment status and reason codes, or
+defect categories may enrich the document query. Each path keeps its own
+loading, empty, failure, and result state. The final response may describe a
+possible relationship, but it cannot claim causality from co-occurrence.
 
 The v0.7 MCP milestone exposes production summary, recorded equipment status,
 and defect distribution through an independent local stdio server. It reuses
 the native deterministic contracts and does not connect MCP to FastAPI,
 LangGraph, the frontend, document retrieval, or live manufacturing systems.
 
-The v0.8 milestone adds a deterministic offline evaluation command. Its 30
+The v0.8 milestone adds a deterministic offline evaluation command. Its 45
 versioned English and Traditional Chinese scenarios exercise routing, native
 tool evidence, retrieval, citations, safe failures, retry, fallback, and
-unsupported-claim rejection. Results remain separate by dimension; the runner
-does not call an LLM judge or turn local timing observations into a benchmark.
+unsupported-claim rejection, including the v0.9 combined path. Results remain
+separate by dimension; the runner does not call an LLM judge or turn local
+timing observations into a benchmark.
 
 The workbench now uses Ant Design 6.5.1, Ant Design X 2.9.0, and XMarkdown
 2.9.0. Its dark-first responsive layout separates conversation navigation,
@@ -94,7 +96,7 @@ boundaries.
 - a typed `search_documents` tool backed by heading-aware Markdown chunks, a
   deterministic feature-hashing embedding, an in-memory cosine index, and an
   explicit three-document registry;
-- a versioned 30-scenario offline evaluation suite with typed JSON artifacts
+- a versioned 45-scenario offline evaluation suite with typed JSON artifacts
   and per-dimension acceptance thresholds;
 - API-process health reporting;
 - grouped conversation navigation with desktop and mobile Drawers;

@@ -59,9 +59,10 @@ belongs in deterministic domain code rather than an LLM.
 
 ## Current milestone boundary
 
-The latest completed milestone is **v0.8 — Evaluation and Observability**. Its
-approved deterministic offline suite and typed artifact boundary are
-implemented. The v0.1 foundation,
+The latest completed milestone is **v0.9 — Combined Evidence Workflow**. It
+executes one manufacturing evidence path followed by Document Search in a
+single current exchange, with independent path states and bounded query
+enrichment. The v0.1 foundation,
 v0.1.1 streaming extension, v0.1.2 workspace extension, and v0.2 minimal
 LangGraph orchestration are implemented, including clean-environment
 verification. v0.3 Manufacturing Domain is implemented; throughput is
@@ -91,7 +92,7 @@ to FastAPI, LangGraph, or the frontend. HTTP transport, authentication, remote
 deployment, document search, and live manufacturing access remain outside the
 v0.7 boundary.
 
-The evaluation entrypoint runs 30 fixed English and Traditional Chinese
+The evaluation entrypoint runs 45 fixed English and Traditional Chinese
 scenarios through existing routing, tool, retrieval, evidence, and answer
 validation seams. It records per-dimension assertions and local stage timing
 in an ignored JSON artifact. The command does not add an LLM judge, provider
@@ -129,12 +130,15 @@ cloud storage, and persisted evidence remain outside the current boundary.
 The completed v0.6 milestone adds typed English and Traditional Chinese routing,
 bounded classifier retry and fallback, deterministic clarification, shared
 synchronous and SSE decisions, evidence sufficiency checks, and safe routing
-progress events. It does not execute combined turns or persist routing traces.
+progress events. Combined execution was added later in v0.9; routing traces are
+still not persisted.
 
 The completed v0.6.1 milestone adds two persisted, application-owned actions to
 the combined clarification. Selecting one records a normal user message and
 reuses the existing routing workflow. It does not add multi-tool execution,
 context selectors, model-generated actions, or a special execution endpoint.
+Those historical choices remain supported; explicit new combined requests now
+use the v0.9 workflow.
 
 ## Publication safety
 

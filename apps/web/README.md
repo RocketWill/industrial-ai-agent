@@ -16,6 +16,8 @@ workbench implemented across the frontend milestones.
   requests, with typed classification for ambiguous requests;
 - reload-safe `Production evidence` and `Document evidence` choices on the
   latest unresolved combined-route clarification;
+- one current-exchange combined result surface with separate manufacturing and
+  document loading, empty, failure, and result regions;
 - deterministic Production Summary result surface for the current exchange,
   including Defect Counts, Alarm Events, provenance, and empty states;
 - deterministic Equipment Status evidence for an explicit synthetic
@@ -107,7 +109,7 @@ v0.5 contracts.
 
 ## Current status
 
-The web behavior for v0.1, v0.1.1, and v0.1.2 is implemented and verified.
+The web behavior through v0.9 is implemented and verified.
 Streaming uses `fetch` and `ReadableStream`, renders token deltas in memory, and
 offers a keyboard-accessible Stop action. The browser does not treat partial
 assistant text as persisted; the backend creates the record only after it
@@ -127,9 +129,9 @@ assistant bubbles use an accessible three-dot processing indicator and an
 Ant Design BorderBeam while a response is active. Completed bubbles retain a
 static multicolor bottom accent. Routing, retry or fallback, generation, and
 evidence-tool stages remain distinguishable through text and ARIA state.
-Combined-route choices use keyboard-accessible buttons, disable while a send is
-active, and disappear after the selected continuation is recorded as a normal
-user message.
+Historical combined-route choices remain keyboard accessible and resolve as
+normal user messages. New explicit combined requests run the bounded v0.9
+workflow and present both evidence paths in one assistant exchange.
 
 The workspace header also opens a Documents drawer. It lists protected
 repository documents and local uploads, validates one `.md` file up to 1 MiB,
