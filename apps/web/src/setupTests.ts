@@ -34,8 +34,26 @@ if (typeof window.matchMedia !== "function") {
 }
 
 const nativeGetComputedStyle = window.getComputedStyle.bind(window);
-window.getComputedStyle = ((element: Element, pseudoElement?: string | null) =>
-  nativeGetComputedStyle(element, pseudoElement ? undefined : pseudoElement)) as typeof window.getComputedStyle;
+const zeroPixelComputedProperties = new Set([
+  "border-bottom-width",
+  "border-top-width",
+  "padding-bottom",
+  "padding-top",
+]);
+window.getComputedStyle = ((element: Element, pseudoElement?: string | null) => {
+  const computedStyle = nativeGetComputedStyle(
+    element,
+    pseudoElement ? undefined : pseudoElement,
+  );
+  const nativeGetPropertyValue = computedStyle.getPropertyValue.bind(computedStyle);
+  Object.defineProperty(computedStyle, "getPropertyValue", {
+    configurable: true,
+    value: (property: string) =>
+      nativeGetPropertyValue(property) ||
+      (zeroPixelComputedProperties.has(property) ? "0px" : ""),
+  });
+  return computedStyle;
+}) as typeof window.getComputedStyle;
 
 if (typeof globalThis.ResizeObserver === "undefined") {
   globalThis.ResizeObserver = class ResizeObserver {

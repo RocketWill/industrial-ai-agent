@@ -127,8 +127,13 @@ export default function ConversationWorkspace({ conversationId, conversationTitl
 
   useLayoutEffect(() => {
     if (followLatest && state.isStreaming && latestMessageKey && lastScrolledMessageKey.current !== latestMessageKey) {
-      listRef.current?.scrollTo({ top: "bottom", behavior: "auto" });
-      lastScrolledMessageKey.current = latestMessageKey;
+      if (initialScrollFrame.current === null) {
+        initialScrollFrame.current = requestAnimationFrame(() => {
+          listRef.current?.scrollTo({ top: "bottom", behavior: "auto" });
+          lastScrolledMessageKey.current = latestMessageKey;
+          initialScrollFrame.current = null;
+        });
+      }
     }
   }, [followLatest, latestMessageKey, state.isStreaming]);
 
