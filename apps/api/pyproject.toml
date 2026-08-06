@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "industrial-agent-api"
-version = "0.1.0"
+version = "1.0.0"
 description = "FastAPI backend for the Industrial AI Agent portfolio project"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
