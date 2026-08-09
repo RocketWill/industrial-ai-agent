@@ -1,23 +1,47 @@
 """Typed boundary for deterministic local document retrieval."""
 
-from pathlib import Path
-
 from pydantic import BaseModel, ConfigDict, Field
 
 from industrial_agent.domain.documents import (
+    TOKEN_PATTERN,
+    VectorIndex,
+    build_document_corpus,
     build_vector_index,
-    parse_markdown_document,
 )
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[5]
-DEFAULT_DOCUMENT = (
-    REPOSITORY_ROOT
-    / "data/synthetic/documents/aoi-wafer-inspector-alarm-guide.md"
-)
-DEFAULT_RELATIVE_PATH = (
-    "data/synthetic/documents/aoi-wafer-inspector-alarm-guide.md"
-)
 MINIMUM_SCORE = 0.05
+LEXICAL_STOPWORDS = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "by",
+        "check",
+        "do",
+        "for",
+        "from",
+        "how",
+        "i",
+        "in",
+        "is",
+        "it",
+        "of",
+        "on",
+        "operator",
+        "or",
+        "occurs",
+        "should",
+        "the",
+        "to",
+        "what",
+        "when",
+        "with",
+    }
+)
 
 
 class DocumentSearchRequest(BaseModel):
@@ -51,21 +75,19 @@ class DocumentSearchResult(BaseModel):
 def search_documents(
     request: DocumentSearchRequest,
     *,
-    document_path: Path = DEFAULT_DOCUMENT,
+    index: VectorIndex | None = None,
 ) -> DocumentSearchResult:
-    """Search the independently written fictional guide."""
-    chunks = parse_markdown_document(
-        document_id="aoi-alarm-guide",
-        relative_path=DEFAULT_RELATIVE_PATH,
-        markdown=document_path.read_text(encoding="utf-8"),
-    )
+    """Search the validated synthetic corpus with lexical and cosine gates."""
+    active_index = index or build_vector_index(build_document_corpus().chunks)
+    query_terms = _meaningful_terms(request.query)
     matches = tuple(
         match
-        for match in build_vector_index(chunks).search(
-            request.query, limit=request.limit
+        for match in active_index.search(request.query, limit=len(active_index.entries))
+        if query_terms & _meaningful_terms(
+            f"{match.chunk.title} {match.chunk.section} {match.chunk.content}"
         )
-        if match.score >= MINIMUM_SCORE
-    )
+        and match.score >= MINIMUM_SCORE
+    )[: request.limit]
     sources = tuple(
         RetrievedSourceResult(
             source_id=match.chunk.source_id,
@@ -81,4 +103,13 @@ def search_documents(
         query=request.query,
         sources=sources,
         limitations=() if sources else ("no_relevant_sources",),
+    )
+
+
+def _meaningful_terms(text: str) -> frozenset[str]:
+    """Return normalized lexical terms after removing a fixed stopword set."""
+    return frozenset(
+        token
+        for token in TOKEN_PATTERN.findall(text.lower())
+        if token not in LEXICAL_STOPWORDS
     )
