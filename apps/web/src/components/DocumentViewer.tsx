@@ -1,11 +1,15 @@
 import { Alert, Button, Drawer, Spin, Tag, Typography } from "antd";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import type { RegistryDocument } from "../api/documents";
-import { readDocument } from "../api/documents";
+import {
+  cacheDocument,
+  getCachedDocument,
+  readDocument,
+  DocumentReadError,
+  type RegistryDocument,
+} from "../api/documents";
 import type { DocumentCitation } from "../utils/documentCitation";
 
 const XMarkdown = lazy(() => import("@ant-design/x-markdown").then((module) => ({ default: module.XMarkdown })));
-const documentCache = new Map<string, RegistryDocument>();
 
 function slug(value: string): string {
   return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
@@ -18,21 +22,24 @@ export default function DocumentViewer({ citation, open, onClose }: {
   onClose: () => void;
 }) {
   const [document, setDocument] = useState<RegistryDocument | null>(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<DocumentReadError | null>(null);
   const [missingSection, setMissingSection] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!open || !citation) return;
-    const cached = documentCache.get(citation.documentId);
-    if (cached) { setDocument(cached); setError(false); return; }
+    const cached = getCachedDocument(citation.documentId);
+    if (cached) { setDocument(cached); setError(null); return; }
     let active = true;
-    setDocument(null); setError(false);
+    setDocument(null); setError(null);
     void readDocument(citation.documentId).then((value) => {
       if (!active) return;
-      documentCache.set(citation.documentId, value); setDocument(value);
-    }).catch(() => { if (active) setError(true); });
+      cacheDocument(value); setDocument(value);
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setError(reason instanceof DocumentReadError ? reason : new DocumentReadError(null, reason));
+    });
     return () => { active = false; };
   }, [open, citation, attempt]);
 
@@ -68,11 +75,13 @@ export default function DocumentViewer({ citation, open, onClose }: {
     <Drawer title={document?.title ?? "Document source"} placement="right" open={open} onClose={onClose}
       size="min(720px, 100vw)" destroyOnHidden classNames={{ body: "document-viewer-body" }}>
       {!document && !error && <div className="document-viewer-state"><Spin /><span>Loading document…</span></div>}
-      {error && <Alert type="error" showIcon message="Document unavailable" description="The document could not be loaded."
+      {error?.status === 404 && <Alert type="error" showIcon title="Document no longer available"
+        description="This cited document was deleted and cannot be reopened." />}
+      {error && error.status !== 404 && <Alert type="error" showIcon title="Document unavailable" description="The document could not be loaded."
         action={<Button onClick={() => setAttempt((value) => value + 1)}>Retry</Button>} />}
       {document && <>
-        <div className="document-viewer-meta"><Tag color="blue">Synthetic Demo</Tag><Typography.Text type="secondary">{document.relative_path}</Typography.Text></div>
-        {missingSection && <Alert type="warning" showIcon message="Referenced section could not be located" />}
+        <div className="document-viewer-meta"><Tag color={document.synthetic_demo ? "blue" : "cyan"}>{document.synthetic_demo ? "Synthetic Demo" : "Local Upload"}</Tag><Typography.Text type="secondary">{document.relative_path}</Typography.Text></div>
+        {missingSection && <Alert type="warning" showIcon title="Referenced section could not be located" />}
         <div ref={contentRef} className="document-viewer-content">
           <Suspense fallback={<Spin />}><XMarkdown content={document.markdown} escapeRawHtml openLinksInNewTab
             components={{ img: () => <Typography.Text type="secondary">[Remote image omitted]</Typography.Text> }} /></Suspense>

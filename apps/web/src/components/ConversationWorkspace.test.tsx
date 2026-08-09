@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Message } from "../api/messages";
@@ -95,6 +96,16 @@ describe("ConversationWorkspace scrolling", () => {
     expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0, behavior: "auto" }));
   });
 
+  it("submits the first message without trying to scroll an unmounted list", async () => {
+    currentState = state({ messages: [], draft: "First question" });
+    render(<ConversationWorkspace conversationId={conversationId} conversationTitle="New analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "arrow-up" }));
+
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(currentState.send).toHaveBeenCalledWith("First question");
+  });
+
   it("repositions once when the selected conversation changes", async () => {
     const view = render(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
     await waitFor(() => expect(scrollTo).toHaveBeenCalled());
@@ -150,5 +161,26 @@ describe("ConversationWorkspace scrolling", () => {
 
     const { container } = render(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
     expect(container.querySelector(".assistant-bubble-content")).not.toHaveClass("assistant-bubble-streaming");
+  });
+
+  it("offers a keyboard-accessible Documents action without a selected conversation", async () => {
+    const user = userEvent.setup();
+    const onOpenDocuments = vi.fn();
+
+    render(
+      <ConversationWorkspace
+        conversationId={null}
+        conversationTitle={null}
+        onOpenNavigation={vi.fn()}
+        onOpenContext={vi.fn()}
+        onOpenDocuments={onOpenDocuments}
+      />,
+    );
+
+    const documentsTrigger = screen.getByRole("button", { name: "Documents" });
+    documentsTrigger.focus();
+    await user.keyboard("{Enter}");
+
+    expect(onOpenDocuments).toHaveBeenCalledTimes(1);
   });
 });

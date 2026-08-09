@@ -1,6 +1,6 @@
 import { Alert, Avatar, BorderBeam, Button, Skeleton, Tag, Typography } from "antd";
 import type { BorderBeamGradient } from "antd";
-import { ArrowDownOutlined, MenuOutlined, RobotOutlined, SettingOutlined, UserOutlined } from "@ant-design/icons";
+import { ArrowDownOutlined, FileTextOutlined, MenuOutlined, RobotOutlined, SettingOutlined, UserOutlined } from "@ant-design/icons";
 import { Bubble, Sender } from "@ant-design/x";
 import type { BubbleItemType } from "@ant-design/x";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ElementRef, type UIEvent } from "react";
@@ -14,6 +14,8 @@ type Props = {
   conversationTitle: string | null;
   onOpenNavigation: () => void;
   onOpenContext: () => void;
+  onOpenDocuments?: () => void;
+  documentsOpen?: boolean;
 };
 
 const placeholderId = "00000000-0000-1000-8000-000000000000";
@@ -25,9 +27,11 @@ const assistantBeamColor: BorderBeamGradient = [
   { color: "#36cfc9", percent: 100 },
 ];
 
-export default function ConversationWorkspace({ conversationId, conversationTitle, onOpenNavigation, onOpenContext }: Props) {
+export default function ConversationWorkspace({ conversationId, conversationTitle, onOpenNavigation, onOpenContext, onOpenDocuments = () => undefined, documentsOpen = false }: Props) {
   const state = useMessages(conversationId);
   const listRef = useRef<ElementRef<typeof Bubble.List>>(null);
+  const documentsTriggerRef = useRef<HTMLButtonElement>(null);
+  const documentsWasOpen = useRef(false);
   const pendingInitialScroll = useRef(true);
   const initialScrollFrame = useRef<number | null>(null);
   const lastScrolledMessageKey = useRef("");
@@ -35,6 +39,15 @@ export default function ConversationWorkspace({ conversationId, conversationTitl
   const [showScrollButton, setShowScrollButton] = useState(false);
   const latestMessage = state.messages[state.messages.length - 1];
   const latestMessageKey = latestMessage ? `${latestMessage.id}:${latestMessage.content.length}` : "";
+
+  useLayoutEffect(() => {
+    if (documentsOpen) {
+      documentsWasOpen.current = true;
+    } else if (documentsWasOpen.current) {
+      documentsWasOpen.current = false;
+      documentsTriggerRef.current?.focus();
+    }
+  }, [documentsOpen]);
 
   const items = useMemo<BubbleItemType[]>(() => state.messages.map((message, index) => {
     const isActiveAssistant = message.id === placeholderId;
@@ -114,7 +127,9 @@ export default function ConversationWorkspace({ conversationId, conversationTitl
     if (value !== undefined && value !== state.draft) state.setDraft(value);
     setFollowLatest(true);
     setShowScrollButton(false);
-    listRef.current?.scrollTo({ top: "bottom", behavior: "auto" });
+    if (state.messages.length > 0) {
+      listRef.current?.scrollTo({ top: "bottom", behavior: "auto" });
+    }
     void state.send(value);
   };
 
@@ -135,6 +150,17 @@ export default function ConversationWorkspace({ conversationId, conversationTitl
         </div>
         <div className="chat-header-actions">
           <Tag color="cyan">Synthetic Demo</Tag>
+          <Button
+            ref={documentsTriggerRef}
+            className="documents-trigger"
+            icon={<FileTextOutlined />}
+            aria-label="Documents"
+            aria-haspopup="dialog"
+            aria-expanded={documentsOpen}
+            onClick={onOpenDocuments}
+          >
+            Documents
+          </Button>
           <Button className="context-trigger" variant="text" shape="circle" icon={<SettingOutlined />} aria-label="Open analysis context" disabled={!conversationId} onClick={onOpenContext} />
         </div>
       </header>

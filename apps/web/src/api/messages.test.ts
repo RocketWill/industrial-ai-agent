@@ -92,6 +92,7 @@ describe("messages API", () => {
         query: "OPTICAL-SIGNAL-LOW operator check",
         sources: [{
           source_id: "aoi-alarm-guide:002",
+          source: "built_in",
           title: "AOI Wafer Inspector Alarm Guide",
           section: "OPTICAL-SIGNAL-LOW",
           relative_path: "data/synthetic/documents/aoi-wafer-inspector-alarm-guide.md",
