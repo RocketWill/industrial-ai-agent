@@ -18,6 +18,10 @@ from industrial_agent.services.conversation import (
     create_conversation,
     update_workspace_context,
 )
+from industrial_agent.services.documents import (
+    DocumentCorpusService,
+    LocalDocumentStore,
+)
 from industrial_agent.services.message import list_messages
 
 
@@ -496,3 +500,42 @@ def test_sync_runner_retrieves_document_sources_for_procedural_question(
     assert exchange.evidence.document_search.sources[0].section == (
         "OPTICAL-SIGNAL-LOW"
     )
+
+
+def test_sync_runner_uses_the_injected_document_corpus_service(
+    database_session,
+    tmp_path,
+) -> None:
+    service = DocumentCorpusService(
+        store=LocalDocumentStore(storage_root=tmp_path / "uploads")
+    )
+    service.upload_document(
+        filename="Local Upload Procedure.md",
+        content=(
+            b"# Local Upload Procedure\n\n"
+            b"## Marker\n\n"
+            b"Inspect the local-upload-marker before restarting.\n"
+        ),
+    )
+    conversation = create_conversation(database_session, title="Local upload")
+
+    def complete(messages):
+        raise AssertionError("document retrieval should use the selected tool")
+
+    def complete_with_tools(messages, tools, *, tool_call=None):
+        assert tool_call is not None
+        assert '"source":"local_upload"' in tool_call.content
+        return CompletionResult(content="Use the local upload procedure.")
+
+    exchange = run_sync_exchange(
+        database_session,
+        conversation_id=conversation.id,
+        content="What is the local-upload-marker procedure?",
+        complete=complete,
+        complete_with_tools=complete_with_tools,
+        document_corpus_service=service,
+    )
+
+    assert exchange.evidence is not None
+    assert exchange.evidence.document_search is not None
+    assert exchange.evidence.document_search.sources[0].source == "local_upload"

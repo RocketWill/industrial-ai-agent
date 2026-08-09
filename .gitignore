@@ -28,6 +28,7 @@ coverage/
 *.db
 *.sqlite
 *.sqlite3
+apps/api/uploads/
 uploads/
 artifacts/
 

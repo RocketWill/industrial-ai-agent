@@ -21,6 +21,7 @@ def test_document_search_returns_citable_optical_alarm_section() -> None:
     assert result.sources[0].relative_path == (
         "data/synthetic/documents/aoi-wafer-inspector-alarm-guide.md"
     )
+    assert result.sources[0].source == "built_in"
     assert "optical lens cover" in result.sources[0].excerpt
     assert 0 < result.sources[0].score <= 1
     assert result.limitations == ()

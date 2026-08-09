@@ -14,6 +14,7 @@ LIST_ITEM_PATTERN = re.compile(r"^\s*(?:[-+*]|\d+[.)])\s+")
 SOFT_CHUNK_WORD_LIMIT = 120
 HARD_CHUNK_WORD_LIMIT = 160
 MAX_CHUNK_OVERLAP_WORDS = 20
+MAX_UPLOAD_BYTES = 1024 * 1024
 REPOSITORY_ROOT = Path(__file__).resolve().parents[5]
 
 
@@ -21,7 +22,43 @@ class CorpusConstructionError(ValueError):
     """Raised when the configured synthetic document corpus is invalid."""
 
 
+class DocumentValidationError(ValueError):
+    """Raised when an uploaded Markdown document is not acceptable."""
+
+
 DocumentType = Literal["alarm_guide", "operator_sop", "maintenance_guide"]
+ManagedDocumentType = Literal[
+    "alarm_guide",
+    "operator_sop",
+    "maintenance_guide",
+    "uploaded_document",
+]
+DocumentSource = Literal["built_in", "local_upload"]
+DocumentStatus = Literal["ready"]
+
+
+def normalize_uploaded_document_id(filename: str) -> str:
+    """Return the stable public ID derived from an uploaded Markdown filename."""
+    if not isinstance(filename, str) or not filename:
+        raise DocumentValidationError("A Markdown filename is required")
+    if "\x00" in filename or "/" in filename or "\\" in filename:
+        raise DocumentValidationError(
+            "The upload filename must be a single Markdown filename"
+        )
+    if not filename.casefold().endswith(".md"):
+        raise DocumentValidationError("Only Markdown (.md) files are supported")
+    stem = Path(filename).stem
+    ascii_stem = (
+        unicodedata.normalize("NFKD", stem)
+        .encode("ascii", "ignore")
+        .decode("ascii")
+    )
+    slug = re.sub(r"[^a-z0-9]+", "-", ascii_stem.lower()).strip("-")
+    if not slug:
+        raise DocumentValidationError(
+            "The Markdown filename must contain an identifiable name"
+        )
+    return f"uploaded-{slug}"
 
 
 @dataclass(frozen=True)
@@ -65,6 +102,31 @@ class RegistryDocument:
     document_type: DocumentType
     relative_path: str
     markdown: str
+
+
+@dataclass(frozen=True)
+class DocumentMetadata:
+    """Immutable public metadata shared by built-in and local documents."""
+
+    document_id: str
+    title: str
+    document_type: ManagedDocumentType
+    source: DocumentSource
+    filename: str
+    relative_path: str
+    size_bytes: int
+    status: DocumentStatus
+    deletable: bool
+    synthetic_demo: bool
+
+
+@dataclass(frozen=True)
+class StoredDocument:
+    """Immutable Markdown content and parsed chunks for one document."""
+
+    metadata: DocumentMetadata
+    markdown: str
+    chunks: tuple["DocumentChunk", ...]
 
 
 @dataclass(frozen=True)
@@ -160,6 +222,31 @@ def parse_markdown_document(
                 )
             )
     return tuple(chunks)
+
+
+def validate_uploaded_markdown(
+    *, document_id: str, relative_path: str, markdown: str
+) -> tuple[DocumentChunk, ...]:
+    """Validate uploaded Markdown and return chunks from the existing parser."""
+    try:
+        _validate_markdown_document(document_id=document_id, markdown=markdown)
+        chunks = parse_markdown_document(
+            document_id=document_id,
+            relative_path=relative_path,
+            markdown=markdown,
+        )
+    except CorpusConstructionError as error:
+        raise DocumentValidationError(str(error)) from error
+    except ValueError as error:
+        raise DocumentValidationError(
+            f"Document '{document_id}' contains invalid Markdown"
+        ) from error
+
+    if not any(chunk.section != "Overview" for chunk in chunks):
+        raise DocumentValidationError(
+            f"Document '{document_id}' must contain a non-empty H2 or H3 section"
+        )
+    return chunks
 
 
 def _normalize_section_slug(section_path: tuple[str, ...]) -> str:
