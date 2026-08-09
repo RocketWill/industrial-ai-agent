@@ -191,9 +191,10 @@ copy verification uses the committed lockfiles and migration workflow.
 - Structured evidence is available for the current exchange but is not
   persisted with Message history.
 - Document retrieval currently covers three repository-owned fictional
-  Markdown documents and a 12-scenario deterministic relevance fixture. It has
-  no PDF/OCR ingestion, external embeddings, persistent vector store,
-  reranking, or full-document viewer.
+  Markdown documents and a 12-scenario deterministic relevance fixture. The
+  current exchange can open a cited document in a read-only viewer. It has no
+  PDF/OCR ingestion, external embeddings, persistent vector store, reranking,
+  or document management.
 - There is no authentication, retry orchestration, or deployment stack.
 - Conversation and message history are not paginated.
 

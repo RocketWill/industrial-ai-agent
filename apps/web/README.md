@@ -95,7 +95,7 @@ failed submissions and does not persist partial assistant output.
 
 ## Non-responsibilities
 
-Complete agent traces, tool timelines, a full-document source viewer,
+Complete agent traces, tool timelines, document upload and management,
 manufacturing charts, authentication, and administrative interfaces remain
 outside the implemented frontend scope. Streaming was added in v0.1.1; current
 production and source evidence depend on the later v0.4 and v0.5 contracts.
