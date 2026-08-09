@@ -174,7 +174,7 @@ describe("MessageItem", () => {
           document_search: {
             query: "OPTICAL-SIGNAL-LOW operator check",
             sources: [{
-              source_id: "aoi-alarm-guide:002",
+              source_id: "aoi-alarm-guide:optical-signal-low:001",
               title: "AOI Wafer Inspector Alarm Guide",
               section: "OPTICAL-SIGNAL-LOW",
               relative_path: "data/synthetic/documents/aoi-wafer-inspector-alarm-guide.md",
@@ -194,6 +194,7 @@ describe("MessageItem", () => {
     expect(screen.getByText("72.0% match")).toBeInTheDocument();
     expect(screen.getByText("Retrieved")).toBeInTheDocument();
     expect(screen.getByText("Synthetic Demo")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View document" })).toBeInTheDocument();
   });
 
   it("renders production defects, alarms, and explicit empty states", () => {
