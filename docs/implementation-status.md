@@ -2,7 +2,7 @@
 
 This document is the code-backed feature inventory for the repository. It was
 reviewed against the application code, migrations, tests, and public
-documentation on 2026-08-02.
+documentation on 2026-08-09.
 
 ## Status rules
 
@@ -35,9 +35,9 @@ matrix. Application README files own setup and contract usage.
 | Equipment status tool | Implemented | Typed `get_equipment_status` input and result contracts query explicit synthetic state intervals at one UTC timestamp, resolve missing time from supported workspace context, return `unknown` when no state is recorded, participate in synchronous and SSE flows, and render current-exchange evidence. | It is not live status. Evidence is not persisted, routing is a focused English heuristic, and no status history or causal interpretation is provided. |
 | Defect distribution tool | Implemented | Typed `get_defect_distribution` request and result contracts filter the synthetic AOI dataset, rank recorded defect categories by count, calculate shares against classified defects, expose unclassified failures and limitations, participate in synchronous and SSE flows, and render current-exchange evidence. | It does not infer causes, trends, or throughput. Evidence is not persisted, and routing uses a focused English heuristic. |
 | LangGraph orchestration | Implemented | The synchronous path invokes a compiled typed graph with context loading, focused manufacturing-query detection, one selected tool execution, evidence handoff, final model completion, and persistence. The SSE tool runner exposes tool-call, evidence, final-text, and completion events. | No persisted runs, general intent router, multi-tool turns, retries, checkpoints, resume behavior, or graph visualization. Tool execution currently occurs within the model-call step rather than a separate graph node. |
-| RAG and sources | In Progress | One fictional Markdown alarm guide is parsed into stable heading-aware chunks. A deterministic 256-dimensional feature-hashing embedding and in-memory cosine index back the typed `search_documents` tool in synchronous and SSE flows. Current-exchange source evidence is rendered below the producing assistant answer. | Feature hashing is lexical rather than a semantic model. There is no PDF/OCR, external embedding service, persistent vector store, reranking, full-document viewer, retrieval evaluation suite, or combined production-and-document turn. |
+| RAG and sources | In Progress | An immutable registry builds three fictional Markdown documents atomically. Paragraph- and list-aware chunks stay within H2/H3 sections and use stable section-local citations. A fixed lexical gate, deterministic 256-dimensional feature-hashing embedding, and in-memory cosine index back `search_documents` in synchronous and SSE flows. Current-exchange source evidence is rendered below the producing assistant answer. | Feature hashing is lexical rather than a semantic model. There is no PDF/OCR, external embedding service, persistent vector store, reranking, full-document viewer, or combined production-and-document turn. |
 | MCP | Planned | None. | No MCP server or client integration. |
-| Evaluation and observability | Planned | None. | No scenario suite, tool trace, latency panel, or retry telemetry. |
+| Evaluation and observability | In Progress | A machine-readable 12-scenario fixture checks nine single-document queries, two confusable queries, one unrelated query, repeatability, and the approved top-one and top-three thresholds. | There is no answer-grounding evaluation, latency panel, persisted tool trace, or retry telemetry. |
 
 ## HTTP contracts
 
