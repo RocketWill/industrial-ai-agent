@@ -8,7 +8,7 @@ proprietary system material. The current domain model is centered on semiconduct
 
 ## Current status
 
-**In Progress — v0.5 Self-built RAG**
+**Implemented — v0.6 Routing and Reliability**
 
 The conversation foundation is runnable and tested. It includes FastAPI,
 SQLite persistence, explicit Alembic migrations, an OpenAI-compatible chat
@@ -38,6 +38,13 @@ and a preventive-maintenance guide. It uses deterministic local embeddings,
 section-aware chunking, and a fixed lexical eligibility gate. Synchronous and SSE
 answers can expose the matched excerpts and stable citation metadata in the
 current assistant exchange.
+
+The v0.6 routing work gives synchronous and SSE exchanges one shared,
+application-owned decision. Explicit English and Traditional Chinese requests
+use a deterministic gate. Ambiguous requests use one typed
+`classify_request` call with a bounded timeout and one retry; clarification,
+unsupported requests, fallback, and insufficient evidence use deterministic
+safe responses.
 
 The workbench now uses Ant Design 6.5.1, Ant Design X 2.9.0, and XMarkdown
 2.9.0. Its dark-first responsive layout separates conversation navigation,
@@ -113,9 +120,9 @@ industrial-ai-agent/
 └── scripts/       # Added only when project automation is needed
 ```
 
-LangGraph and the first manufacturing-domain and production-tool slices are
-implemented. Self-built RAG remains experimental; MCP remains
-planned for a later milestone.
+LangGraph, the first manufacturing-domain and production-tool slices, and the
+self-built RAG milestone are implemented. MCP remains planned for a later
+milestone.
 
 ## Local development
 
@@ -184,10 +191,10 @@ copy verification uses the committed lockfiles and migration workflow.
   client-disconnect persistence behavior still needs an integration test.
 - Context values, device identities, and production records are synthetic.
   They do not represent live equipment or production state.
-- Production tool calling requires a compatible model and still uses a small
-  English keyword heuristic. Both synchronous and SSE production paths can
-  execute the tool; after a successful SSE tool result, the final model answer
-  is forwarded as provider token deltas.
+- Explicit English and Traditional Chinese routes use deterministic rules.
+  Ambiguous requests require a compatible tool-calling model; classification
+  retries once and then falls back to a general response without executing an
+  evidence tool.
 - Structured evidence is available for the current exchange but is not
   persisted with Message history.
 - Document retrieval starts with three repository-owned fictional Markdown
@@ -200,7 +207,8 @@ copy verification uses the committed lockfiles and migration workflow.
   vector store, reranking, authentication, or multi-user isolation. Structured
   source evidence belongs to the current exchange and is not restored with
   message history.
-- There is no authentication, retry orchestration, or deployment stack.
+- There is no authentication, evidence-tool retry orchestration, persisted
+  routing trace, multi-tool turn, or deployment stack.
 - Conversation and message history are not paginated.
 
 ## License
