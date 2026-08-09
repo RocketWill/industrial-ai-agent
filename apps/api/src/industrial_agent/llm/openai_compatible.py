@@ -61,6 +61,30 @@ class OpenAICompatibleChatAdapter:
             owns_client=True,
         )
 
+    @classmethod
+    def router_from_settings(
+        cls,
+        settings: Settings,
+        *,
+        transport: httpx.BaseTransport | None = None,
+    ) -> "OpenAICompatibleChatAdapter":
+        """Build a classifier client with its bounded model and timeout."""
+        model = settings.resolved_llm_router_model
+        if model is None:
+            raise LLMConfigurationError("LLM_MODEL or LLM_ROUTER_MODEL is required")
+        headers = {"Content-Type": "application/json"}
+        if settings.llm_api_key is not None:
+            headers["Authorization"] = (
+                "Bearer " + settings.llm_api_key.get_secret_value()
+            )
+        client = httpx.Client(
+            base_url=settings.llm_base_url,
+            headers=headers,
+            timeout=settings.llm_router_timeout_seconds,
+            transport=transport,
+        )
+        return cls(model=model, client=client, owns_client=True)
+
     def complete(self, messages: Sequence[ChatMessage]) -> str:
         if not messages:
             raise ValueError("At least one chat message is required")

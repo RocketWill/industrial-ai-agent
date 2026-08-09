@@ -35,14 +35,29 @@ class Settings(BaseSettings):
         gt=0,
         validation_alias="LLM_TIMEOUT_SECONDS",
     )
+    llm_router_model: str | None = Field(
+        default=None,
+        validation_alias="LLM_ROUTER_MODEL",
+    )
+    llm_router_timeout_seconds: float = Field(
+        default=10,
+        ge=1,
+        le=30,
+        validation_alias="LLM_ROUTER_TIMEOUT_SECONDS",
+    )
 
-    @field_validator("llm_model", mode="after")
+    @field_validator("llm_model", "llm_router_model", mode="after")
     @classmethod
     def normalize_llm_model(cls, value: str | None) -> str | None:
         if value is None:
             return None
         normalized = value.strip()
         return normalized or None
+
+    @property
+    def resolved_llm_router_model(self) -> str | None:
+        """Use the answer model when no dedicated router model is configured."""
+        return self.llm_router_model or self.llm_model
 
     @field_validator("llm_api_key", mode="after")
     @classmethod

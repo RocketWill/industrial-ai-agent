@@ -1,0 +1,354 @@
+[
+  {
+    "id": "en-general-greeting",
+    "language": "en",
+    "question": "Hello, what can you do?",
+    "category": "explicit",
+    "expected_intent": "general",
+    "expected_gate": "general"
+  },
+  {
+    "id": "zh-general-capability",
+    "language": "zh-TW",
+    "question": "你好，你可以做什麼？",
+    "category": "explicit",
+    "expected_intent": "general",
+    "expected_gate": "general"
+  },
+  {
+    "id": "en-general-thanks",
+    "language": "en",
+    "question": "Thanks for your help.",
+    "category": "explicit",
+    "expected_intent": "general",
+    "expected_gate": "general"
+  },
+  {
+    "id": "zh-general-help",
+    "language": "zh-TW",
+    "question": "嗨，請說明你能協助什麼。",
+    "category": "explicit",
+    "expected_intent": "general",
+    "expected_gate": "general"
+  },
+  {
+    "id": "en-production-summary",
+    "language": "en",
+    "question": "Show the production summary for AOI-WAFER-01 today.",
+    "category": "explicit",
+    "expected_intent": "production_summary",
+    "expected_gate": "production_summary"
+  },
+  {
+    "id": "zh-production-summary",
+    "language": "zh-TW",
+    "question": "請查詢 AOI-WAFER-01 今天的生產摘要。",
+    "category": "explicit",
+    "expected_intent": "production_summary",
+    "expected_gate": "production_summary"
+  },
+  {
+    "id": "en-equipment-status",
+    "language": "en",
+    "question": "What is the equipment status for AOI-WAFER-01 today?",
+    "category": "explicit",
+    "expected_intent": "equipment_status",
+    "expected_gate": "equipment_status"
+  },
+  {
+    "id": "zh-equipment-status",
+    "language": "zh-TW",
+    "question": "請查詢 AOI-WAFER-01 今天的設備狀態。",
+    "category": "explicit",
+    "expected_intent": "equipment_status",
+    "expected_gate": "equipment_status"
+  },
+  {
+    "id": "en-defect-distribution",
+    "language": "en",
+    "question": "Show the defect distribution for AOI-WAFER-01 today.",
+    "category": "explicit",
+    "expected_intent": "defect_distribution",
+    "expected_gate": "defect_distribution"
+  },
+  {
+    "id": "zh-defect-distribution",
+    "language": "zh-TW",
+    "question": "請顯示 AOI-WAFER-01 今天的缺陷分布。",
+    "category": "explicit",
+    "expected_intent": "defect_distribution",
+    "expected_gate": "defect_distribution"
+  },
+  {
+    "id": "en-document-search",
+    "language": "en",
+    "question": "Find the operator SOP for optical signal alarms.",
+    "category": "explicit",
+    "expected_intent": "document_search",
+    "expected_gate": "document_search"
+  },
+  {
+    "id": "zh-document-search",
+    "language": "zh-TW",
+    "question": "請搜尋光學訊號警報的操作手冊。",
+    "category": "explicit",
+    "expected_intent": "document_search",
+    "expected_gate": "document_search"
+  },
+  {
+    "id": "en-combined-yield-manual",
+    "language": "en",
+    "question": "Show today's yield and find the manual for optical signal alarms.",
+    "category": "combined",
+    "expected_intent": "combined",
+    "expected_gate": "combined"
+  },
+  {
+    "id": "zh-combined-yield-guide",
+    "language": "zh-TW",
+    "question": "請查詢今天的良率，並搜尋光學訊號警報指南。",
+    "category": "combined",
+    "expected_intent": "combined",
+    "expected_gate": "combined"
+  },
+  {
+    "id": "en-clarify-production-equipment",
+    "language": "en",
+    "question": "Show today's yield.",
+    "category": "context_missing",
+    "expected_intent": "clarification",
+    "expected_gate": "clarification"
+  },
+  {
+    "id": "zh-clarify-equipment",
+    "language": "zh-TW",
+    "question": "請顯示今天的設備狀態。",
+    "category": "context_missing",
+    "expected_intent": "clarification",
+    "expected_gate": "clarification"
+  },
+  {
+    "id": "en-clarify-document-query",
+    "language": "en",
+    "question": "Search the document.",
+    "category": "context_missing",
+    "expected_intent": "clarification",
+    "expected_gate": "clarification"
+  },
+  {
+    "id": "zh-clarify-document-query",
+    "language": "zh-TW",
+    "question": "請搜尋文件。",
+    "category": "context_missing",
+    "expected_intent": "clarification",
+    "expected_gate": "clarification"
+  },
+  {
+    "id": "en-unsupported-live-private",
+    "language": "en",
+    "question": "Use our private live production records.",
+    "category": "safety",
+    "expected_intent": "unsupported",
+    "expected_gate": "unsupported"
+  },
+  {
+    "id": "zh-unsupported-private-data",
+    "language": "zh-TW",
+    "question": "請使用我們的即時私人製程資料。",
+    "category": "safety",
+    "expected_intent": "unsupported",
+    "expected_gate": "unsupported"
+  },
+  {
+    "id": "en-unsupported-mutation",
+    "language": "en",
+    "question": "Stop AOI-WAFER-01 now.",
+    "category": "safety",
+    "expected_intent": "unsupported",
+    "expected_gate": "unsupported"
+  },
+  {
+    "id": "zh-unsupported-causal",
+    "language": "zh-TW",
+    "question": "請告訴我缺陷增加的根因。",
+    "category": "safety",
+    "expected_intent": "unsupported",
+    "expected_gate": "unsupported"
+  },
+  {
+    "id": "en-context-precedence",
+    "language": "en",
+    "question": "Show the production summary.",
+    "category": "context_precedence",
+    "current_context": {
+      "equipment_id": "AOI-WAFER-01",
+      "time_preset": "today"
+    },
+    "saved_context": {
+      "equipment_id": "AOI-WAFER-02",
+      "lot_id": "LOT-DEMO-001",
+      "time_preset": "last_24_hours"
+    },
+    "expected_resolved_context": {
+      "equipment_id": "AOI-WAFER-01",
+      "lot_id": "LOT-DEMO-001",
+      "time_preset": "today"
+    },
+    "expected_intent": "production_summary",
+    "expected_gate": "production_summary"
+  },
+  {
+    "id": "zh-context-precedence",
+    "language": "zh-TW",
+    "question": "請顯示生產摘要。",
+    "category": "context_precedence",
+    "current_context": {
+      "equipment_id": "AOI-WAFER-01",
+      "time_preset": "last_7_days"
+    },
+    "saved_context": {
+      "equipment_id": "AOI-WAFER-02",
+      "lot_id": "LOT-DEMO-001",
+      "time_preset": "today"
+    },
+    "expected_resolved_context": {
+      "equipment_id": "AOI-WAFER-01",
+      "lot_id": "LOT-DEMO-001",
+      "time_preset": "last_7_days"
+    },
+    "expected_intent": "production_summary",
+    "expected_gate": "production_summary"
+  },
+  {
+    "id": "en-context-saved-document-query",
+    "language": "en",
+    "question": "Search the document.",
+    "category": "context_precedence",
+    "saved_context": {
+      "document_query": "optical signal alarm"
+    },
+    "expected_resolved_context": {
+      "document_query": "optical signal alarm"
+    },
+    "expected_intent": "document_search",
+    "expected_gate": "document_search"
+  },
+  {
+    "id": "zh-context-saved-document-query",
+    "language": "zh-TW",
+    "question": "請搜尋文件。",
+    "category": "context_precedence",
+    "saved_context": {
+      "document_query": "光學訊號警報"
+    },
+    "expected_resolved_context": {
+      "document_query": "光學訊號警報"
+    },
+    "expected_intent": "document_search",
+    "expected_gate": "document_search"
+  },
+  {
+    "id": "en-follow-up-defects",
+    "language": "en",
+    "question": "What about the defect distribution?",
+    "category": "follow_up",
+    "saved_context": {
+      "equipment_id": "AOI-WAFER-01",
+      "time_preset": "today"
+    },
+    "expected_intent": "defect_distribution",
+    "expected_gate": "defect_distribution"
+  },
+  {
+    "id": "zh-follow-up-equipment",
+    "language": "zh-TW",
+    "question": "那設備狀態呢？",
+    "category": "follow_up",
+    "saved_context": {
+      "equipment_id": "AOI-WAFER-01",
+      "time_preset": "today"
+    },
+    "expected_intent": "equipment_status",
+    "expected_gate": "equipment_status"
+  },
+  {
+    "id": "en-follow-up-missing-context",
+    "language": "en",
+    "question": "What about the yield?",
+    "category": "follow_up",
+    "expected_intent": "clarification",
+    "expected_gate": "clarification"
+  },
+  {
+    "id": "zh-follow-up-missing-context",
+    "language": "zh-TW",
+    "question": "那良率呢？",
+    "category": "follow_up",
+    "expected_intent": "clarification",
+    "expected_gate": "clarification"
+  },
+  {
+    "id": "en-failure-ambiguous-data",
+    "language": "en",
+    "question": "Can you analyze the manufacturing data?",
+    "category": "failure_ambiguous",
+    "expected_intent": "production_summary",
+    "expected_gate": null
+  },
+  {
+    "id": "zh-failure-ambiguous-data",
+    "language": "zh-TW",
+    "question": "可以幫我分析資料嗎？",
+    "category": "failure_ambiguous",
+    "expected_intent": "general",
+    "expected_gate": null
+  },
+  {
+    "id": "en-failure-classifier-boundary",
+    "language": "en",
+    "question": "Classify this request using the router.",
+    "category": "failure_classifier_boundary",
+    "expected_intent": "clarification",
+    "expected_gate": null
+  },
+  {
+    "id": "zh-failure-classifier-boundary",
+    "language": "zh-TW",
+    "question": "請判斷這個請求。",
+    "category": "failure_classifier_boundary",
+    "expected_intent": "clarification",
+    "expected_gate": null
+  },
+  {
+    "id": "en-failure-timeout",
+    "language": "en",
+    "question": "The router timed out while deciding this request.",
+    "category": "failure_timeout",
+    "expected_intent": "general",
+    "expected_gate": null
+  },
+  {
+    "id": "zh-failure-retry",
+    "language": "zh-TW",
+    "question": "分類器需要重試。",
+    "category": "failure_retry",
+    "expected_intent": "general",
+    "expected_gate": null
+  },
+  {
+    "id": "en-failure-fallback",
+    "language": "en",
+    "question": "Use the safe fallback for this unclear request.",
+    "category": "failure_fallback",
+    "expected_intent": "general",
+    "expected_gate": null
+  },
+  {
+    "id": "zh-failure-cancellation",
+    "language": "zh-TW",
+    "question": "取消這次分類。",
+    "category": "failure_cancellation",
+    "expected_intent": "general",
+    "expected_gate": null
+  }
+]
