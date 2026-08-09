@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMessagesUrl, listMessages, sendMessage } from "./messages";
+import { buildMessagesUrl, listMessages, sendMessage, streamMessage } from "./messages";
 
 const id = "11111111-1111-1111-8111-111111111111";
 const message = { id, conversation_id: id, role: "user" as const, content: "Check status", created_at: "2026-07-30T00:00:00Z" };
@@ -113,5 +113,51 @@ describe("messages API", () => {
       assistant_message: assistant,
       evidence,
     });
+  });
+
+  it("validates safe routing progress events", async () => {
+    const body = [
+      'event: routing_started\ndata: {"label":"Understanding request"}\n\n',
+      'event: routing_retry\ndata: {"label":"Retrying request classification","retry_count":1}\n\n',
+      'event: routing_fallback_used\ndata: {"label":"Using safe fallback","reason_code":"ambiguous_request"}\n\n',
+      'event: routing_decided\ndata: {"label":"Generating response","route":"general","reason_code":"ambiguous_request","retry_count":1}\n\n',
+    ].join("");
+    const fetchImplementation = async () => new Response(body, {
+      status: 200,
+      headers: { "Content-Type": "text/event-stream" },
+    });
+    const events = [];
+    for await (const event of streamMessage(
+      id,
+      "Analyze this",
+      new AbortController().signal,
+      fetchImplementation,
+    )) events.push(event);
+
+    expect(events.map((event) => event.type)).toEqual([
+      "routing_started",
+      "routing_retry",
+      "routing_fallback_used",
+      "routing_decided",
+    ]);
+  });
+
+  it("rejects routing events outside the public route contract", async () => {
+    const fetchImplementation = async () => new Response(
+      'event: routing_decided\ndata: {"label":"Unknown","route":"invented","reason_code":"general_request","retry_count":0}\n\n',
+      { status: 200, headers: { "Content-Type": "text/event-stream" } },
+    );
+
+    const consume = async () => {
+      const iterator = streamMessage(
+        id,
+        "Analyze this",
+        new AbortController().signal,
+        fetchImplementation,
+      );
+      await iterator.next();
+    };
+
+    await expect(consume()).rejects.toBeInstanceOf(Error);
   });
 });

@@ -12,7 +12,7 @@ export type MessageState = {
   setDraft: (value: string) => void; reload: () => Promise<void>; send: (contentOverride?: string) => Promise<boolean>; cancelStreaming: () => void;
 };
 
-export type AssistantRunPhase = "idle" | "generating" | "calling_tool" | "evidence_received" | "success" | "cancelled" | "failed";
+export type AssistantRunPhase = "idle" | "routing" | "routing_retry" | "generating" | "calling_tool" | "evidence_received" | "clarification" | "success" | "cancelled" | "failed";
 export type AssistantRunState = { phase: AssistantRunPhase; label: string | null };
 
 const idleRun: AssistantRunState = { phase: "idle", label: null };
@@ -67,13 +67,21 @@ export function useMessages(conversationId: string | null, api: MessageApi = def
             next.splice(placeholderIndex < 0 ? next.length : placeholderIndex, 0, event.user_message);
             return next;
           });
+        } else if (event.type === "routing_started") {
+          setRunState({ phase: "routing", label: event.label });
+        } else if (event.type === "routing_retry" || event.type === "routing_fallback_used") {
+          setRunState({ phase: "routing_retry", label: event.label });
+        } else if (event.type === "routing_decided") {
+          setRunState({ phase: "generating", label: event.label });
+        } else if (event.type === "clarification_required") {
+          setRunState({ phase: "clarification", label: event.label });
         } else if (event.type === "token") {
           setMessages((current) => current.map((message) => message.id === placeholder.id ? { ...message, content: message.content + event.text } : message));
         } else if (event.type === "tool_call_started") {
           setRunState({ phase: "calling_tool", label: `Calling ${event.name}` });
         } else if (event.type === "tool_result") {
           setEvidence(event.evidence);
-          setRunState({ phase: "evidence_received", label: "Production evidence received" });
+          setRunState({ phase: "evidence_received", label: "Evidence received" });
         } else if (event.type === "message_completed") {
           setMessages((current) => current.map((message) => message.id === placeholder.id ? event.assistant_message : message)); setRunState({ phase: "success", label: null }); setDraft("");
         } else if (event.type === "error") { throw new Error(event.message); }
