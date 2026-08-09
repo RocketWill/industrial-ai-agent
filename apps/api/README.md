@@ -230,15 +230,25 @@ execute one selected tool for requests matched by the focused English
 heuristics.
 
 The current v0.5 retrieval slice adds `search_documents` for focused procedural
-questions. It atomically builds an explicit corpus of three fictional Markdown
-documents, keeps chunks within section and block boundaries, applies a fixed
-lexical eligibility gate, and ranks eligible chunks with deterministic local
-feature-hashing vectors. It does not call an embedding service or persist an
-index.
+questions. It builds an explicit corpus from three protected fictional Markdown
+documents and persistent local uploads, keeps chunks within section and block
+boundaries, applies a fixed lexical eligibility gate, and ranks eligible chunks
+with deterministic local feature-hashing vectors. It does not call an embedding
+service or persist the index.
 
-`GET /documents/{document_id}` reads one validated document from the explicit
-registry for the read-only source viewer. It does not accept a filesystem path.
-Unknown IDs return `404`; an unavailable or invalid corpus returns a safe `503`.
+`GET /documents` lists the active corpus. `POST /documents` accepts one UTF-8
+`.md` file up to 1 MiB, while `DELETE /documents/{document_id}` removes local
+uploads and rejects attempts to delete built-ins. `GET
+/documents/{document_id}` reads a validated built-in or local document for the
+source viewer; it never accepts a filesystem path. Unknown IDs return `404`,
+and unavailable storage or corpus state returns a safe `503`. When local upload
+state is invalid, the list response retains built-in metadata so retrieval can
+continue without hiding the failure.
+
+Uploads are stored under the Git-ignored `apps/api/uploads/` boundary with a
+small manifest. Successful upload and deletion responses are returned only
+after disk state and the immutable runtime corpus agree. This is a local
+development feature, not a secure shared document service.
 
 ## Dependency management
 

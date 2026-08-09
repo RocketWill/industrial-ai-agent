@@ -28,14 +28,14 @@ matrix. Application README files own setup and contract usage.
 | Workspace context API | Implemented | Read and partially update conversation-bound environment, device, lot, time range, and data source; synchronous and SSE production paths resolve saved device, lot, and supported synthetic time presets when tool arguments are missing. | Context is not injected into the general model prompt. Custom or unrecognized time-range labels still require clarification. |
 | Synthetic device catalog | Implemented | `GET /devices` returns three deterministic fictional device identities and validates selected device IDs. | No live status, telemetry, production records, or mutable catalog. |
 | React conversation workflow | Implemented | Load, create, select, and delete conversations; reload history; send messages through SSE; display incremental responses and tool stages; stop generation; and report failures. | Manufacturing routing uses focused English keyword heuristics. There is no structured intent contract, message editing, regeneration, new-response counter, or pagination. |
-| Industrial workspace shell | Implemented | Ant Design 6.5.1 and Ant Design X 2.9.0 provide a dark-first responsive workbench with grouped conversations, Bubble messages, a controlled Sender, XMarkdown, processing states, stable latest-message following, and current-exchange production or document evidence. Retrieved sources can open a read-only full-document Drawer positioned at the cited section. | There is no document management, persisted evidence history, complete tool timeline, or manufacturing chart surface. |
+| Industrial workspace shell | Implemented | Ant Design 6.5.1 and Ant Design X 2.9.0 provide a dark-first responsive workbench with grouped conversations, Bubble messages, a controlled Sender, XMarkdown, processing states, stable latest-message following, and current-exchange production or document evidence. Retrieved sources can open a read-only full-document Drawer positioned at the cited section. A separate Documents drawer manages the active Markdown corpus. | There is no persisted evidence history, complete tool timeline, manufacturing chart surface, PDF ingestion, or multi-user document administration. |
 | Context editor | Implemented | Select a fictional device, enter an optional lot, choose an executable 1, 4, 8, or 24 hour preset, keep edits in a local draft, Save or Reset explicitly, and guard navigation while changes are unsaved. Loading and failures remain visible in the inspector. | Data source and environment remain read-only synthetic metadata; arbitrary UTC start and end entry is not implemented. |
 | Manufacturing domain | Implemented | Immutable Equipment, Production Lot, Inspection Record, Defect Count, Alarm Event, Time Range, Production Summary, Defect Distribution, and Equipment State Interval types; deterministic yield and ranked defect aggregation; overlapping alarm selection; explicit empty-result behavior; point-in-time recorded-status lookup; and one fictional AOI dataset. | Throughput is deferred until a later dataset and unit contract exists. There is no database persistence, live data, inferred equipment state, or causal analysis. |
 | Production summary tool | Implemented | Typed `get_production_summary` request/result boundary filters the synthetic AOI dataset, delegates numeric work to the manufacturing domain, participates in synchronous and SSE grounded-answer flows, resolves missing arguments from supported workspace context, and returns current-exchange evidence. | Evidence is not persisted in history; custom or unrecognized time-range labels require clarification. |
 | Equipment status tool | Implemented | Typed `get_equipment_status` input and result contracts query explicit synthetic state intervals at one UTC timestamp, resolve missing time from supported workspace context, return `unknown` when no state is recorded, participate in synchronous and SSE flows, and render current-exchange evidence. | It is not live status. Evidence is not persisted, routing is a focused English heuristic, and no status history or causal interpretation is provided. |
 | Defect distribution tool | Implemented | Typed `get_defect_distribution` request and result contracts filter the synthetic AOI dataset, rank recorded defect categories by count, calculate shares against classified defects, expose unclassified failures and limitations, participate in synchronous and SSE flows, and render current-exchange evidence. | It does not infer causes, trends, or throughput. Evidence is not persisted, and routing uses a focused English heuristic. |
 | LangGraph orchestration | Implemented | The synchronous path invokes a compiled typed graph with context loading, focused manufacturing-query detection, one selected tool execution, evidence handoff, final model completion, and persistence. The SSE tool runner exposes tool-call, evidence, final-text, and completion events. | No persisted runs, general intent router, multi-tool turns, retries, checkpoints, resume behavior, or graph visualization. Tool execution currently occurs within the model-call step rather than a separate graph node. |
-| RAG and sources | In Progress | An immutable registry builds three fictional Markdown documents atomically. Paragraph- and list-aware chunks stay within H2/H3 sections and use stable section-local citations. A fixed lexical gate, deterministic 256-dimensional feature-hashing embedding, and in-memory cosine index back `search_documents`. A registry-only API and read-only Drawer expose the complete cited document. | Feature hashing is lexical rather than a semantic model. There is no PDF/OCR, external embedding service, persistent vector store, reranking, document management, or combined production-and-document turn. |
+| RAG and sources | Implemented | An immutable corpus combines three protected fictional Markdown documents with persistent local uploads. Paragraph- and list-aware chunks stay within H2/H3 sections and use stable section-local citations. A fixed lexical gate, deterministic 256-dimensional feature-hashing embedding, and in-memory cosine index back `search_documents`. The API and Drawers support source reading, single-file upload, validation, atomic corpus replacement, provenance, and local deletion. | Feature hashing is lexical rather than a semantic model. There is no PDF/OCR, external embedding service, persistent vector store, reranking, authentication, cloud storage, or combined production-and-document turn. |
 | MCP | Planned | None. | No MCP server or client integration. |
 | Evaluation and observability | In Progress | A machine-readable 12-scenario fixture checks nine single-document queries, two confusable queries, one unrelated query, repeatability, and the approved top-one and top-three thresholds. | There is no answer-grounding evaluation, latency panel, persisted tool trace, or retry telemetry. |
 
@@ -54,33 +54,39 @@ matrix. Application README files own setup and contract usage.
 | `GET` | `/conversations/{conversation_id}/context` | Read conversation-bound workspace context. |
 | `PATCH` | `/conversations/{conversation_id}/context` | Partially update workspace context. |
 | `GET` | `/devices` | List deterministic fictional device identities. |
+| `GET` | `/documents` | List built-in and local Markdown documents; retain built-in metadata if local upload state is unavailable. |
+| `POST` | `/documents` | Validate and add one UTF-8 Markdown file up to 1 MiB. |
+| `GET` | `/documents/{document_id}` | Read one current built-in or local document by public ID. |
+| `DELETE` | `/documents/{document_id}` | Delete one local upload after candidate corpus validation; protect built-ins. |
 
 ## Verification record
 
-The latest local verification on 2026-08-02 produced:
+The latest local verification on 2026-08-09 produced:
 
-- API: 175 Pytest tests passed and Ruff passed. Package build was not rerun in
-  the current environment because its virtual environment does not include the
-  `build` module; the prior clean-copy source and wheel build remains recorded.
-- Web: 58 Vitest tests passed, TypeScript checking passed, ESLint passed, and
-  the Vite production build completed. Ant Design CLI doctor reported 16 of 16
-  checks passing, and its deprecated, accessibility, and performance lint
-  categories reported no issues.
-- Browser: desktop, tablet, and mobile checks confirmed the three responsive
-  layouts, hidden body overflow, navigation and context Drawers, live backend
-  data, independent workbench scroll regions, reverse-scroll stability,
-  initial and streaming latest-message following, the jump-to-latest control,
-  and the assistant processing indicator.
+- API: 265 Pytest tests passed, Ruff passed, the uv lockfile passed its
+  consistency check, and source and wheel builds completed.
+- Web: 90 Vitest tests passed, TypeScript checking passed, ESLint passed, and
+  the Vite production build completed.
+- Browser: the connected local stack listed three built-ins, uploaded one
+  valid Markdown document, rejected its duplicate, deleted the local upload,
+  restored focus to the Documents trigger, and showed no page-level horizontal
+  overflow at 390 px. The configured model did not choose `search_documents`
+  for the uploaded test term, so the local-source card remains covered by API,
+  workflow, and frontend contract tests rather than that browser run.
+- Ant Design CLI diagnostics could not start under the active global Node 16
+  runtime because one CLI dependency requires a newer regular-expression
+  feature. Component APIs were checked against the installed Ant Design 6.5.1
+  type declarations, and the application checks above still passed.
 - Clean copy: git archive output installed API and Web dependencies from the
   committed lockfiles, applied all migrations, and reran the API and Web test
   suites successfully.
 
 The Vite build reports a JavaScript chunk-size warning above 500 kB. The main
-JavaScript output is 902.29 kB, or 292.91 kB gzip, while XMarkdown is split into
+JavaScript output is 949.00 kB, or 307.31 kB gzip, while XMarkdown is split into
 a 125.66 kB lazy chunk, or 41.52 kB gzip. The initial JavaScript gzip size is
-about 20.0 percent above the recorded 244.02 kB baseline. This is at the review
-threshold; the next frontend dependency change should revisit initial chunk
-composition before expanding the UI further.
+above the recorded 244.02 kB baseline. This remains at the review threshold;
+the next frontend dependency change should revisit initial chunk composition
+before expanding the UI further.
 
 ## Remaining hardening
 

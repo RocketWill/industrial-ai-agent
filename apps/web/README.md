@@ -95,10 +95,11 @@ failed submissions and does not persist partial assistant output.
 
 ## Non-responsibilities
 
-Complete agent traces, tool timelines, document upload and management,
-manufacturing charts, authentication, and administrative interfaces remain
-outside the implemented frontend scope. Streaming was added in v0.1.1; current
-production and source evidence depend on the later v0.4 and v0.5 contracts.
+Complete agent traces, tool timelines, PDF or batch ingestion, manufacturing
+charts, authentication, and administrative interfaces remain outside the
+implemented frontend scope. Streaming was added in v0.1.1; current production,
+source evidence, and local Markdown management depend on the later v0.4 and
+v0.5 contracts.
 
 ## Current status
 
@@ -122,6 +123,13 @@ assistant bubbles use an accessible three-dot processing indicator and an
 Ant Design BorderBeam while a response is active. Completed bubbles retain a
 static multicolor bottom accent. Generating and production-tool stages remain
 distinguishable through text and ARIA state.
+
+The workspace header also opens a Documents drawer. It lists protected
+repository documents and local uploads, validates one `.md` file up to 1 MiB,
+shows indexing and failure states, and confirms local deletion by document
+name. The drawer warns that files remain on local disk and that retrieved text
+may be sent to the configured model.
+
 Evidence is not persisted across reloads, and the browser does not display a
 full tool timeline or manufacturing charts. Its keyword heuristic does not yet
 cover Chinese production terms or distinguish every conceptual question from
