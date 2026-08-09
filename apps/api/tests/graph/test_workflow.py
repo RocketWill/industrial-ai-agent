@@ -1,3 +1,11 @@
+from industrial_agent.domain.routing import (
+    DecisionSource,
+    ExtractedContext,
+    ReasonCode,
+    RouteDecision,
+    RouteIntent,
+    SafeAction,
+)
 from industrial_agent.graph.runner import run_sync_exchange
 from industrial_agent.graph.state import EvidenceState
 from industrial_agent.graph.workflow import (
@@ -23,6 +31,7 @@ from industrial_agent.services.documents import (
     LocalDocumentStore,
 )
 from industrial_agent.services.message import list_messages
+from industrial_agent.services.routing import RoutingOutcome
 
 
 def test_load_context_reads_history_and_workspace_context(database_session) -> None:
@@ -72,6 +81,62 @@ def test_sync_runner_includes_new_question_and_persists_one_exchange(
     assert [message.content for message in received[0]] == ["Check history"]
     persisted = list_messages(database_session, conversation.id)
     assert [message.role for message in persisted] == ["user", "assistant"]
+
+
+def test_sync_runner_persists_deterministic_routing_clarification(
+    database_session,
+) -> None:
+    conversation = create_conversation(database_session, title="Routing")
+
+    def route(_state):
+        return RoutingOutcome(
+            decision=RouteDecision(
+                intent=RouteIntent.CLARIFICATION,
+                resolved_context=ExtractedContext(),
+                decision_source=DecisionSource.CLASSIFIER,
+                reason_code=ReasonCode.CLARIFICATION_REQUIRED,
+                safe_action=SafeAction.REQUEST_CLARIFICATION,
+            ),
+            response_text="Which fictional equipment should I use?",
+        )
+
+    exchange = run_sync_exchange(
+        database_session,
+        conversation_id=conversation.id,
+        content="Show yield",
+        complete=lambda _messages: (_ for _ in ()).throw(
+            AssertionError("clarification must skip final model")
+        ),
+        route_exchange=route,
+    )
+
+    assert exchange.assistant_message.content == (
+        "Which fictional equipment should I use?"
+    )
+
+
+def test_sync_runner_uses_authoritative_general_route(database_session) -> None:
+    conversation = create_conversation(database_session, title="Routing")
+
+    def route(_state):
+        return RoutingOutcome(
+            RouteDecision(
+                intent=RouteIntent.GENERAL,
+                decision_source=DecisionSource.DETERMINISTIC_GATE,
+                reason_code=ReasonCode.GENERAL_REQUEST,
+                safe_action=SafeAction.ANSWER_GENERAL,
+            )
+        )
+
+    exchange = run_sync_exchange(
+        database_session,
+        conversation_id=conversation.id,
+        content="Hello",
+        complete=lambda _messages: "Hello from the model.",
+        route_exchange=route,
+    )
+
+    assert exchange.assistant_message.content == "Hello from the model."
 
 
 def test_sync_runner_sends_previous_history_in_order(database_session) -> None:

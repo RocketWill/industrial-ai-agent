@@ -1,30 +1,22 @@
 import json
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Annotated
 from uuid import UUID
 
+from anyio import from_thread
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from industrial_agent.config.settings import Settings
 from industrial_agent.database.session import get_db_session
+from industrial_agent.domain.routing import ExtractedContext, TimePreset
 from industrial_agent.graph.errors import GraphExecutionError
 from industrial_agent.graph.runner import (
-    run_stream_exchange,
-    run_stream_tool_exchange,
+    run_stream_routed_exchange,
     run_sync_exchange,
 )
-from industrial_agent.graph.workflow import (
-    DEFECT_DISTRIBUTION_TOOL,
-    DOCUMENT_SEARCH_TOOL,
-    EQUIPMENT_STATUS_TOOL,
-    PRODUCTION_TOOL,
-    _is_defect_distribution_question,
-    _is_document_question,
-    _is_equipment_status_question,
-    _is_production_question,
-)
+from industrial_agent.graph.state import GraphState
 from industrial_agent.llm.errors import (
     LLMConfigurationError,
     LLMConnectionError,
@@ -51,7 +43,25 @@ from industrial_agent.services.conversation import (
     ConversationNotFoundError,
     get_conversation,
 )
+from industrial_agent.services.device import list_synthetic_devices
 from industrial_agent.services.documents import DocumentCorpusService
+from industrial_agent.services.routing import (
+    RoutingOutcome,
+    route_deterministically,
+    route_exchange,
+)
+from industrial_agent.services.routing_classifier import (
+    PriorExchange,
+    RoutingClassificationCancelled,
+    RoutingClassifier,
+)
+
+_WORKSPACE_TIME_PRESETS = {
+    "Last 1 hour": TimePreset.LAST_1_HOUR,
+    "Last 4 hours": TimePreset.LAST_4_HOURS,
+    "Last 8 hours": TimePreset.LAST_8_HOURS,
+    "Last 24 hours": TimePreset.LAST_24_HOURS,
+}
 
 router = APIRouter(
     prefix="/conversations/{conversation_id}/messages",
@@ -65,6 +75,54 @@ def _sse_event(event: str, payload: object) -> str:
         f"event: {event}\n"
         f"data: {json.dumps(payload, separators=(',', ':'))}\n\n"
     )
+
+
+def _route_graph_state(
+    state: GraphState,
+    *,
+    is_cancelled: Callable[[], bool] = lambda: False,
+) -> RoutingOutcome:
+    """Route one loaded graph state through the shared application policy."""
+    messages = state["messages"]
+    prior = None
+    if len(messages) >= 3:
+        prior = PriorExchange(
+            user=messages[-3].content,
+            assistant=messages[-2].content,
+        )
+    workspace = state["workspace_context"]
+    saved_context = ExtractedContext(
+        equipment_id=workspace.device,
+        lot_id=workspace.lot,
+        time_preset=_WORKSPACE_TIME_PRESETS.get(workspace.time_range),
+    )
+    deterministic = route_deterministically(
+        latest_question=messages[-1].content,
+        saved_context=saved_context,
+        conversation_id=str(state["conversation_id"]),
+    )
+    if deterministic is not None:
+        return deterministic
+    settings = Settings()
+    with OpenAICompatibleChatAdapter.router_from_settings(settings) as adapter:
+        return route_exchange(
+            latest_question=messages[-1].content,
+            classifier=RoutingClassifier(adapter),
+            prior_exchange=prior,
+            is_cancelled=is_cancelled,
+            saved_context=saved_context,
+            supported_equipment_ids=tuple(
+                device.id for device in list_synthetic_devices()
+            ),
+            capability_metadata=(
+                "general conversation",
+                "synthetic production summary",
+                "recorded synthetic equipment status",
+                "synthetic defect distribution",
+                "fictional local document search",
+            ),
+            conversation_id=str(state["conversation_id"]),
+        )
 
 
 @router.post(
@@ -108,6 +166,7 @@ def create_user_message(
             complete=complete,
             complete_with_tools=complete_with_tools,
             document_corpus_service=document_corpus_service,
+            route_exchange=_route_graph_state,
         )
     except ConversationNotFoundError as error:
         raise HTTPException(
@@ -161,6 +220,12 @@ def stream_user_message(
         ) from error
 
     def stream_events():
+        def route_state(state: GraphState) -> RoutingOutcome:
+            return _route_graph_state(
+                state,
+                is_cancelled=lambda: from_thread.run(request.is_disconnected),
+            )
+
         def stream(messages: Sequence[ChatMessage]):
             with OpenAICompatibleChatAdapter.from_settings(
                 Settings()
@@ -168,58 +233,25 @@ def stream_user_message(
                 yield from adapter.stream(messages)
 
         try:
-            question = [ChatMessage(role="user", content=payload.content)]
-            is_equipment_status = _is_equipment_status_question(question)
-            is_defect_distribution = _is_defect_distribution_question(question)
-            is_document_search = _is_document_question(question)
-            if (
-                is_document_search
-                or is_equipment_status
-                or is_defect_distribution
-                or _is_production_question(question)
-            ):
-                selected_tool = (
-                    DOCUMENT_SEARCH_TOOL
-                    if is_document_search
-                    else EQUIPMENT_STATUS_TOOL
-                    if is_equipment_status
-                    else DEFECT_DISTRIBUTION_TOOL
-                    if is_defect_distribution
-                    else PRODUCTION_TOOL
-                )
-                def complete_with_tools(messages, tools, *, tool_call=None):
-                    with OpenAICompatibleChatAdapter.from_settings(
-                        Settings()
-                    ) as adapter:
-                        return adapter.complete_with_tools(
-                            messages, tools=tools, tool_call=tool_call
-                        )
+            def stream_with_tool_result(messages, tool_call, selected_tool):
+                with OpenAICompatibleChatAdapter.from_settings(
+                    Settings()
+                ) as adapter:
+                    yield from adapter.stream_with_tool_result(
+                        messages,
+                        tools=(selected_tool,),
+                        tool_call=tool_call,
+                    )
 
-                def stream_with_tool_result(messages, tool_call):
-                    with OpenAICompatibleChatAdapter.from_settings(
-                        Settings()
-                    ) as adapter:
-                        yield from adapter.stream_with_tool_result(
-                            messages,
-                            tools=(selected_tool,),
-                            tool_call=tool_call,
-                        )
-
-                events = run_stream_tool_exchange(
-                    session,
-                    conversation_id=conversation_id,
-                    content=payload.content,
-                    complete_with_tools=complete_with_tools,
-                    stream_with_tool_result=stream_with_tool_result,
-                    document_corpus_service=document_corpus_service,
-                )
-            else:
-                events = run_stream_exchange(
-                    session,
-                    conversation_id=conversation_id,
-                    content=payload.content,
-                    stream=stream,
-                )
+            events = run_stream_routed_exchange(
+                session,
+                conversation_id=conversation_id,
+                content=payload.content,
+                route_exchange=route_state,
+                stream=stream,
+                stream_with_tool_result=stream_with_tool_result,
+                document_corpus_service=document_corpus_service,
+            )
             for event in events:
                 if event.kind == "user_message":
                     message = MessageRead.model_validate(event.payload)
@@ -236,12 +268,22 @@ def stream_user_message(
                         event.payload, from_attributes=True
                     )
                     yield _sse_event("tool_result", evidence.model_dump(mode="json"))
+                elif event.kind in {
+                    "routing_started",
+                    "routing_retry",
+                    "routing_decided",
+                    "clarification_required",
+                    "routing_fallback_used",
+                }:
+                    yield _sse_event(event.kind, event.payload)
                 elif event.kind == "assistant_message":
                     message = MessageRead.model_validate(event.payload)
                     yield _sse_event(
                         "message_completed",
                         {"assistant_message": message.model_dump(mode="json")},
                     )
+        except RoutingClassificationCancelled:
+            return
         except (
             LLMConfigurationError,
             LLMConnectionError,

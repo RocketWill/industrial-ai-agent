@@ -17,6 +17,11 @@ ExecutionEventKind = Literal[
     "assistant_message",
     "tool_call_started",
     "tool_result",
+    "routing_started",
+    "routing_retry",
+    "routing_decided",
+    "clarification_required",
+    "routing_fallback_used",
     "error",
 ]
 ToolErrorCode = Literal[
