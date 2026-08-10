@@ -243,6 +243,37 @@ require explicit UTC timestamps.
 
 ## Verify
 
+Run the deterministic formal evaluation suite from `apps/api`:
+
+```bash
+uv run industrial-agent-eval
+```
+
+The command validates and runs the package-owned 30-scenario fixture, prints
+separate per-dimension results, and writes
+`.artifacts/evaluation/latest.json`. That directory is ignored by Git. A
+filtered run and explicit artifact target are also supported:
+
+```bash
+uv run industrial-agent-eval \
+  --scenario alarm-optical \
+  --output /tmp/industrial-agent-evaluation.json
+```
+
+A filtered artifact is marked `partial`; it does not claim that the complete
+suite passed. Exit status is `0` only when the selected valid scenario set
+meets every applicable threshold, `1` for a completed run below threshold,
+and `2` for fixture, argument, or output errors.
+
+The JSON artifact records the fixture digest, runner version, UTC run times,
+ordered scenario assertions, per-dimension summaries, sanitized failures, and
+monotonic stage observations. It does not contain prompts, document bodies,
+environment variables, provider configuration, or raw tracebacks. This is an
+offline deterministic regression baseline. It does not call an LLM judge and
+does not treat local elapsed values as a latency target.
+
+Run the complete backend verification separately:
+
 ```bash
 uv run pytest
 uv run ruff check .

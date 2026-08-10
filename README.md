@@ -8,7 +8,7 @@ proprietary system material. The current domain model is centered on semiconduct
 
 ## Current status
 
-**Implemented — v0.7 MCP**
+**Implemented — v0.8 Evaluation and Observability**
 
 The conversation foundation is runnable and tested. It includes FastAPI,
 SQLite persistence, explicit Alembic migrations, an OpenAI-compatible chat
@@ -57,6 +57,12 @@ and defect distribution through an independent local stdio server. It reuses
 the native deterministic contracts and does not connect MCP to FastAPI,
 LangGraph, the frontend, document retrieval, or live manufacturing systems.
 
+The v0.8 milestone adds a deterministic offline evaluation command. Its 30
+versioned English and Traditional Chinese scenarios exercise routing, native
+tool evidence, retrieval, citations, safe failures, retry, fallback, and
+unsupported-claim rejection. Results remain separate by dimension; the runner
+does not call an LLM judge or turn local timing observations into a benchmark.
+
 The workbench now uses Ant Design 6.5.1, Ant Design X 2.9.0, and XMarkdown
 2.9.0. Its dark-first responsive layout separates conversation navigation,
 the message stream, and editable analysis context without adding unsupported
@@ -88,6 +94,8 @@ boundaries.
 - a typed `search_documents` tool backed by heading-aware Markdown chunks, a
   deterministic feature-hashing embedding, an in-memory cosine index, and an
   explicit three-document registry;
+- a versioned 30-scenario offline evaluation suite with typed JSON artifacts
+  and per-dimension acceptance thresholds;
 - API-process health reporting;
 - grouped conversation navigation with desktop and mobile Drawers;
 - loading, empty, unavailable, streaming, cancellation, and reload states; and

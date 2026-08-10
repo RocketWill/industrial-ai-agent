@@ -39,7 +39,7 @@ matrix. Application README files own setup and contract usage.
 | Guided routing choices | Implemented | Combined-route clarifications persist two fixed application-owned actions. The latest unresolved actions survive reload, render as keyboard-accessible buttons, disable during submission, and send a normal user message through the existing SSE workflow. | Choices select one evidence path; they do not execute a multi-tool turn, accept model-generated actions, or use a special action endpoint. |
 | RAG and sources | Implemented | An immutable corpus combines three protected fictional Markdown documents with persistent local uploads. Paragraph- and list-aware chunks stay within H2/H3 sections and use stable section-local citations. A fixed lexical gate, deterministic 256-dimensional feature-hashing embedding, and in-memory cosine index back `search_documents`. The API and Drawers support source reading, single-file upload, validation, atomic corpus replacement, provenance, and local deletion. | Feature hashing is lexical rather than a semantic model. There is no PDF/OCR, external embedding service, persistent vector store, reranking, authentication, cloud storage, or combined production-and-document turn. |
 | MCP | Implemented | An independent official-SDK stdio server exposes `get_production_summary`, `get_equipment_status`, and `get_defect_distribution`. Discovery schemas reuse the native Pydantic contracts; calls return matching structured results plus deterministic text, reject unsupported fields, preserve safe domain errors, sanitize unexpected failures, and have an official-client lifecycle test. | Local stdio only. There is no HTTP transport, authentication, remote deployment, FastAPI, LangGraph, frontend, workspace-context, document-search, or live-data integration. |
-| Evaluation and observability | In Progress | A machine-readable 12-scenario fixture checks nine single-document queries, two confusable queries, one unrelated query, repeatability, and the approved top-one and top-three thresholds. | There is no answer-grounding evaluation, latency panel, persisted tool trace, or retry telemetry. |
+| Evaluation and observability | Implemented | `industrial-agent-eval` runs a strict 30-scenario English and Traditional Chinese suite through existing routing, native tool, retrieval, evidence, and answer-validation seams. It reports ten separate dimensions, preserves the approved retrieval thresholds, records retries, fallback and monotonic stage timing, and writes an ignored typed JSON artifact with an exact fixture digest. | This is a deterministic offline baseline, not a model-quality benchmark. There is no LLM judge, live provider call, HTTP or frontend surface, persisted application trace, composite score, latency gate, or automatic baseline update. |
 
 ## HTTP contracts
 
@@ -65,8 +65,13 @@ matrix. Application README files own setup and contract usage.
 
 The latest local verification on 2026-08-10 produced:
 
-- API: 349 Pytest tests passed, Ruff passed, the uv lockfile passed its
+- API: 385 Pytest tests passed, Ruff passed, the uv lockfile passed its
   consistency check, and source and wheel builds completed.
+- Evaluation: all 30 formal scenarios passed. The observed dimension totals
+  were route 18/18, tool selection 4/4, argument resolution 4/4, evidence
+  parity 5/5, retrieval top-one 9/9, retrieval top-three 12/12, citation 2/2,
+  safe failure 6/6, unsupported-claim rejection 2/2, and retry or fallback
+  2/2. Elapsed values are local observations, not performance guarantees.
 - MCP observation: one local official-client run initialized the stdio server
   in 380.98 ms and completed `get_production_summary` in 16.29 ms. These are
   development-machine observations; the matching direct native call took 0.40
