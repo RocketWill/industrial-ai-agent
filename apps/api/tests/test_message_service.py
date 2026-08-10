@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from industrial_agent.llm.errors import LLMConnectionError
 from industrial_agent.llm.types import ChatMessage
 from industrial_agent.models.message import Message
+from industrial_agent.schemas.message import SuggestedAction, SuggestedActionId
 from industrial_agent.services.conversation import (
     ConversationNotFoundError,
     create_conversation,
@@ -66,6 +67,50 @@ def test_internal_create_message_accepts_assistant_role(
     )
 
     assert created.role == "assistant"
+
+
+def test_create_message_persists_canonical_assistant_actions(
+    database_session: Session,
+) -> None:
+    conversation = create_conversation(database_session, title="Guided choice")
+    action = SuggestedAction(
+        id=SuggestedActionId.PRODUCTION_EVIDENCE_FIRST,
+        label="Production evidence",
+        message="Show the production evidence first.",
+    )
+
+    created = create_message(
+        database_session,
+        conversation_id=conversation.id,
+        role="assistant",
+        content="Choose one evidence path.",
+        suggested_actions=(action,),
+    )
+
+    database_session.expire_all()
+    persisted = list_messages(database_session, conversation.id)[0]
+    assert persisted.id == created.id
+    assert persisted.suggested_actions == [action.model_dump(mode="json")]
+
+
+def test_create_message_rejects_actions_on_user_messages(
+    database_session: Session,
+) -> None:
+    conversation = create_conversation(database_session, title="Invalid action")
+    action = SuggestedAction(
+        id=SuggestedActionId.DOCUMENT_EVIDENCE_FIRST,
+        label="Document evidence",
+        message="Search the documents first.",
+    )
+
+    with pytest.raises(ValueError, match="user messages"):
+        create_message(
+            database_session,
+            conversation_id=conversation.id,
+            role="user",
+            content="Invalid",
+            suggested_actions=(action,),
+        )
 
 
 def test_create_message_exchange_persists_user_and_assistant(
