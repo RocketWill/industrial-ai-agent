@@ -59,8 +59,8 @@ belongs in deterministic domain code rather than an LLM.
 
 ## Current milestone boundary
 
-The latest completed milestone is **v0.6.1 — Guided Routing Choices**. v0.7 MCP
-is planned next. The v0.1 foundation,
+The latest completed milestone is **v0.7 — MCP**. Its approved local stdio
+tool boundary is implemented. The v0.1 foundation,
 v0.1.1 streaming extension, v0.1.2 workspace extension, and v0.2 minimal
 LangGraph orchestration are implemented, including clean-environment
 verification. v0.3 Manufacturing Domain is implemented; throughput is
@@ -82,6 +82,13 @@ streaming controls, responsive conversation navigation, draft-based context
 editing, Markdown assistant rendering, and current-exchange tool stages and
 evidence for routed production-summary, defect-distribution, equipment-status,
 and fictional document requests.
+
+The MCP entrypoint independently exposes production summary, recorded
+equipment status, and defect distribution over local stdio. It reuses the
+native deterministic tool contracts and synthetic dataset without adding MCP
+to FastAPI, LangGraph, or the frontend. HTTP transport, authentication, remote
+deployment, document search, and live manufacturing access remain outside the
+v0.7 boundary.
 
 Streaming and the refined workspace are recorded as completed v0.1.1 and
 v0.1.2 extensions.

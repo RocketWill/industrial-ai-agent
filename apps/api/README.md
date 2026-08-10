@@ -27,6 +27,8 @@ portfolio project.
   evidence handoff for final synchronous and SSE model responses;
 - conversation-bound Workspace Context `GET` and `PATCH` endpoints;
 - deterministic fictional device catalog and device-ID validation;
+- an independent local stdio MCP server for production summary, recorded
+  equipment status, and defect distribution tools;
 - Pytest and Ruff verification; and
 - reproducible uv lockfile and package build.
 
@@ -60,6 +62,30 @@ uv run uvicorn industrial_agent.main:app \
 ```
 
 The process-health endpoint is available at `http://127.0.0.1:8000/health`.
+
+## Local MCP server
+
+The MCP entrypoint is separate from FastAPI and communicates over stdio:
+
+```bash
+uv run industrial-agent-mcp
+```
+
+Configure a local MCP client with `uv` as the command, `run
+industrial-agent-mcp` as the arguments, and this `apps/api` directory as the
+working directory. The server exposes `get_production_summary`,
+`get_equipment_status`, and `get_defect_distribution`. Their input and output
+schemas come from the same Pydantic contracts used by the native Python tools.
+
+Each call requires explicit synthetic equipment, lot when applicable, and UTC
+time input. The MCP boundary does not read conversation context or invoke the
+LLM, LangGraph, FastAPI, or document retrieval. It also provides no HTTP
+transport, authentication, remote deployment, or live manufacturing data.
+
+The backend pins the official Python MCP SDK to the supported 1.x line. The
+server uses its low-level API because this boundary must reject unsupported
+input fields at runtime as well as publish `additionalProperties: false` in
+discovery schemas.
 
 ## Conversation API
 
@@ -230,7 +256,7 @@ the committed uv lockfile, migrations, and backend test suite.
 
 ## Non-responsibilities
 
-MCP, authentication, and distributed deployment remain outside the implemented
+Authentication and distributed deployment remain outside the implemented
 scope. The v0.4 tool slice supports deterministic production
 summaries, ranked defect distributions, and recorded synthetic equipment
 status. Both Message endpoints use the same authoritative decision and can

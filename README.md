@@ -8,7 +8,7 @@ proprietary system material. The current domain model is centered on semiconduct
 
 ## Current status
 
-**Implemented — v0.6.1 Guided Routing Choices**
+**Implemented — v0.7 MCP**
 
 The conversation foundation is runnable and tested. It includes FastAPI,
 SQLite persistence, explicit Alembic migrations, an OpenAI-compatible chat
@@ -51,6 +51,11 @@ Combined-route clarifications now persist two application-owned continuations:
 survive reload, and selecting one records a normal user message through the
 existing SSE and routing workflow. This does not execute both tools or accept
 model-generated actions.
+
+The v0.7 MCP milestone exposes production summary, recorded equipment status,
+and defect distribution through an independent local stdio server. It reuses
+the native deterministic contracts and does not connect MCP to FastAPI,
+LangGraph, the frontend, document retrieval, or live manufacturing systems.
 
 The workbench now uses Ant Design 6.5.1, Ant Design X 2.9.0, and XMarkdown
 2.9.0. Its dark-first responsive layout separates conversation navigation,
@@ -126,9 +131,9 @@ industrial-ai-agent/
 └── scripts/       # Added only when project automation is needed
 ```
 
-LangGraph, the first manufacturing-domain and production-tool slices, and the
-self-built RAG milestone are implemented. MCP remains planned for a later
-milestone.
+LangGraph, the manufacturing-domain tools, the self-built RAG milestone, and a
+local stdio MCP boundary for three stable deterministic tools are implemented.
+The MCP server remains independent from the HTTP and conversation paths.
 
 ## Local development
 

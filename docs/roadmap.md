@@ -272,11 +272,28 @@ choices, accept model-generated actions, or introduce a special action API.
 
 ## v0.7 — MCP
 
-**Status: Planned**
+**Status: Implemented**
 
 Expose selected stable tools through MCP while retaining native Python
 adapters. Compare contracts, latency, errors, boundaries, and test complexity
 without moving domain logic into transport handlers.
+
+Implemented slices:
+
+- [x] Add the official Python MCP SDK and an independent local stdio
+  entrypoint.
+- [x] Expose `get_production_summary` with strict input validation, structured
+  output, deterministic text fallback, and native-result parity tests.
+- [x] Verify discovery, calls, errors, startup, and clean shutdown through an
+  official MCP stdio client.
+- [x] Expose `get_equipment_status` while preserving recorded `unknown`
+  evidence and native-result parity.
+- [x] Expose `get_defect_distribution` while preserving empty evidence,
+  limitations, and native-result parity.
+
+This milestone does not add MCP to FastAPI, LangGraph, or the frontend. It also
+excludes HTTP transport, authentication, remote deployment, document search,
+client-side workspace-context resolution, and live manufacturing data.
 
 ## v0.8 — Evaluation and Observability
 

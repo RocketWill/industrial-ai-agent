@@ -38,7 +38,7 @@ matrix. Application README files own setup and contract usage.
 | Structured routing | Implemented | Immutable route contracts, a 38-scenario English and Traditional Chinese fixture, a high-confidence deterministic gate, one typed classifier call, a 1–30 second timeout, one retry, conservative fallback, safe logs, and shared sync/SSE decisions. | Combined requests ask the user to select one path. Routing traces are not persisted, and broader multilingual support is not claimed. |
 | Guided routing choices | Implemented | Combined-route clarifications persist two fixed application-owned actions. The latest unresolved actions survive reload, render as keyboard-accessible buttons, disable during submission, and send a normal user message through the existing SSE workflow. | Choices select one evidence path; they do not execute a multi-tool turn, accept model-generated actions, or use a special action endpoint. |
 | RAG and sources | Implemented | An immutable corpus combines three protected fictional Markdown documents with persistent local uploads. Paragraph- and list-aware chunks stay within H2/H3 sections and use stable section-local citations. A fixed lexical gate, deterministic 256-dimensional feature-hashing embedding, and in-memory cosine index back `search_documents`. The API and Drawers support source reading, single-file upload, validation, atomic corpus replacement, provenance, and local deletion. | Feature hashing is lexical rather than a semantic model. There is no PDF/OCR, external embedding service, persistent vector store, reranking, authentication, cloud storage, or combined production-and-document turn. |
-| MCP | Planned | None. | No MCP server or client integration. |
+| MCP | Implemented | An independent official-SDK stdio server exposes `get_production_summary`, `get_equipment_status`, and `get_defect_distribution`. Discovery schemas reuse the native Pydantic contracts; calls return matching structured results plus deterministic text, reject unsupported fields, preserve safe domain errors, sanitize unexpected failures, and have an official-client lifecycle test. | Local stdio only. There is no HTTP transport, authentication, remote deployment, FastAPI, LangGraph, frontend, workspace-context, document-search, or live-data integration. |
 | Evaluation and observability | In Progress | A machine-readable 12-scenario fixture checks nine single-document queries, two confusable queries, one unrelated query, repeatability, and the approved top-one and top-three thresholds. | There is no answer-grounding evaluation, latency panel, persisted tool trace, or retry telemetry. |
 
 ## HTTP contracts
@@ -65,8 +65,12 @@ matrix. Application README files own setup and contract usage.
 
 The latest local verification on 2026-08-10 produced:
 
-- API: 325 Pytest tests passed, Ruff passed, the uv lockfile passed its
+- API: 349 Pytest tests passed, Ruff passed, the uv lockfile passed its
   consistency check, and source and wheel builds completed.
+- MCP observation: one local official-client run initialized the stdio server
+  in 380.98 ms and completed `get_production_summary` in 16.29 ms. These are
+  development-machine observations; the matching direct native call took 0.40
+  ms. This single comparison is not a performance guarantee or benchmark.
 - Web: 98 Vitest tests passed, TypeScript checking passed, ESLint passed, and
   the Vite production build completed.
 - Browser: the connected local stack listed three built-ins, uploaded one
