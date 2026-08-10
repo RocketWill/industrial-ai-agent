@@ -112,6 +112,23 @@
 .message-heading { align-items: baseline; display: flex; gap: 10px; margin-bottom: 6px; }
 .message-time { font-size: 11px; opacity: 0.72; }
 .message-body { color: var(--color-text-primary); line-height: 1.65; margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.routing-choice-prompts {
+  border-left: 2px solid var(--color-accent);
+  margin-top: 14px;
+  padding: 10px 12px;
+  position: relative;
+}
+.routing-choice-prompts::before {
+  background-image: radial-gradient(circle, var(--color-dither) 1px, transparent 1px);
+  background-size: 5px 5px;
+  content: "";
+  height: 8px;
+  opacity: 0.55;
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  width: 36px;
+}
 .assistant-bubble-content { overflow: hidden; padding-bottom: 2px; position: relative; }
 .assistant-bubble-content::after {
   background: linear-gradient(90deg, #ff7a45 0%, #f759ab 24%, #9254de 50%, #597ef7 76%, #36cfc9 100%);

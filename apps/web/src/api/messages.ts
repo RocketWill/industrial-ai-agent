@@ -6,7 +6,11 @@ export type Message = {
   role: "user" | "assistant";
   content: string;
   created_at: string;
+  suggested_actions: readonly SuggestedAction[];
 };
+export type SuggestedAction =
+  | { id: "production_evidence_first"; label: "Production evidence"; message: "Show the production evidence first." }
+  | { id: "document_evidence_first"; label: "Document evidence"; message: "Search the documents first." };
 export type ProductionEvidence = {
   production_summary: {
     equipment_id: string; lot_id: string | null; start: string; end: string;
@@ -82,7 +86,14 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 function isMessage(value: unknown): value is Message {
   if (typeof value !== "object" || value === null) return false;
   const item = value as Message;
-  return UUID.test(item.id) && UUID.test(item.conversation_id) && (item.role === "user" || item.role === "assistant") && typeof item.content === "string" && item.content.trim().length > 0 && item.content.length <= 10000 && typeof item.created_at === "string" && !Number.isNaN(Date.parse(item.created_at));
+  const validActions = Array.isArray(item.suggested_actions) && item.suggested_actions.every(isSuggestedAction);
+  return UUID.test(item.id) && UUID.test(item.conversation_id) && (item.role === "user" || item.role === "assistant") && typeof item.content === "string" && item.content.trim().length > 0 && item.content.length <= 10000 && typeof item.created_at === "string" && !Number.isNaN(Date.parse(item.created_at)) && validActions && (item.role === "assistant" || item.suggested_actions.length === 0);
+}
+function isSuggestedAction(value: unknown): value is SuggestedAction {
+  if (typeof value !== "object" || value === null) return false;
+  const action = value as { id?: unknown; label?: unknown; message?: unknown };
+  return (action.id === "production_evidence_first" && action.label === "Production evidence" && action.message === "Show the production evidence first.")
+    || (action.id === "document_evidence_first" && action.label === "Document evidence" && action.message === "Search the documents first.");
 }
 function isExchange(value: unknown): value is MessageExchange {
   return typeof value === "object" && value !== null && isMessage((value as MessageExchange).user_message) && isMessage((value as MessageExchange).assistant_message) && isEvidence((value as MessageExchange).evidence);

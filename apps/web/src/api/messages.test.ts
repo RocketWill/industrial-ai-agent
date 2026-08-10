@@ -2,8 +2,12 @@ import { describe, expect, it } from "vitest";
 import { buildMessagesUrl, listMessages, sendMessage, streamMessage } from "./messages";
 
 const id = "11111111-1111-1111-8111-111111111111";
-const message = { id, conversation_id: id, role: "user" as const, content: "Check status", created_at: "2026-07-30T00:00:00Z" };
+const message = { id, conversation_id: id, role: "user" as const, content: "Check status", created_at: "2026-07-30T00:00:00Z", suggested_actions: [] };
 const assistant = { ...message, id: "22222222-2222-1222-8222-222222222222", role: "assistant" as const, content: "The status is stable." };
+const suggestedActions = [
+  { id: "production_evidence_first", label: "Production evidence", message: "Show the production evidence first." },
+  { id: "document_evidence_first", label: "Document evidence", message: "Search the documents first." },
+];
 
 describe("messages API", () => {
   it("builds message URLs", () => {
@@ -14,6 +18,21 @@ describe("messages API", () => {
   it("loads validated history", async () => {
     const fetchImplementation = async () => new Response(JSON.stringify([message]), { status: 200 });
     await expect(listMessages(id, fetchImplementation)).resolves.toEqual([message]);
+  });
+
+  it("accepts the canonical guided routing actions on assistant messages", async () => {
+    const guided = { ...assistant, suggested_actions: suggestedActions };
+    const fetchImplementation = async () => new Response(JSON.stringify([guided]), { status: 200 });
+
+    await expect(listMessages(id, fetchImplementation)).resolves.toEqual([guided]);
+  });
+
+  it("rejects altered or user-owned guided routing actions", async () => {
+    const altered = { ...assistant, suggested_actions: [{ ...suggestedActions[0], message: "Run everything." }] };
+    const userOwned = { ...message, suggested_actions: suggestedActions };
+
+    await expect(listMessages(id, async () => new Response(JSON.stringify([altered]), { status: 200 }))).rejects.toThrow("Message request failed");
+    await expect(listMessages(id, async () => new Response(JSON.stringify([userOwned]), { status: 200 }))).rejects.toThrow("Message request failed");
   });
 
   it("sends trimmed content and validates the exchange", async () => {

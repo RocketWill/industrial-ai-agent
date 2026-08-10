@@ -40,6 +40,16 @@ export default function ConversationWorkspace({ conversationId, conversationTitl
   const latestMessage = state.messages[state.messages.length - 1];
   const latestMessageKey = latestMessage ? `${latestMessage.id}:${latestMessage.content.length}` : "";
 
+  const submit = useCallback((value?: string) => {
+    if (value !== undefined && value !== state.draft) state.setDraft(value);
+    setFollowLatest(true);
+    setShowScrollButton(false);
+    if (state.messages.length > 0) {
+      listRef.current?.scrollTo({ top: "bottom", behavior: "auto" });
+    }
+    void state.send(value);
+  }, [state]);
+
   useLayoutEffect(() => {
     if (documentsOpen) {
       documentsWasOpen.current = true;
@@ -76,6 +86,9 @@ export default function ConversationWorkspace({ conversationId, conversationTitl
           evidence={evidence}
           isStreaming={isActiveAssistant && state.isStreaming}
           runLabel={isActiveAssistant ? state.runState.label : null}
+          showSuggestedActions={index === state.messages.length - 1 && message.role === "assistant"}
+          suggestedActionsDisabled={state.isSending}
+          onSuggestedAction={submit}
         />
         );
 
@@ -86,7 +99,7 @@ export default function ConversationWorkspace({ conversationId, conversationTitl
         ) : messageItem;
       },
     };
-  }), [state.evidence, state.isStreaming, state.messages, state.runState]);
+  }), [state.evidence, state.isSending, state.isStreaming, state.messages, state.runState, submit]);
 
   useLayoutEffect(() => {
     pendingInitialScroll.current = true;
@@ -122,16 +135,6 @@ export default function ConversationWorkspace({ conversationId, conversationTitl
     setFollowLatest(nearLatest);
     setShowScrollButton(!nearLatest);
   }, []);
-
-  const submit = (value?: string) => {
-    if (value !== undefined && value !== state.draft) state.setDraft(value);
-    setFollowLatest(true);
-    setShowScrollButton(false);
-    if (state.messages.length > 0) {
-      listRef.current?.scrollTo({ top: "bottom", behavior: "auto" });
-    }
-    void state.send(value);
-  };
 
   const scrollToBottom = () => {
     setFollowLatest(true);

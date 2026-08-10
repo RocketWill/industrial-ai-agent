@@ -1,5 +1,6 @@
 import { Button, Descriptions, Progress, Tag, Typography } from "antd";
 import { CopyOutlined } from "@ant-design/icons";
+import { Prompts } from "@ant-design/x";
 import { lazy, Suspense, useState } from "react";
 import type { Message, ProductionEvidence } from "../api/messages";
 import { normalizeAssistantContent } from "../utils/normalizeAssistantContent";
@@ -13,6 +14,9 @@ type Props = {
   isStreaming?: boolean;
   evidence?: ProductionEvidence | null;
   runLabel?: string | null;
+  showSuggestedActions?: boolean;
+  suggestedActionsDisabled?: boolean;
+  onSuggestedAction?: (message: string) => void;
 };
 
 function displayTime(value: string): string {
@@ -265,6 +269,9 @@ export default function MessageItem({
   isStreaming = false,
   evidence = null,
   runLabel = null,
+  showSuggestedActions = false,
+  suggestedActionsDisabled = false,
+  onSuggestedAction = () => undefined,
 }: Props) {
   const isUser = message.role === "user";
   const content = isUser
@@ -313,6 +320,28 @@ export default function MessageItem({
           >
             Copy
           </Button>
+        )}
+        {!isUser && showSuggestedActions && message.suggested_actions.length > 0 && (
+          <Prompts
+            rootClassName="routing-choice-prompts"
+            title="Choose what to inspect first"
+            items={message.suggested_actions.map((action) => ({
+              key: action.id,
+              label: (
+                <Button
+                  className="routing-choice-button"
+                  disabled={suggestedActionsDisabled}
+                  onClick={() => onSuggestedAction(action.message)}
+                >
+                  {action.label}
+                </Button>
+              ),
+              description: action.message,
+              disabled: suggestedActionsDisabled,
+            }))}
+            wrap
+            fadeIn={false}
+          />
         )}
         {!isUser && !isStreaming && evidence?.production_summary && (
           <ProductionEvidenceCard evidence={evidence} />

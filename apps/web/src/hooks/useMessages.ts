@@ -56,7 +56,7 @@ export function useMessages(conversationId: string | null, api: MessageApi = def
         const exchange = await api.sendMessage(id, content); setMessages((current) => [...current, exchange.user_message, exchange.assistant_message]); setEvidence(exchange.evidence); setRunState({ phase: "success", label: null }); setDraft(""); return true;
       }
       const abortController = new AbortController(); controller.current = abortController; setStreaming(true);
-      const placeholder: Message = { id: placeholderId, conversation_id: id, role: "assistant", content: "", created_at: new Date().toISOString() };
+      const placeholder: Message = { id: placeholderId, conversation_id: id, role: "assistant", content: "", created_at: new Date().toISOString(), suggested_actions: [] };
       setMessages((current) => [...current, placeholder]);
       for await (const event of api.streamMessage(id, content, abortController.signal)) {
         if (activeConversation.current !== id) break;
