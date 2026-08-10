@@ -21,6 +21,7 @@ dependencies = [
 ]
 
 [project.scripts]
+industrial-agent-eval = "industrial_agent.evaluation.cli:main"
 industrial-agent-mcp = "industrial_agent.mcp.server:main"
 
 [dependency-groups]
