@@ -78,6 +78,7 @@ def test_deterministic_route_does_not_require_classifier() -> None:
 
     assert outcome is not None
     assert outcome.decision.intent is RouteIntent.GENERAL
+    assert outcome.suggested_actions == ()
 
 
 def test_deterministic_combined_route_returns_clarification_response() -> None:
@@ -91,6 +92,20 @@ def test_deterministic_combined_route_returns_clarification_response() -> None:
     assert outcome is not None
     assert outcome.decision.intent is RouteIntent.CLARIFICATION
     assert outcome.response_text == COMBINED_MESSAGE
+    assert [
+        action.model_dump(mode="json") for action in outcome.suggested_actions
+    ] == [
+        {
+            "id": "production_evidence_first",
+            "label": "Production evidence",
+            "message": "Show the production evidence first.",
+        },
+        {
+            "id": "document_evidence_first",
+            "label": "Document evidence",
+            "message": "Search the documents first.",
+        },
+    ]
 
 
 def test_route_exchange_resolves_classifier_context_and_missing_fields() -> None:
@@ -132,6 +147,10 @@ def test_route_exchange_converts_combined_candidate_to_clarification() -> None:
         )
     assert outcome.decision.intent is RouteIntent.CLARIFICATION
     assert outcome.response_text == COMBINED_MESSAGE
+    assert [action.id.value for action in outcome.suggested_actions] == [
+        "production_evidence_first",
+        "document_evidence_first",
+    ]
 
 
 def test_route_exchange_returns_deterministic_unsupported_message() -> None:

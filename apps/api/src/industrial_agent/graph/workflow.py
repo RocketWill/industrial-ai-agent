@@ -326,6 +326,7 @@ def load_context(
             session, conversation_id
         ),
         "assistant_content": "",
+        "suggested_actions": (),
         "evidence": None,
         "tool_call": None,
         "execution_events": [
@@ -847,7 +848,11 @@ def _call_routed_exchange(
 ) -> GraphState:
     decision = outcome.decision
     if outcome.response_text is not None:
-        return {**state, "assistant_content": outcome.response_text}
+        return {
+            **state,
+            "assistant_content": outcome.response_text,
+            "suggested_actions": outcome.suggested_actions,
+        }
     if decision.intent is RouteIntent.GENERAL:
         return {**state, "assistant_content": complete(state["messages"])}
     if complete_with_tools is None:
@@ -952,6 +957,7 @@ def persist_response(session: Session, state: GraphState) -> GraphState:
         conversation_id=state["conversation_id"],
         role="assistant",
         content=assistant_content,
+        suggested_actions=state["suggested_actions"],
     )
     return {
         **state,
