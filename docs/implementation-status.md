@@ -2,7 +2,7 @@
 
 This document is the code-backed feature inventory for the repository. It was
 reviewed against the application code, migrations, tests, and public
-documentation on 2026-08-09.
+documentation on 2026-08-10.
 
 ## Status rules
 
@@ -19,7 +19,7 @@ matrix. Application README files own setup and contract usage.
 | Area | Status | Implemented behavior | Current boundary |
 | --- | --- | --- | --- |
 | API process health | Implemented | `GET /health` reports whether the FastAPI process responds. | It does not inspect SQLite, the LLM service, or future tools. |
-| Database foundation | Implemented | SQLite, synchronous SQLAlchemy sessions, foreign-key enforcement, and four explicit Alembic revisions. | Application startup does not create or migrate schema. |
+| Database foundation | Implemented | SQLite, synchronous SQLAlchemy sessions, foreign-key enforcement, and five explicit Alembic revisions. | Application startup does not create or migrate schema. |
 | Conversations | Implemented | Create, list newest first, open, and permanently delete conversations. | No rename, archive, restore, or pagination. |
 | Message history | Implemented | Persist user and assistant messages and return deterministic chronological history. Conversation deletion cascades to messages. | No individual message mutation or pagination. |
 | Synchronous assistant response | Implemented | Persist the user message, use one authoritative route, optionally execute one selected production-summary, equipment-status, defect-distribution, or document-search tool, validate evidence and the final answer, and persist one successful assistant response. | No system prompt, answer retry, model discovery, multi-tool turn, or persisted evidence history. |
@@ -36,7 +36,7 @@ matrix. Application README files own setup and contract usage.
 | Defect distribution tool | Implemented | Typed `get_defect_distribution` request and result contracts filter the synthetic AOI dataset, rank recorded defect categories by count, calculate shares against classified defects, expose unclassified failures and limitations, participate in synchronous and SSE flows, and render current-exchange evidence. | It does not infer causes, trends, or throughput. Evidence is not persisted. |
 | LangGraph orchestration | Implemented | The synchronous graph and SSE runner share an application-owned route decision, deterministic clarification and fallback, one selected tool execution, evidence validation, final-answer checks, and persistence boundaries. Valid evidence remains visible when a generated answer fails citation or numeric verification, with a route-specific explanation replacing the rejected answer. | No persisted runs, multi-tool turns, evidence-tool retries, checkpoints, resume behavior, or graph visualization. Tool execution remains inside the model-call step rather than a separate graph node. |
 | Structured routing | Implemented | Immutable route contracts, a 38-scenario English and Traditional Chinese fixture, a high-confidence deterministic gate, one typed classifier call, a 1–30 second timeout, one retry, conservative fallback, safe logs, and shared sync/SSE decisions. | Combined requests ask the user to select one path. Routing traces are not persisted, and broader multilingual support is not claimed. |
-| Guided routing choices | Planned | None. | The current combined clarification is text-only; persisted suggested actions and one-click continuation are not implemented. |
+| Guided routing choices | Implemented | Combined-route clarifications persist two fixed application-owned actions. The latest unresolved actions survive reload, render as keyboard-accessible buttons, disable during submission, and send a normal user message through the existing SSE workflow. | Choices select one evidence path; they do not execute a multi-tool turn, accept model-generated actions, or use a special action endpoint. |
 | RAG and sources | Implemented | An immutable corpus combines three protected fictional Markdown documents with persistent local uploads. Paragraph- and list-aware chunks stay within H2/H3 sections and use stable section-local citations. A fixed lexical gate, deterministic 256-dimensional feature-hashing embedding, and in-memory cosine index back `search_documents`. The API and Drawers support source reading, single-file upload, validation, atomic corpus replacement, provenance, and local deletion. | Feature hashing is lexical rather than a semantic model. There is no PDF/OCR, external embedding service, persistent vector store, reranking, authentication, cloud storage, or combined production-and-document turn. |
 | MCP | Planned | None. | No MCP server or client integration. |
 | Evaluation and observability | In Progress | A machine-readable 12-scenario fixture checks nine single-document queries, two confusable queries, one unrelated query, repeatability, and the approved top-one and top-three thresholds. | There is no answer-grounding evaluation, latency panel, persisted tool trace, or retry telemetry. |
@@ -63,11 +63,11 @@ matrix. Application README files own setup and contract usage.
 
 ## Verification record
 
-The latest local verification on 2026-08-09 produced:
+The latest local verification on 2026-08-10 produced:
 
-- API: 315 Pytest tests passed, Ruff passed, the uv lockfile passed its
+- API: 325 Pytest tests passed, Ruff passed, the uv lockfile passed its
   consistency check, and source and wheel builds completed.
-- Web: 93 Vitest tests passed, TypeScript checking passed, ESLint passed, and
+- Web: 98 Vitest tests passed, TypeScript checking passed, ESLint passed, and
   the Vite production build completed.
 - Browser: the connected local stack listed three built-ins, uploaded one
   valid Markdown document, rejected its duplicate, deleted the local upload,
@@ -79,6 +79,11 @@ The latest local verification on 2026-08-09 produced:
   for missing evidence context, rejected a request for private live records,
   and handled a Traditional Chinese equipment-status request against saved
   synthetic context with an explicit no-recorded-status response.
+- Browser guided choices: a combined request exposed the two fixed actions,
+  retained them after reload, sent one normal production-evidence message from
+  the selected action, removed the resolved choices, and completed with the
+  deterministic Production summary surface. The configured model took about
+  23 seconds to finish the answer after evidence arrived.
 - Ant Design CLI diagnostics could not start because the global CLI installation
   is missing the `@oxc-parser/binding-darwin-arm64` optional native package.
   The CLI's own `bug-cli` preview fails at the same startup boundary. No Ant
@@ -89,7 +94,7 @@ The latest local verification on 2026-08-09 produced:
   suites successfully.
 
 The Vite build reports a JavaScript chunk-size warning above 500 kB. The main
-JavaScript output is 950.46 kB, or 307.66 kB gzip, while XMarkdown is split into
+JavaScript output is 951.48 kB, or 307.93 kB gzip, while XMarkdown is split into
 a 125.66 kB lazy chunk, or 41.52 kB gzip. The initial JavaScript gzip size is
 above the recorded 244.02 kB baseline. This remains at the review threshold;
 the next frontend dependency change should revisit initial chunk composition

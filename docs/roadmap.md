@@ -249,22 +249,22 @@ routing traces, and broader multilingual support remain outside this milestone.
 
 ## v0.6.1 — Guided Routing Choices
 
-**Status: Planned**
+**Status: Implemented**
 
 Persist two application-owned choices with a combined-route clarification:
 `Production evidence` and `Document evidence`. The latest unresolved
 clarification remains actionable after reload, and selecting one choice sends a
 normal user message through the existing SSE and routing workflow.
 
-Planned slices:
+Implemented slices:
 
-- [ ] Add a typed persisted `suggested_actions` message contract and one
+- [x] Add a typed persisted `suggested_actions` message contract and one
   explicit migration.
-- [ ] Attach the two fixed actions only to combined-route clarifications in
+- [x] Attach the two fixed actions only to combined-route clarifications in
   synchronous and SSE paths.
-- [ ] Render the latest unresolved actions with accessible one-shot submission,
+- [x] Render the latest unresolved actions with accessible one-shot submission,
   loading, disabled, reload, and failure behavior.
-- [ ] Complete browser acceptance, two-axis review, verification, and public
+- [x] Complete browser acceptance, two-axis review, verification, and public
   documentation updates before starting v0.7.
 
 This milestone does not execute combined tools, add equipment or time-range

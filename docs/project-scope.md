@@ -59,8 +59,8 @@ belongs in deterministic domain code rather than an LLM.
 
 ## Current milestone boundary
 
-The latest completed milestone is **v0.6 — Routing and Reliability**. v0.6.1
-Guided Routing Choices is planned next, before v0.7 MCP. The v0.1 foundation,
+The latest completed milestone is **v0.6.1 — Guided Routing Choices**. v0.7 MCP
+is planned next. The v0.1 foundation,
 v0.1.1 streaming extension, v0.1.2 workspace extension, and v0.2 minimal
 LangGraph orchestration are implemented, including clean-environment
 verification. v0.3 Manufacturing Domain is implemented; throughput is
@@ -116,7 +116,7 @@ bounded classifier retry and fallback, deterministic clarification, shared
 synchronous and SSE decisions, evidence sufficiency checks, and safe routing
 progress events. It does not execute combined turns or persist routing traces.
 
-The planned v0.6.1 milestone adds two persisted, application-owned actions to
+The completed v0.6.1 milestone adds two persisted, application-owned actions to
 the combined clarification. Selecting one records a normal user message and
 reuses the existing routing workflow. It does not add multi-tool execution,
 context selectors, model-generated actions, or a special execution endpoint.
