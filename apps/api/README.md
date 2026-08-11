@@ -25,6 +25,9 @@ portfolio project.
   `get_production_summary` call;
 - deterministic production-summary execution over a fictional AOI dataset and
   evidence handoff for final synchronous and SSE model responses;
+- bounded combined execution for one manufacturing tool followed by Document
+  Search, with ordered SSE progress, independent path states, safe partial
+  success, and current-exchange-only structured evidence;
 - conversation-bound Workspace Context `GET` and `PATCH` endpoints;
 - deterministic fictional device catalog and device-ID validation;
 - an independent local stdio MCP server for production summary, recorded
@@ -249,7 +252,7 @@ Run the deterministic formal evaluation suite from `apps/api`:
 uv run industrial-agent-eval
 ```
 
-The command validates and runs the package-owned 30-scenario fixture, prints
+The command validates and runs the package-owned 45-scenario fixture, prints
 separate per-dimension results, and writes
 `.artifacts/evaluation/latest.json`. That directory is ignored by Git. A
 filtered run and explicit artifact target are also supported:
@@ -290,11 +293,11 @@ the committed uv lockfile, migrations, and backend test suite.
 Authentication and distributed deployment remain outside the implemented
 scope. The v0.4 tool slice supports deterministic production
 summaries, ranked defect distributions, and recorded synthetic equipment
-status. Both Message endpoints use the same authoritative decision and can
-execute one selected tool. Combined requests produce clarification rather than
-executing multiple tools. That clarification persists two fixed
-application-owned actions; selecting either action remains a normal message
-request through the existing synchronous or SSE contract.
+status. Both Message endpoints use the same authoritative decision. Explicit
+combined requests execute exactly one manufacturing tool followed by Document
+Search; missing manufacturing context still produces clarification. Historical
+guided actions remain normal message requests through the existing synchronous
+or SSE contract.
 
 The current v0.5 retrieval slice adds `search_documents` for focused procedural
 questions. It builds an explicit corpus from three protected fictional Markdown

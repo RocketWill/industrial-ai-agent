@@ -19,13 +19,12 @@ contracts.
 
 ## Status
 
-The v0.1 foundation and its streaming and workspace extensions are implemented,
-along with v0.2 LangGraph orchestration, v0.3 Manufacturing Domain, and v0.4
-Production Data Tools. v0.5 Self-built RAG is active. Its first slice parses one
-fictional Markdown alarm guide, builds deterministic local vectors, retrieves
-sources through synchronous and SSE tool flows, and renders current-exchange
-citation metadata. Broader ingestion, retrieval evaluation, source viewing,
-and persisted evidence remain open.
+Milestones through v0.9 are implemented. The current boundary includes the
+full-stack conversation foundation, deterministic manufacturing tools, local
+document retrieval, bounded routing, guided historical choices, local stdio
+MCP, formal offline evaluation, and one combined manufacturing-plus-document
+workflow. Evidence remains current-exchange-only, and production data,
+authentication, causal analysis, and remote deployment remain out of scope.
 
 Architecture notes and engineering decisions should be added only when the
 corresponding code or approved decision exists. Local PRDs, specs, and plans
