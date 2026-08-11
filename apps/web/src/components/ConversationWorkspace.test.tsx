@@ -18,6 +18,7 @@ const messages: Message[] = [
 const state = (overrides: Partial<MessageState> = {}): MessageState => ({
   messages,
   evidence: null,
+  combinedEvidence: null,
   runState: { phase: "idle", label: null },
   isLoading: false,
   isSending: false,

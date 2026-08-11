@@ -57,6 +57,31 @@ describe("useMessages", () => {
     expect(result.current.evidence?.tool_error?.code).toBe("NO_DATA");
   });
 
+  it("keeps both combined evidence paths in the current exchange", async () => {
+    const production = { equipment_id: "AOI-WAFER-01", lot_id: null, start: "2026-01-15T13:00:00Z", end: "2026-01-15T17:00:00Z", inspected_wafers: 1, passed_wafers: 1, failed_wafers: 0, yield_rate: 1, defect_counts: [], alarm_events: [], limitations: [] };
+    const documents = { query: "guide", sources: [], limitations: ["no_relevant_sources"] };
+    const api = {
+      listMessages: vi.fn().mockResolvedValue([]), sendMessage: vi.fn(),
+      streamMessage: vi.fn(async function* () {
+        yield { type: "message_started" as const, user_message: exchange.user_message };
+        yield { type: "combined_tool_result" as const, path: "manufacturing" as const, manufacturing_kind: "production" as const, outcome: { status: "succeeded" as const, result: production, error_code: null } };
+        yield { type: "combined_tool_result" as const, path: "documents" as const, manufacturing_kind: "production" as const, outcome: { status: "empty" as const, result: documents, error_code: null } };
+        yield { type: "combined_evidence_completed" as const, answer_status: "succeeded" as const };
+        yield { type: "token" as const, text: "Answer" };
+        yield { type: "message_completed" as const, assistant_message: exchange.assistant_message };
+      }),
+    };
+    const { result } = renderHook(() => useMessages(id, api));
+    await waitFor(() => expect(api.listMessages).toHaveBeenCalled());
+    await act(async () => { await result.current.send("Compare production and guide"); });
+
+    expect(result.current.combinedEvidence?.manufacturing.result).toEqual(production);
+    expect(result.current.combinedEvidence?.documents.status).toBe("empty");
+    expect(result.current.combinedEvidence?.answer_status).toBe("succeeded");
+    await act(async () => { await result.current.reload(); });
+    expect(result.current.combinedEvidence).toBeNull();
+  });
+
   it("shows routing retry and clarification progress", async () => {
     const api = {
       listMessages: vi.fn().mockResolvedValue([]),

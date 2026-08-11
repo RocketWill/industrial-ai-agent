@@ -248,4 +248,44 @@ describe("MessageItem", () => {
     expect(screen.getByText("No defect counts returned.")).toBeInTheDocument();
     expect(screen.getByText("No alarm events returned.")).toBeInTheDocument();
   });
+
+  it("renders both typed regions for a completed combined exchange", () => {
+    render(<MessageItem message={message} combinedEvidence={{
+      manufacturing_kind: "production",
+      manufacturing: { status: "succeeded", result: { equipment_id: "AOI-WAFER-01", lot_id: null, start: "2026-01-15T13:00:00Z", end: "2026-01-15T17:00:00Z", inspected_wafers: 300, passed_wafers: 257, failed_wafers: 43, yield_rate: 257 / 300, defect_counts: [], alarm_events: [], limitations: [] }, error_code: null },
+      documents: { status: "empty", result: { query: "guide", sources: [], limitations: ["no_relevant_sources"] }, error_code: null },
+      document_query: "guide", answer_status: "succeeded",
+    }} />);
+    expect(screen.getByRole("region", { name: "Combined evidence" })).toBeInTheDocument();
+    expect(screen.getByText("Production summary")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Retrieved document sources" })).toBeInTheDocument();
+  });
+
+  it("announces independent combined loading and failure states", () => {
+    render(<MessageItem message={message} combinedEvidence={{
+      manufacturing_kind: "equipment_status",
+      manufacturing: { status: "loading", result: null, error_code: null },
+      documents: { status: "failed", result: null, error_code: "TOOL_UNAVAILABLE" },
+      document_query: "alarm guide", answer_status: "fallback",
+    }} />);
+    expect(screen.getByRole("status", { name: "Manufacturing evidence loading" })).toBeInTheDocument();
+    expect(screen.getByRole("alert", { name: "Document evidence unavailable" })).toBeInTheDocument();
+  });
+
+  it("renders completed equipment-status and defect-distribution combined variants", () => {
+    const documents = { status: "empty" as const, result: { query: "guide", sources: [], limitations: ["no_relevant_sources"] }, error_code: null };
+    const { rerender } = render(<MessageItem message={message} combinedEvidence={{
+      manufacturing_kind: "equipment_status",
+      manufacturing: { status: "succeeded", result: { equipment_id: "AOI-WAFER-01", observed_at: "2026-01-15T17:00:00Z", status: "running", effective_start: null, effective_end: null, source_event_id: "state-1", reason_code: "SYNTHETIC-SCHEDULED-RUN", limitations: [] }, error_code: null },
+      documents, document_query: "guide", answer_status: "succeeded",
+    }} />);
+    expect(screen.getByText("Equipment status")).toBeInTheDocument();
+
+    rerender(<MessageItem message={message} combinedEvidence={{
+      manufacturing_kind: "defect_distribution",
+      manufacturing: { status: "succeeded", result: { equipment_id: "AOI-WAFER-01", lot_id: null, start: "2026-01-15T13:00:00Z", end: "2026-01-15T17:00:00Z", failed_wafers: 1, classified_defect_count: 1, unclassified_failed_wafers: 0, items: [{ category: "scratch", count: 1, share: 1, rank: 1 }], limitations: [] }, error_code: null },
+      documents, document_query: "guide", answer_status: "succeeded",
+    }} />);
+    expect(screen.getByText("Defect distribution")).toBeInTheDocument();
+  });
 });
