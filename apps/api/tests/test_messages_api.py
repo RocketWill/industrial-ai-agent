@@ -1,10 +1,15 @@
+import json
 from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import sessionmaker
+from starlette.requests import Request
 
+import industrial_agent.graph.runner as runner_module
+import industrial_agent.graph.workflow as workflow_module
+from industrial_agent.graph.combined import CombinedToolUnavailable
 from industrial_agent.llm.errors import (
     LLMConfigurationError,
     LLMConnectionError,
@@ -16,7 +21,8 @@ from industrial_agent.llm.openai_compatible import (
 )
 from industrial_agent.llm.types import CompletionResult, ToolCall
 from industrial_agent.models.message import Message
-from industrial_agent.services.routing import COMBINED_MESSAGE
+from industrial_agent.tools.document_search import DocumentSearchResult
+from industrial_agent.tools.production import ProductionSummaryResult
 
 UNKNOWN_CONVERSATION_ID = "00000000-0000-0000-0000-000000000099"
 
@@ -188,11 +194,7 @@ def test_stream_message_returns_ordered_sse_events(
 
     assert response.status_code == 200
     assert "text/event-stream" in response.headers["content-type"]
-    events = [
-        line
-        for line in response.text.splitlines()
-        if line.startswith("event:")
-    ]
+    events = [line for line in response.text.splitlines() if line.startswith("event:")]
     assert events == [
         "event: message_started",
         "event: routing_started",
@@ -441,9 +443,7 @@ def test_stream_document_question_emits_retrieved_source_evidence(
     response = conversation_client.post(
         f"/conversations/{conversation['id']}/messages/stream",
         json={
-            "content": (
-                "What should an operator check when OPTICAL-SIGNAL-LOW occurs?"
-            )
+            "content": ("What should an operator check when OPTICAL-SIGNAL-LOW occurs?")
         },
     )
 
@@ -455,7 +455,7 @@ def test_stream_document_question_emits_retrieved_source_evidence(
     assert '"section":"OPTICAL-SIGNAL-LOW"' in response.text
 
 
-def test_stream_combined_request_completes_with_clarification(
+def test_stream_combined_request_emits_both_evidence_paths(
     conversation_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -465,14 +465,24 @@ def test_stream_combined_request_completes_with_clarification(
         json={"device": "AOI-WAFER-01", "time_range": "Last 8 hours"},
     )
 
-    class UnexpectedAdapter:
+    class FakeAdapter:
         def __enter__(self):
-            raise AssertionError("combined deterministic routing must not call a model")
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def stream_with_tool_result(self, _messages, *, tools, tool_call):
+            assert tools[0].name == "combined_evidence"
+            payload = json.loads(tool_call.content)
+            source_id = payload["documents"]["result"]["sources"][0]["source_id"]
+            yield "Combined evidence is available from "
+            yield f"{source_id}; the relationship still needs validation."
 
     monkeypatch.setattr(
         OpenAICompatibleChatAdapter,
         "from_settings",
-        classmethod(lambda cls, settings: UnexpectedAdapter()),
+        classmethod(lambda cls, settings: FakeAdapter()),
     )
     response = conversation_client.post(
         f"/conversations/{conversation['id']}/messages/stream",
@@ -480,29 +490,91 @@ def test_stream_combined_request_completes_with_clarification(
     )
 
     assert response.status_code == 200
-    assert '"route":"clarification"' in response.text
-    assert "event: clarification_required" in response.text
-    assert f'data: {{"text":"{COMBINED_MESSAGE}"}}' in response.text
+    assert '"route":"combined"' in response.text
+    assert "event: clarification_required" not in response.text
+    assert response.text.count("event: tool_call_started") == 2
+    assert response.text.count("event: combined_tool_result") == 2
+    assert (
+        'event: combined_evidence_completed\ndata: {"answer_status":"succeeded"}'
+        in response.text
+    )
+    assert '"path":"manufacturing"' in response.text
+    assert '"path":"documents"' in response.text
     assert "event: message_completed" in response.text
-    assert '"suggested_actions":[{"id":"production_evidence_first"' in response.text
     history = conversation_client.get(
         f"/conversations/{conversation['id']}/messages"
     ).json()
-    assert history[-1]["suggested_actions"] == [
-        {
-            "id": "production_evidence_first",
-            "label": "Production evidence",
-            "message": "Show the production evidence first.",
-        },
-        {
-            "id": "document_evidence_first",
-            "label": "Document evidence",
-            "message": "Search the documents first.",
-        },
-    ]
+    assert history[-1]["suggested_actions"] == []
 
 
-def test_sync_combined_request_returns_persisted_suggested_actions(
+@pytest.mark.parametrize(
+    ("question", "manufacturing_kind"),
+    [
+        ("Show production yield and search the optical alarm guide.", "production"),
+        (
+            "Show equipment status and search the optical alarm guide.",
+            "equipment_status",
+        ),
+        (
+            "Show defect distribution and search the optical alarm guide.",
+            "defect_distribution",
+        ),
+    ],
+)
+def test_sync_combined_request_returns_current_exchange_evidence(
+    conversation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    question: str,
+    manufacturing_kind: str,
+) -> None:
+    conversation = create_conversation(conversation_client)
+    conversation_client.patch(
+        f"/conversations/{conversation['id']}/context",
+        json={"device": "AOI-WAFER-01", "time_range": "Last 8 hours"},
+    )
+
+    class FakeAdapter:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def complete_with_tools(self, _messages, *, tools, tool_call=None):
+            assert tools[0].name == "combined_evidence"
+            payload = json.loads(tool_call.content)
+            source_id = payload["documents"]["result"]["sources"][0]["source_id"]
+            return CompletionResult(
+                content=(
+                    "Production and document evidence were retrieved. "
+                    f"See {source_id}; any relationship still needs validation."
+                )
+            )
+
+    monkeypatch.setattr(
+        OpenAICompatibleChatAdapter,
+        "from_settings",
+        classmethod(lambda cls, settings: FakeAdapter()),
+    )
+    response = conversation_client.post(
+        f"/conversations/{conversation['id']}/messages",
+        json={"content": question},
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["assistant_message"]["suggested_actions"] == []
+    assert payload["combined_evidence"]["manufacturing_kind"] == manufacturing_kind
+    assert payload["combined_evidence"]["manufacturing"]["status"] == "succeeded"
+    assert payload["combined_evidence"]["documents"]["status"] == "succeeded"
+    assert payload["combined_evidence"]["answer_status"] == "succeeded"
+    history = conversation_client.get(
+        f"/conversations/{conversation['id']}/messages"
+    ).json()
+    assert history[-1]["suggested_actions"] == []
+
+
+def test_sync_combined_model_failure_keeps_current_exchange_evidence(
     conversation_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -512,14 +584,22 @@ def test_sync_combined_request_returns_persisted_suggested_actions(
         json={"device": "AOI-WAFER-01", "time_range": "Last 8 hours"},
     )
 
-    class UnexpectedAdapter:
+    class FailingAdapter:
         def __enter__(self):
-            raise AssertionError("combined deterministic routing must not call a model")
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def complete_with_tools(self, _messages, *, tools, tool_call=None):
+            assert tools[0].name == "combined_evidence"
+            assert tool_call is not None
+            raise LLMConnectionError("private provider detail")
 
     monkeypatch.setattr(
         OpenAICompatibleChatAdapter,
         "from_settings",
-        classmethod(lambda cls, settings: UnexpectedAdapter()),
+        classmethod(lambda cls, settings: FailingAdapter()),
     )
     response = conversation_client.post(
         f"/conversations/{conversation['id']}/messages",
@@ -527,18 +607,254 @@ def test_sync_combined_request_returns_persisted_suggested_actions(
     )
 
     assert response.status_code == 201
-    assert response.json()["assistant_message"]["suggested_actions"] == [
-        {
-            "id": "production_evidence_first",
-            "label": "Production evidence",
-            "message": "Show the production evidence first.",
-        },
-        {
-            "id": "document_evidence_first",
-            "label": "Document evidence",
-            "message": "Search the documents first.",
-        },
-    ]
+    payload = response.json()
+    assert payload["combined_evidence"]["answer_status"] == "fallback"
+    assert payload["combined_evidence"]["manufacturing"]["status"] == "succeeded"
+    assert payload["combined_evidence"]["documents"]["status"] == "succeeded"
+    assert payload["assistant_message"]["content"] == (
+        "Evidence was retrieved, but a combined interpretation could not be "
+        "completed. Review the evidence below."
+    )
+    assert "private provider detail" not in response.text
+
+
+def test_sync_combined_preserves_manufacturing_when_document_path_fails(
+    conversation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conversation = create_conversation(conversation_client)
+    conversation_client.patch(
+        f"/conversations/{conversation['id']}/context",
+        json={"device": "AOI-WAFER-01", "time_range": "Last 8 hours"},
+    )
+    original = workflow_module.execute_combined_evidence
+
+    def execute_with_document_failure(**kwargs):
+        def fail_documents(_request, *, service=None):
+            del service
+            raise CombinedToolUnavailable("scripted document failure")
+
+        return original(**kwargs, document_search_tool=fail_documents)
+
+    monkeypatch.setattr(
+        workflow_module, "execute_combined_evidence", execute_with_document_failure
+    )
+    response = conversation_client.post(
+        f"/conversations/{conversation['id']}/messages",
+        json={"content": "Show production yield and search the optical alarm guide."},
+    )
+
+    assert response.status_code == 201
+    combined = response.json()["combined_evidence"]
+    assert combined["manufacturing"]["status"] == "succeeded"
+    assert combined["documents"] == {
+        "status": "failed",
+        "result": None,
+        "error_code": "TOOL_UNAVAILABLE",
+    }
+
+
+def test_sse_combined_preserves_documents_when_manufacturing_path_fails(
+    conversation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conversation = create_conversation(conversation_client)
+    conversation_client.patch(
+        f"/conversations/{conversation['id']}/context",
+        json={"device": "AOI-WAFER-01", "time_range": "Last 8 hours"},
+    )
+    original = runner_module.stream_combined_evidence
+
+    def stream_with_manufacturing_failure(**kwargs):
+        def fail_manufacturing(_request):
+            raise CombinedToolUnavailable("scripted manufacturing failure")
+
+        return original(**kwargs, production_tool=fail_manufacturing)
+
+    monkeypatch.setattr(
+        runner_module, "stream_combined_evidence", stream_with_manufacturing_failure
+    )
+    response = conversation_client.post(
+        f"/conversations/{conversation['id']}/messages/stream",
+        json={"content": "Show production yield and search the optical alarm guide."},
+    )
+
+    assert response.status_code == 200
+    assert (
+        '"path":"manufacturing","manufacturing_kind":"production","status":"failed"'
+        in response.text
+    )
+    assert (
+        '"path":"documents","manufacturing_kind":"production","status":"succeeded"'
+        in response.text
+    )
+    assert response.text.count("event: message_completed") == 1
+
+
+@pytest.mark.parametrize(
+    ("case", "manufacturing_status", "document_status"),
+    [
+        ("manufacturing_failed", "failed", "succeeded"),
+        ("documents_failed", "succeeded", "failed"),
+        ("double_failure", "failed", "failed"),
+        ("manufacturing_empty", "empty", "succeeded"),
+        ("documents_empty", "succeeded", "empty"),
+    ],
+)
+def test_combined_sync_and_sse_keep_failure_and_empty_status_parity(
+    conversation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    case: str,
+    manufacturing_status: str,
+    document_status: str,
+) -> None:
+    original_sync = workflow_module.execute_combined_evidence
+    original_stream = runner_module.stream_combined_evidence
+
+    def fail_manufacturing(_request):
+        raise CombinedToolUnavailable("scripted manufacturing failure")
+
+    def fail_documents(_request, *, service=None):
+        del service
+        raise CombinedToolUnavailable("scripted document failure")
+
+    def empty_manufacturing(request):
+        return ProductionSummaryResult(
+            equipment_id=request.equipment_id,
+            lot_id=request.lot_id,
+            start=request.start,
+            end=request.end,
+            inspected_wafers=0,
+            passed_wafers=0,
+            failed_wafers=0,
+            yield_rate=None,
+            defect_counts=(),
+            alarm_events=(),
+            limitations=("no_inspection_records",),
+        )
+
+    def empty_documents(request, *, service=None):
+        del service
+        return DocumentSearchResult(
+            query=request.query,
+            sources=(),
+            limitations=("no_relevant_sources",),
+        )
+
+    injected: dict[str, object] = {}
+    if case in {"manufacturing_failed", "double_failure"}:
+        injected["production_tool"] = fail_manufacturing
+    elif case == "manufacturing_empty":
+        injected["production_tool"] = empty_manufacturing
+    if case in {"documents_failed", "double_failure"}:
+        injected["document_search_tool"] = fail_documents
+    elif case == "documents_empty":
+        injected["document_search_tool"] = empty_documents
+
+    monkeypatch.setattr(
+        workflow_module,
+        "execute_combined_evidence",
+        lambda **kwargs: original_sync(**kwargs, **injected),
+    )
+    monkeypatch.setattr(
+        runner_module,
+        "stream_combined_evidence",
+        lambda **kwargs: original_stream(**kwargs, **injected),
+    )
+
+    def create_scoped_conversation() -> dict[str, object]:
+        conversation = create_conversation(conversation_client)
+        conversation_client.patch(
+            f"/conversations/{conversation['id']}/context",
+            json={"device": "AOI-WAFER-01", "time_range": "Last 8 hours"},
+        )
+        return conversation
+
+    sync_conversation = create_scoped_conversation()
+    sync_response = conversation_client.post(
+        f"/conversations/{sync_conversation['id']}/messages",
+        json={"content": "Show production yield and search the optical alarm guide."},
+    )
+    stream_conversation = create_scoped_conversation()
+    stream_response = conversation_client.post(
+        f"/conversations/{stream_conversation['id']}/messages/stream",
+        json={"content": "Show production yield and search the optical alarm guide."},
+    )
+
+    assert sync_response.status_code == 201
+    sync_combined = sync_response.json()["combined_evidence"]
+    assert sync_combined["manufacturing"]["status"] == manufacturing_status
+    assert sync_combined["documents"]["status"] == document_status
+    stream_events = []
+    for block in stream_response.text.strip().split("\n\n"):
+        lines = block.splitlines()
+        if len(lines) >= 2:
+            stream_events.append(
+                (
+                    lines[0].removeprefix("event: "),
+                    json.loads(lines[1].removeprefix("data: ")),
+                )
+            )
+    path_events = {
+        payload["path"]: payload
+        for event, payload in stream_events
+        if event == "combined_tool_result"
+    }
+    for path in ("manufacturing", "documents"):
+        assert path_events[path]["result"] == sync_combined[path]["result"]
+        assert path_events[path]["error_code"] == sync_combined[path]["error_code"]
+    expected_manufacturing = (
+        '"path":"manufacturing","manufacturing_kind":"production",'
+        f'"status":"{manufacturing_status}"'
+    )
+    expected_documents = (
+        '"path":"documents","manufacturing_kind":"production",'
+        f'"status":"{document_status}"'
+    )
+    assert expected_manufacturing in stream_response.text
+    assert expected_documents in stream_response.text
+    assert stream_response.text.count("event: message_completed") == 1
+    completed = next(
+        payload for event, payload in stream_events if event == "message_completed"
+    )
+    sync_text = sync_response.json()["assistant_message"]["content"]
+    assert completed["assistant_message"]["content"] == sync_text
+    stream_history = conversation_client.get(
+        f"/conversations/{stream_conversation['id']}/messages"
+    ).json()
+    assert stream_history[-1]["content"] == sync_text
+
+
+def test_sse_combined_cancellation_after_manufacturing_does_not_persist_completion(
+    conversation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conversation = create_conversation(conversation_client)
+    conversation_client.patch(
+        f"/conversations/{conversation['id']}/context",
+        json={"device": "AOI-WAFER-01", "time_range": "Last 8 hours"},
+    )
+    checks = 0
+
+    async def disconnect_after_manufacturing(_request: Request) -> bool:
+        nonlocal checks
+        checks += 1
+        return checks == 2
+
+    monkeypatch.setattr(Request, "is_disconnected", disconnect_after_manufacturing)
+    response = conversation_client.post(
+        f"/conversations/{conversation['id']}/messages/stream",
+        json={"content": "Show production yield and search the optical alarm guide."},
+    )
+
+    assert response.status_code == 200
+    assert '"path":"manufacturing"' in response.text
+    assert '"path":"documents"' not in response.text
+    assert "event: message_completed" not in response.text
+    history = conversation_client.get(
+        f"/conversations/{conversation['id']}/messages"
+    ).json()
+    assert [message["role"] for message in history] == ["user"]
 
 
 def test_stream_production_tool_error_persists_safe_response(
@@ -582,24 +898,17 @@ def test_stream_production_tool_error_persists_safe_response(
     )
     response = conversation_client.post(
         f"/conversations/{conversation['id']}/messages/stream",
-        json={
-            "content": (
-                "What is the production yield for AOI-WAFER-99 today?"
-            )
-        },
+        json={"content": ("What is the production yield for AOI-WAFER-99 today?")},
     )
 
     assert response.status_code == 200
     assert (
-        'data: {"text":"No sufficient production evidence was found."}'
-        in response.text
+        'data: {"text":"No sufficient production evidence was found."}' in response.text
     )
     history = conversation_client.get(
         f"/conversations/{conversation['id']}/messages"
     ).json()
-    assert history[-1]["content"] == (
-        "No sufficient production evidence was found."
-    )
+    assert history[-1]["content"] == ("No sufficient production evidence was found.")
 
 
 def test_created_message_persists_across_requests(
@@ -629,13 +938,9 @@ def test_created_message_persists_across_requests(
         json={"content": "Persistent message"},
     ).json()
 
-    response = conversation_client.get(
-        f"/conversations/{conversation['id']}/messages"
-    )
+    response = conversation_client.get(f"/conversations/{conversation['id']}/messages")
 
-    assert created["user_message"]["id"] in {
-        item["id"] for item in response.json()
-    }
+    assert created["user_message"]["id"] in {item["id"] for item in response.json()}
     assert created["assistant_message"]["id"] in {
         item["id"] for item in response.json()
     }
@@ -675,13 +980,10 @@ def test_create_message_keeps_user_message_when_llm_fails(
     assert response.json() == {
         "detail": "Assistant response is temporarily unavailable"
     }
-    history = conversation_client.get(
-        f"/conversations/{conversation['id']}/messages"
-    )
-    assert [
-        (item["role"], item["content"])
-        for item in history.json()
-    ] == [("user", "Keep this question")]
+    history = conversation_client.get(f"/conversations/{conversation['id']}/messages")
+    assert [(item["role"], item["content"]) for item in history.json()] == [
+        ("user", "Keep this question")
+    ]
 
 
 @pytest.mark.parametrize("content", ["", "   ", "x" * 10_001])
@@ -745,9 +1047,7 @@ def test_list_messages_returns_empty_history(
 ) -> None:
     conversation = create_conversation(conversation_client)
 
-    response = conversation_client.get(
-        f"/conversations/{conversation['id']}/messages"
-    )
+    response = conversation_client.get(f"/conversations/{conversation['id']}/messages")
 
     assert response.status_code == 200
     assert response.json() == []
@@ -824,9 +1124,7 @@ def test_list_messages_returns_404_for_unknown_conversation(
 def test_list_messages_returns_422_for_malformed_conversation_id(
     conversation_client: TestClient,
 ) -> None:
-    response = conversation_client.get(
-        "/conversations/not-a-uuid/messages"
-    )
+    response = conversation_client.get("/conversations/not-a-uuid/messages")
 
     assert response.status_code == 422
 
@@ -843,18 +1141,14 @@ def test_delete_conversation_removes_persisted_messages(
     )
     assert create_response.status_code == 201
 
-    response = conversation_client.delete(
-        f"/conversations/{conversation['id']}"
-    )
+    response = conversation_client.delete(f"/conversations/{conversation['id']}")
 
     factory = sessionmaker(bind=database_engine)
     with factory() as session:
         remaining = session.scalar(
             select(func.count())
             .select_from(Message)
-            .where(
-                Message.conversation_id == UUID(conversation["id"])
-            )
+            .where(Message.conversation_id == UUID(conversation["id"]))
         )
 
     assert response.status_code == 204

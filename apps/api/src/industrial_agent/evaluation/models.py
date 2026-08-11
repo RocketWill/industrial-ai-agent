@@ -28,7 +28,7 @@ class ScenarioCategory(StrEnum):
     DEFECT_DISTRIBUTION = "defect_distribution"
     GENERAL_RESPONSE = "general_response"
     DOCUMENT_RETRIEVAL = "document_retrieval"
-    COMBINED_CLARIFICATION = "combined_clarification"
+    COMBINED_EVIDENCE = "combined_evidence"
     MISSING_CONTEXT = "missing_context"
     UNSUPPORTED_REQUEST = "unsupported_request"
     EMPTY_EVIDENCE = "empty_evidence"
@@ -64,6 +64,9 @@ class AdapterAction(StrEnum):
     RETURN_INVALID_NUMERIC_CLAIM = "return_invalid_numeric_claim"
     RETURN_INVALID_CITATION = "return_invalid_citation"
     RETURN_GENERAL_ANSWER = "return_general_answer"
+    FAIL_MANUFACTURING = "fail_manufacturing"
+    FAIL_DOCUMENTS = "fail_documents"
+    RETURN_EMPTY_DOCUMENTS = "return_empty_documents"
 
 
 class ExpectedTool(StrEnum):
@@ -137,6 +140,9 @@ class ScenarioExpectation(EvaluationModel):
     retrieval_kind: RetrievalKind | None = None
     document_ids: tuple[str, ...] = ()
     source_id: str | None = None
+    manufacturing_status: Literal["succeeded", "empty", "failed"] | None = None
+    document_status: Literal["succeeded", "empty", "failed"] | None = None
+    query_contains: tuple[str, ...] = ()
 
 
 class EvaluationScenario(EvaluationModel):

@@ -19,6 +19,10 @@ from industrial_agent.evaluation.results import (
     StageObservation,
     aggregate_results,
 )
+from industrial_agent.graph.combined import (
+    CombinedToolUnavailable,
+    execute_combined_evidence,
+)
 from industrial_agent.graph.state import EvidenceState, GraphState
 from industrial_agent.graph.workflow import (
     execute_defect_distribution_tool,
@@ -31,11 +35,16 @@ from industrial_agent.graph.workflow import (
 )
 from industrial_agent.llm.types import ChatMessage, CompletionResult, ToolCall
 from industrial_agent.schemas.context import WorkspaceContextRead
-from industrial_agent.services.evidence import validate_answer, validate_evidence
+from industrial_agent.services.evidence import (
+    validate_answer,
+    validate_combined_answer,
+    validate_evidence,
+)
 from industrial_agent.services.routing import route_exchange
 from industrial_agent.services.routing_classifier import RoutingClassifier
 from industrial_agent.tools.document_search import (
     DocumentSearchRequest,
+    DocumentSearchResult,
     search_documents,
 )
 
@@ -134,6 +143,15 @@ def run_scenario(scenario: EvaluationScenario) -> ScenarioResult:
         "response_text": outcome.response_text,
         "final_outcome": outcome.decision.safe_action.value,
     }
+    if scenario.category is ScenarioCategory.COMBINED_EVIDENCE:
+        return _run_combined_scenario(
+            scenario,
+            outcome=outcome,
+            started=started,
+            stages=stages,
+            assertions=assertions,
+            trace_values=trace_values,
+        )
     if (
         EvaluationDimension.SAFE_FAILURE_CORRECTNESS in scenario.dimensions
         and (
@@ -399,8 +417,154 @@ def _graph_state(scenario: EvaluationScenario) -> GraphState:
         "suggested_actions": (),
         "execution_events": [],
         "evidence": None,
+        "combined_evidence": None,
         "tool_call": None,
     }
+
+
+def _run_combined_scenario(
+    scenario: EvaluationScenario,
+    *,
+    outcome,
+    started: float,
+    stages: list[StageObservation],
+    assertions: list[DimensionAssertion],
+    trace_values: dict[str, object],
+) -> ScenarioResult:
+    def fail_manufacturing(_request):
+        raise CombinedToolUnavailable("scripted manufacturing failure")
+
+    def fail_documents(_request, *, service=None):
+        del service
+        raise CombinedToolUnavailable("scripted document failure")
+
+    def empty_documents(request, *, service=None):
+        del service
+        return DocumentSearchResult(
+            query=request.query, sources=(), limitations=("no_relevant_sources",)
+        )
+
+    actions = set(scenario.adapter_script.actions)
+    kwargs: dict[str, object] = {}
+    if "fail_manufacturing" in actions:
+        kwargs.update(
+            production_tool=fail_manufacturing,
+            equipment_status_tool=fail_manufacturing,
+            defect_distribution_tool=fail_manufacturing,
+        )
+    if "fail_documents" in actions:
+        kwargs["document_search_tool"] = fail_documents
+    if "return_empty_documents" in actions:
+        kwargs["document_search_tool"] = empty_documents
+    execution_started = perf_counter()
+    combined = execute_combined_evidence(
+        decision=outcome.decision,
+        original_query=scenario.input.message,
+        **kwargs,  # type: ignore[arg-type]
+    )
+    stages.append(
+        StageObservation(
+            name="tool_or_retrieval",
+            elapsed_ms=(perf_counter() - execution_started) * 1000,
+        )
+    )
+    tool = {
+        "production": "get_production_summary",
+        "equipment_status": "get_equipment_status",
+        "defect_distribution": "get_defect_distribution",
+    }[combined.manufacturing_kind.value]
+    observed_evidence = {
+        "manufacturing_status": combined.manufacturing.status.value,
+        "document_status": combined.documents.status.value,
+        "query_contains": [
+            term
+            for term in scenario.expected.query_contains
+            if term in combined.document_query
+        ],
+    }
+    expected_evidence = {
+        "manufacturing_status": scenario.expected.manufacturing_status,
+        "document_status": scenario.expected.document_status,
+        "query_contains": list(scenario.expected.query_contains),
+    }
+    _append_comparison(
+        assertions,
+        scenario,
+        EvaluationDimension.TOOL_SELECTION_ACCURACY,
+        scenario.expected.tool.value if scenario.expected.tool else None,
+        tool,
+        "combined manufacturing tool",
+    )
+    _append_comparison(
+        assertions,
+        scenario,
+        EvaluationDimension.EVIDENCE_PARITY,
+        expected_evidence,
+        observed_evidence,
+        "combined evidence",
+    )
+    _append_comparison(
+        assertions,
+        scenario,
+        EvaluationDimension.SAFE_FAILURE_CORRECTNESS,
+        {
+            "manufacturing_status": scenario.expected.manufacturing_status,
+            "document_status": scenario.expected.document_status,
+        },
+        {
+            "manufacturing_status": combined.manufacturing.status.value,
+            "document_status": combined.documents.status.value,
+        },
+        "combined safe outcome",
+    )
+    if scenario.adapter_script.answer is not None:
+        accepted = validate_combined_answer(
+            combined, scenario.adapter_script.answer
+        )
+        _append_comparison(
+            assertions,
+            scenario,
+            EvaluationDimension.CITATION_CORRECTNESS,
+            scenario.expected.answer_accepted,
+            accepted,
+            "combined citation",
+        )
+        _append_comparison(
+            assertions,
+            scenario,
+            EvaluationDimension.UNSUPPORTED_CLAIM_REJECTION,
+            scenario.expected.answer_accepted,
+            accepted,
+            "combined claim",
+        )
+        trace_values["answer_validation"] = (
+            "accepted" if accepted else "rejected"
+        )
+    trace_values.update(
+        tool=tool,
+        evidence_kind="combined",
+        evidence_sufficient=any(
+            path.status.value in {"succeeded", "empty"}
+            for path in (combined.manufacturing, combined.documents)
+        ),
+        limitations=(),
+        final_outcome="combined_evidence_evaluated",
+    )
+    passed = all(assertion.passed for assertion in assertions)
+    return ScenarioResult(
+        scenario_id=scenario.id,
+        passed=passed,
+        trace=ExecutionTrace.model_validate(trace_values),
+        assertions=tuple(assertions),
+        stages=tuple(
+            [
+                *stages,
+                StageObservation(
+                    name="total", elapsed_ms=(perf_counter() - started) * 1000
+                ),
+            ]
+        ),
+    )
 
 
 def _resolve_document_request(

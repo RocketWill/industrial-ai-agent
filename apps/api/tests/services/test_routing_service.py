@@ -7,14 +7,15 @@ import pytest
 from industrial_agent.config.settings import Settings
 from industrial_agent.domain.routing import (
     DecisionSource,
+    EvidenceKind,
     ExtractedContext,
     FallbackState,
     RouteIntent,
+    SafeAction,
     TimePreset,
 )
 from industrial_agent.llm.openai_compatible import OpenAICompatibleChatAdapter
 from industrial_agent.services.routing import (
-    COMBINED_MESSAGE,
     UNSUPPORTED_MESSAGE,
     route_deterministically,
     route_exchange,
@@ -81,7 +82,7 @@ def test_deterministic_route_does_not_require_classifier() -> None:
     assert outcome.suggested_actions == ()
 
 
-def test_deterministic_combined_route_returns_clarification_response() -> None:
+def test_deterministic_combined_route_preserves_both_evidence_paths() -> None:
     outcome = route_deterministically(
         latest_question="Show production yield and search the documents.",
         saved_context=ExtractedContext(
@@ -90,22 +91,14 @@ def test_deterministic_combined_route_returns_clarification_response() -> None:
     )
 
     assert outcome is not None
-    assert outcome.decision.intent is RouteIntent.CLARIFICATION
-    assert outcome.response_text == COMBINED_MESSAGE
-    assert [
-        action.model_dump(mode="json") for action in outcome.suggested_actions
-    ] == [
-        {
-            "id": "production_evidence_first",
-            "label": "Production evidence",
-            "message": "Show the production evidence first.",
-        },
-        {
-            "id": "document_evidence_first",
-            "label": "Document evidence",
-            "message": "Search the documents first.",
-        },
-    ]
+    assert outcome.decision.intent is RouteIntent.COMBINED
+    assert outcome.decision.safe_action is SafeAction.EXECUTE_COMBINED
+    assert outcome.decision.requested_evidence.kinds == {
+        EvidenceKind.PRODUCTION,
+        EvidenceKind.DOCUMENTS,
+    }
+    assert outcome.response_text is None
+    assert outcome.suggested_actions == ()
 
 
 def test_route_exchange_resolves_classifier_context_and_missing_fields() -> None:
@@ -130,12 +123,12 @@ def test_route_exchange_resolves_classifier_context_and_missing_fields() -> None
     assert outcome.decision.resolved_context.equipment_id == "AOI-WAFER-01"
 
 
-def test_route_exchange_converts_combined_candidate_to_clarification() -> None:
+def test_route_exchange_preserves_valid_classifier_combined_candidate() -> None:
     response = _candidate(
         {
             "intent": "combined",
             "requested_evidence": {"production": True, "documents": True},
-            "ambiguities": ["multiple_evidence_paths"],
+            "extracted_context": {"document_query": "optical signal procedure"},
             "reason_code": "combined_request",
         }
     )
@@ -144,13 +137,47 @@ def test_route_exchange_converts_combined_candidate_to_clarification() -> None:
         outcome = route_exchange(
             latest_question="Compare what happened with the procedure.",
             classifier=classifier,
+            saved_context=ExtractedContext(
+                equipment_id="AOI-WAFER-01", time_preset=TimePreset.TODAY
+            ),
         )
+    assert outcome.decision.intent is RouteIntent.COMBINED
+    assert outcome.decision.safe_action is SafeAction.EXECUTE_COMBINED
+    assert outcome.decision.requested_evidence.kinds == {
+        EvidenceKind.PRODUCTION,
+        EvidenceKind.DOCUMENTS,
+    }
+    assert outcome.decision.resolved_context.document_query == (
+        "optical signal procedure"
+    )
+    assert outcome.response_text is None
+    assert outcome.suggested_actions == ()
+
+
+def test_combined_missing_context_requests_fields_without_actions() -> None:
+    response = _candidate(
+        {
+            "intent": "combined",
+            "requested_evidence": {
+                "equipment_status": True,
+                "documents": True,
+            },
+            "extracted_context": {"document_query": "status reason procedure"},
+            "reason_code": "combined_request",
+        }
+    )
+    adapter, classifier = _classifier([response])
+    with adapter:
+        outcome = route_exchange(
+            latest_question="Compare the recorded status with its procedure.",
+            classifier=classifier,
+        )
+
     assert outcome.decision.intent is RouteIntent.CLARIFICATION
-    assert outcome.response_text == COMBINED_MESSAGE
-    assert [action.id.value for action in outcome.suggested_actions] == [
-        "production_evidence_first",
-        "document_evidence_first",
-    ]
+    assert outcome.response_text == (
+        "Which fictional equipment should I use for this request?"
+    )
+    assert outcome.suggested_actions == ()
 
 
 def test_route_exchange_returns_deterministic_unsupported_message() -> None:

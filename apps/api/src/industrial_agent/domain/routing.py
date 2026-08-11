@@ -52,6 +52,7 @@ class SafeAction(StrEnum):
     EXECUTE_EQUIPMENT_STATUS = "execute_equipment_status"
     EXECUTE_DEFECT_DISTRIBUTION = "execute_defect_distribution"
     EXECUTE_DOCUMENT_SEARCH = "execute_document_search"
+    EXECUTE_COMBINED = "execute_combined"
     REQUEST_CLARIFICATION = "request_clarification"
     REPORT_UNSUPPORTED = "report_unsupported"
 
@@ -91,9 +92,7 @@ class RequestedEvidence(BaseModel):
 
     @property
     def kinds(self) -> frozenset[EvidenceKind]:
-        return frozenset(
-            kind for kind in EvidenceKind if getattr(self, kind.value)
-        )
+        return frozenset(kind for kind in EvidenceKind if getattr(self, kind.value))
 
     @property
     def count(self) -> int:
@@ -150,8 +149,16 @@ class RouteCandidate(BaseModel):
         required = required_evidence.get(self.intent)
         if required is not None and self.requested_evidence.kinds != {required}:
             raise ValueError(f"{required.value} evidence is required for route")
-        if self.intent is RouteIntent.COMBINED and evidence < 2:
-            raise ValueError("combined route requires at least two evidence kinds")
+        if self.intent is RouteIntent.COMBINED:
+            manufacturing = self.requested_evidence.kinds - {EvidenceKind.DOCUMENTS}
+            if (
+                EvidenceKind.DOCUMENTS not in self.requested_evidence.kinds
+                or len(manufacturing) != 1
+            ):
+                raise ValueError(
+                    "combined route requires documents and exactly one "
+                    "manufacturing evidence kind"
+                )
         if self.intent is RouteIntent.UNSUPPORTED and evidence:
             raise ValueError("unsupported route cannot request production evidence")
         if self.intent is RouteIntent.CLARIFICATION and not (
@@ -171,7 +178,9 @@ class RouteDecision(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     intent: RouteIntent
+    requested_evidence: RequestedEvidence = RequestedEvidence()
     resolved_context: ExtractedContext = ExtractedContext()
+    missing_fields: tuple[MissingField, ...] = ()
     decision_source: DecisionSource
     reason_code: ReasonCode
     retry_count: int = Field(default=0, ge=0)
@@ -180,20 +189,18 @@ class RouteDecision(BaseModel):
 
     @model_validator(mode="after")
     def validate_decision(self) -> Self:
-        expected = {
-            RouteIntent.GENERAL: SafeAction.ANSWER_GENERAL,
-            RouteIntent.PRODUCTION_SUMMARY: SafeAction.EXECUTE_PRODUCTION_SUMMARY,
-            RouteIntent.EQUIPMENT_STATUS: SafeAction.EXECUTE_EQUIPMENT_STATUS,
-            RouteIntent.DEFECT_DISTRIBUTION: (
-                SafeAction.EXECUTE_DEFECT_DISTRIBUTION
-            ),
-            RouteIntent.DOCUMENT_SEARCH: SafeAction.EXECUTE_DOCUMENT_SEARCH,
-            RouteIntent.COMBINED: SafeAction.REQUEST_CLARIFICATION,
-            RouteIntent.CLARIFICATION: SafeAction.REQUEST_CLARIFICATION,
-            RouteIntent.UNSUPPORTED: SafeAction.REPORT_UNSUPPORTED,
-        }
-        if self.safe_action is not expected[self.intent]:
+        if self.safe_action is not safe_action_for_intent(self.intent):
             raise ValueError("safe action does not match route")
+        if self.intent is RouteIntent.COMBINED:
+            manufacturing = self.requested_evidence.kinds - {EvidenceKind.DOCUMENTS}
+            if (
+                EvidenceKind.DOCUMENTS not in self.requested_evidence.kinds
+                or len(manufacturing) != 1
+            ):
+                raise ValueError(
+                    "combined decision requires documents and exactly one "
+                    "manufacturing evidence kind"
+                )
         if self.retry_count > 1:
             raise ValueError("classifier may retry at most one time")
         if (
@@ -228,12 +235,8 @@ def deterministic_gate(
     """Select only explicit routes and defer ambiguous requests."""
     text = question.casefold().strip()
     explicit = _extract_question_context(question)
-    current = resolve_exchange_context(
-        explicit, current_context or ExtractedContext()
-    )
-    context = resolve_exchange_context(
-        current, saved_context or ExtractedContext()
-    )
+    current = resolve_exchange_context(explicit, current_context or ExtractedContext())
+    context = resolve_exchange_context(current, saved_context or ExtractedContext())
 
     unsupported_terms = (
         "private",
@@ -259,9 +262,7 @@ def deterministic_gate(
         "能協助什麼",
     )
     if any(term in text for term in general_terms):
-        return _decision(
-            RouteIntent.GENERAL, context, ReasonCode.GENERAL_REQUEST
-        )
+        return _decision(RouteIntent.GENERAL, context, ReasonCode.GENERAL_REQUEST)
 
     flags = {
         EvidenceKind.PRODUCTION: any(
@@ -291,9 +292,27 @@ def deterministic_gate(
         ),
     }
     selected = [kind for kind, matched in flags.items() if matched]
-    if len(selected) > 1:
+    manufacturing = [kind for kind in selected if kind is not EvidenceKind.DOCUMENTS]
+    if len(manufacturing) > 1:
         return _decision(
-            RouteIntent.COMBINED, context, ReasonCode.COMBINED_REQUEST
+            RouteIntent.CLARIFICATION,
+            context,
+            ReasonCode.CLARIFICATION_REQUIRED,
+        )
+    if manufacturing and EvidenceKind.DOCUMENTS in selected:
+        requested = RequestedEvidence(**{kind.value: True for kind in selected})
+        if not (context.equipment_id and (context.time_preset or context.start)):
+            return _decision(
+                RouteIntent.CLARIFICATION,
+                context,
+                ReasonCode.CLARIFICATION_REQUIRED,
+                requested_evidence=requested,
+            )
+        return _decision(
+            RouteIntent.COMBINED,
+            context,
+            ReasonCode.COMBINED_REQUEST,
+            requested_evidence=requested,
         )
     if not selected:
         return None
@@ -348,8 +367,7 @@ def _extract_question_context(question: str) -> ExtractedContext:
         preset = TimePreset.TODAY
     document_query = None
     if any(
-        term in text
-        for term in ("alarm", "optical", "operator check", "警報", "光學")
+        term in text for term in ("alarm", "optical", "operator check", "警報", "光學")
     ):
         document_query = question.strip()
     return ExtractedContext(
@@ -364,23 +382,29 @@ def _decision(
     intent: RouteIntent,
     context: ExtractedContext,
     reason: ReasonCode,
+    *,
+    requested_evidence: RequestedEvidence | None = None,
 ) -> RouteDecision:
-    action = {
-        RouteIntent.GENERAL: SafeAction.ANSWER_GENERAL,
-        RouteIntent.PRODUCTION_SUMMARY: SafeAction.EXECUTE_PRODUCTION_SUMMARY,
-        RouteIntent.EQUIPMENT_STATUS: SafeAction.EXECUTE_EQUIPMENT_STATUS,
-        RouteIntent.DEFECT_DISTRIBUTION: (
-            SafeAction.EXECUTE_DEFECT_DISTRIBUTION
-        ),
-        RouteIntent.DOCUMENT_SEARCH: SafeAction.EXECUTE_DOCUMENT_SEARCH,
-        RouteIntent.COMBINED: SafeAction.REQUEST_CLARIFICATION,
-        RouteIntent.CLARIFICATION: SafeAction.REQUEST_CLARIFICATION,
-        RouteIntent.UNSUPPORTED: SafeAction.REPORT_UNSUPPORTED,
-    }[intent]
+    action = safe_action_for_intent(intent)
     return RouteDecision(
         intent=intent,
+        requested_evidence=requested_evidence or RequestedEvidence(),
         resolved_context=context,
         decision_source=DecisionSource.DETERMINISTIC_GATE,
         reason_code=reason,
         safe_action=action,
     )
+
+
+def safe_action_for_intent(intent: RouteIntent) -> SafeAction:
+    """Return the single safe action authorized for a route."""
+    return {
+        RouteIntent.GENERAL: SafeAction.ANSWER_GENERAL,
+        RouteIntent.PRODUCTION_SUMMARY: SafeAction.EXECUTE_PRODUCTION_SUMMARY,
+        RouteIntent.EQUIPMENT_STATUS: SafeAction.EXECUTE_EQUIPMENT_STATUS,
+        RouteIntent.DEFECT_DISTRIBUTION: SafeAction.EXECUTE_DEFECT_DISTRIBUTION,
+        RouteIntent.DOCUMENT_SEARCH: SafeAction.EXECUTE_DOCUMENT_SEARCH,
+        RouteIntent.COMBINED: SafeAction.EXECUTE_COMBINED,
+        RouteIntent.CLARIFICATION: SafeAction.REQUEST_CLARIFICATION,
+        RouteIntent.UNSUPPORTED: SafeAction.REPORT_UNSUPPORTED,
+    }[intent]

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from industrial_agent.config.settings import Settings
 from industrial_agent.database.session import get_db_session
 from industrial_agent.domain.routing import ExtractedContext, TimePreset
+from industrial_agent.graph.combined import CombinedExecutionCancelled
 from industrial_agent.graph.errors import GraphExecutionError
 from industrial_agent.graph.runner import (
     run_stream_routed_exchange,
@@ -33,6 +34,7 @@ from industrial_agent.llm.types import (
     ToolResult,
 )
 from industrial_agent.schemas.message import (
+    CombinedEvidenceRead,
     EvidenceRead,
     MessageCreate,
     MessageExchangeRead,
@@ -198,6 +200,11 @@ def create_user_message(
             if exchange.evidence is not None
             else None
         ),
+        combined_evidence=(
+            CombinedEvidenceRead.model_validate(exchange.combined_evidence)
+            if exchange.combined_evidence is not None
+            else None
+        ),
     )
 
 
@@ -251,6 +258,7 @@ def stream_user_message(
                 stream=stream,
                 stream_with_tool_result=stream_with_tool_result,
                 document_corpus_service=document_corpus_service,
+                is_cancelled=lambda: from_thread.run(request.is_disconnected),
             )
             for event in events:
                 if event.kind == "user_message":
@@ -268,6 +276,10 @@ def stream_user_message(
                         event.payload, from_attributes=True
                     )
                     yield _sse_event("tool_result", evidence.model_dump(mode="json"))
+                elif event.kind == "combined_tool_result":
+                    yield _sse_event("combined_tool_result", event.payload)
+                elif event.kind == "combined_evidence_completed":
+                    yield _sse_event("combined_evidence_completed", event.payload)
                 elif event.kind in {
                     "routing_started",
                     "routing_retry",
@@ -282,7 +294,7 @@ def stream_user_message(
                         "message_completed",
                         {"assistant_message": message.model_dump(mode="json")},
                     )
-        except RoutingClassificationCancelled:
+        except (RoutingClassificationCancelled, CombinedExecutionCancelled):
             return
         except (
             LLMConfigurationError,
