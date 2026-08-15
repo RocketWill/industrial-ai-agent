@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { Message } from "../api/messages";
-import MessageItem from "./MessageItem";
+import MessageItem, { PRODUCTION_SUMMARY_COLUMNS } from "./MessageItem";
 
 const message: Message = {
   id: "11111111-1111-1111-8111-111111111111",
@@ -52,6 +52,10 @@ describe("MessageItem", () => {
     expect(screen.getByText("Production summary")).toBeInTheDocument();
     expect(screen.getByText("85.67%")).toBeInTheDocument();
     expect(screen.getByText("Deterministic")).toBeInTheDocument();
+  });
+
+  it("uses one production summary column at the narrow breakpoint", () => {
+    expect(PRODUCTION_SUMMARY_COLUMNS).toEqual({ xs: 1, sm: 2 });
   });
 
   it("renders deterministic equipment-status evidence", () => {
