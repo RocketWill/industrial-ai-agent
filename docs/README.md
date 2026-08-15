@@ -33,8 +33,9 @@ document retrieval, bounded routing, guided historical choices, local stdio
 MCP, formal offline evaluation, and one combined manufacturing-plus-document
 workflow. Evidence remains current-exchange-only, and production data,
 authentication, causal analysis, and remote deployment remain out of scope.
-Local deterministic checks pass, while screenshots, final clean-copy and code
-review, publication acceptance, and remote CI remain release gates.
+Local deterministic checks and accepted Combined Evidence screenshots are
+current. Final clean-copy and code review, publication acceptance, and remote
+CI remain release gates.
 
 Architecture notes and engineering decisions should be added only when the
 corresponding code or approved decision exists. Local PRDs, specs, and plans

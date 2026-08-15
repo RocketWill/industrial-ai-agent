@@ -66,7 +66,7 @@ sequenceDiagram
     D-->>A: Stable sources, empty state, or safe failure
     A->>L: Synthesize from available evidence
     L-->>A: Candidate answer or failure
-    A->>A: Validate numbers, citations, and causal claims
+    A->>A: Validate domain values, source IDs if present, and claim boundaries
     alt grounded non-empty answer
         A->>S: Persist completed assistant message
         A-->>W: Answer + current-exchange evidence

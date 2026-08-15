@@ -233,7 +233,7 @@ curl \
 curl -X PATCH \
   http://127.0.0.1:8000/conversations/<conversation-id>/context \
   -H 'Content-Type: application/json' \
-  -d '{"device":"AOI-WAFER-01","lot":"LOT-DEMO-01","time_range":"Last 4 hours"}'
+  -d '{"device":"AOI-WAFER-01","lot":"LOT-DEMO-001","time_range":"Last 4 hours"}'
 
 curl http://127.0.0.1:8000/devices
 ```
@@ -339,9 +339,12 @@ equipment status. Focused document questions use the same flow with retrieved
 source evidence, emitting routing progress, `tool_call_started`, `tool_result`,
 final text, and completion events. Its
 grounded answer is forwarded as a provider-token stream after a successful
-tool result. If that answer fails deterministic citation or numeric checks, the
-API keeps the valid evidence and returns a route-specific message explaining
-that the generated answer could not be verified. Message history
+tool result. For Combined Evidence, the structured Sources surface owns
+traceability, so the model does not need to repeat source IDs inline. If it
+does include an ID, that ID must match a returned source. Deterministic checks
+also reject incorrect manufacturing values, unsupported operational claims,
+and causal conclusions. The API keeps valid evidence and returns a
+route-specific message when generated prose cannot be verified. Message history
 has no pagination or individual mutation operations. The health
 endpoint reports API-process availability only and does not check the database
 or LLM service. The synchronous endpoint remains available. The v0.1.1

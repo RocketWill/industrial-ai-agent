@@ -60,10 +60,12 @@ belongs in deterministic domain code rather than an LLM.
 ## Current milestone boundary
 
 v1.0 Portfolio Release is **In Progress**. It packages the verified v0.9
-application as a repository-only release without adding product capability.
-Local deterministic verification passes; screenshots, final clean-copy and
-browser acceptance, code review, publication acceptance, and remote CI remain
-open gates. Until those gates pass, v1.0 is not Implemented.
+application as a repository-only release. Corrective validation and responsive
+layout changes found by release verification are allowed, but new workflows,
+tools, or public contracts remain outside this milestone.
+Local deterministic verification and Combined Evidence browser acceptance are
+current. Final clean-copy and code review, publication acceptance, and remote
+CI remain open gates. Until those gates pass, v1.0 is not Implemented.
 
 The latest completed milestone is **v0.9 — Combined Evidence Workflow**. It
 executes one manufacturing evidence path followed by Document Search in a
