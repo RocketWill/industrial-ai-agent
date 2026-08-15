@@ -5,23 +5,9 @@ infrastructure or treat planned behavior as implemented.
 
 ## System boundary
 
-```mermaid
-flowchart LR
-    User["Local user"] --> Web["React + Ant Design X web client"]
-    Web -->|"HTTP and SSE"| API["FastAPI application"]
-    API --> DB[("SQLite")]
-    API --> Route["Application-owned routing"]
-    Route --> Graph["LangGraph execution boundary"]
-    Graph --> Tools["Deterministic manufacturing tools"]
-    Tools --> Data["Repository-owned synthetic AOI data"]
-    Graph --> Search["Local Markdown retrieval"]
-    Search --> Corpus["Fictional built-ins + local uploads"]
-    Graph -. "optional OpenAI-compatible API" .-> Model["Configured model service"]
-    Eval["Deterministic 45-scenario evaluator"] --> Route
-    Eval --> Tools
-    Eval --> Search
-    MCP["Independent local stdio MCP server"] --> Tools
-```
+![Industrial AI Agent system boundary](assets/system-boundary.png)
+
+[Open the self-contained system boundary diagram](assets/system-boundary.html).
 
 The solid edges are application-owned local boundaries. The model edge is
 optional and may point to a local or external OpenAI-compatible service. If an
@@ -44,36 +30,13 @@ leave the application boundary.
 
 ## Combined Evidence sequence
 
-```mermaid
-sequenceDiagram
-    actor U as Local user
-    participant W as Web client
-    participant A as FastAPI / SSE runner
-    participant R as Router
-    participant M as Manufacturing tool
-    participant D as Document Search
-    participant L as Optional model
-    participant S as SQLite
+![Combined Evidence execution sequence](assets/combined-evidence-execution.png)
 
-    U->>W: Submit explicit combined request
-    W->>A: POST message stream
-    A->>S: Persist user message
-    A->>R: Resolve one authoritative route
-    R-->>A: One manufacturing kind + documents
-    A->>M: Validate inputs and execute
-    M-->>A: Typed evidence, empty state, or safe failure
-    A->>D: Search with original query + allowlisted recorded fields
-    D-->>A: Stable sources, empty state, or safe failure
-    A->>L: Synthesize from available evidence
-    L-->>A: Candidate answer or failure
-    A->>A: Validate domain values, source IDs if present, and claim boundaries
-    alt grounded non-empty answer
-        A->>S: Persist completed assistant message
-        A-->>W: Answer + current-exchange evidence
-    else synthesis or validation failure
-        A-->>W: Deterministic safe fallback + retained valid evidence
-    end
-```
+[Open the self-contained execution diagram](assets/combined-evidence-execution.html).
+
+![Combined Evidence synthesis and persistence sequence](assets/combined-evidence-synthesis.png)
+
+[Open the self-contained synthesis diagram](assets/combined-evidence-synthesis.html).
 
 Manufacturing runs before retrieval. Only recorded alarm codes, status and
 reason codes, or defect categories may enrich the document query. Each path
