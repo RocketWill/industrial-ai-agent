@@ -518,8 +518,8 @@ def _run_combined_scenario(
         "combined safe outcome",
     )
     if scenario.adapter_script.answer is not None:
-        accepted = validate_combined_answer(
-            combined, scenario.adapter_script.answer
+        accepted = bool(
+            validate_combined_answer(combined, scenario.adapter_script.answer)
         )
         _append_comparison(
             assertions,

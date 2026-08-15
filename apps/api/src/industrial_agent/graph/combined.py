@@ -162,7 +162,7 @@ def synthesize_combined_answer(
     outcome: CombinedEvidenceOutcome,
     *,
     generate: Callable[[dict[str, object]], str] | None,
-    validate: Callable[[CombinedEvidenceOutcome, str], bool],
+    validate: Callable[[CombinedEvidenceOutcome, str], object],
 ) -> CombinedAnswer:
     """Generate once when possible and otherwise retain a fixed safe fallback."""
     fallback = CombinedAnswer(
@@ -177,7 +177,7 @@ def synthesize_combined_answer(
         candidate = generate(combined_evidence_payload(outcome)).strip()
     except LLMError:
         return fallback
-    if validate(outcome, candidate):
+    if bool(validate(outcome, candidate)):
         return CombinedAnswer(candidate, CombinedAnswerStatus.SUCCEEDED)
     return fallback
 

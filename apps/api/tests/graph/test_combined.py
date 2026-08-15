@@ -20,11 +20,16 @@ from industrial_agent.graph.combined import (
     combined_fallback_text,
     execute_combined_evidence,
 )
-from industrial_agent.services.evidence import validate_combined_answer
+from industrial_agent.graph.workflow import COMBINED_EVIDENCE_TOOL
+from industrial_agent.services.evidence import (
+    CombinedAnswerRejection,
+    validate_combined_answer,
+)
 from industrial_agent.tools.defect_distribution import (
     DefectDistributionItemResult,
     DefectDistributionResult,
 )
+from industrial_agent.tools.document_search import DocumentSearchResult
 from industrial_agent.tools.equipment_status import EquipmentStatusResult
 from industrial_agent.tools.production import (
     AlarmEventResult,
@@ -78,9 +83,7 @@ def test_document_query_enrichment_uses_only_allowlisted_result_fields() -> None
         production,
     )
 
-    assert query == (
-        "Find the guide for this production result. OPTICAL-SIGNAL-LOW"
-    )
+    assert query == ("Find the guide for this production result. OPTICAL-SIGNAL-LOW")
     assert "300" not in query
     assert "85.67" not in query
 
@@ -115,12 +118,18 @@ def test_document_query_enrichment_is_stable_for_status_and_defects() -> None:
         limitations=(),
     )
 
-    assert build_enriched_document_query(
-        "Explain warning warning.", EvidenceKind.EQUIPMENT_STATUS, status
-    ) == "Explain warning warning. OPTICAL-SIGNAL-LOW"
-    assert build_enriched_document_query(
-        "Find defect procedures.", EvidenceKind.DEFECT_DISTRIBUTION, distribution
-    ) == "Find defect procedures. edge-chip scratch"
+    assert (
+        build_enriched_document_query(
+            "Explain warning warning.", EvidenceKind.EQUIPMENT_STATUS, status
+        )
+        == "Explain warning warning. OPTICAL-SIGNAL-LOW"
+    )
+    assert (
+        build_enriched_document_query(
+            "Find defect procedures.", EvidenceKind.DEFECT_DISTRIBUTION, distribution
+        )
+        == "Find defect procedures. edge-chip scratch"
+    )
 
 
 def test_combined_executor_runs_production_then_enriched_document_search() -> None:
@@ -176,9 +185,7 @@ def test_combined_executor_supports_each_manufacturing_pairing(
     query: str,
     expected_term: str,
 ) -> None:
-    outcome = execute_combined_evidence(
-        decision=_decision(kind), original_query=query
-    )
+    outcome = execute_combined_evidence(decision=_decision(kind), original_query=query)
 
     assert outcome.manufacturing.status is EvidencePathStatus.SUCCEEDED
     assert expected_term in outcome.document_query
@@ -257,7 +264,7 @@ def test_combined_executor_cancellation_stops_before_document_search() -> None:
     assert cancellation_checks == 2
 
 
-def test_combined_answer_requires_grounded_numbers_citation_and_no_causality() -> None:
+def test_combined_answer_rejects_unsupported_values_references_and_claims() -> None:
     outcome = execute_combined_evidence(
         decision=_decision(),
         original_query="Find the manual for the recorded production alarms.",
@@ -267,19 +274,187 @@ def test_combined_answer_requires_grounded_numbers_citation_and_no_causality() -
 
     assert validate_combined_answer(
         outcome,
-        f"The recorded yield was {yield_rate:.2f}; see {source_id}. "
+        f"The recorded yield was {yield_rate * 100:.1f}%; see {source_id}. "
         "This may be related and still requires validation.",
     )
-    assert not validate_combined_answer(
-        outcome, f"The yield was 99.9; see {source_id}."
+    unsupported_value = validate_combined_answer(
+        outcome, f"The yield was 99.9%; see {source_id}."
     )
-    assert not validate_combined_answer(
-        outcome, f"The recorded yield was {yield_rate:.2f}."
+    assert not unsupported_value
+    assert (
+        unsupported_value.reason
+        is CombinedAnswerRejection.UNSUPPORTED_MANUFACTURING_VALUE
     )
-    assert not validate_combined_answer(
+
+    invalid_reference = validate_combined_answer(
+        outcome,
+        f"The recorded yield was {yield_rate * 100:.1f}%; see "
+        "fake-guide:missing-section:001.",
+    )
+    assert not invalid_reference
+    assert (
+        invalid_reference.reason is CombinedAnswerRejection.INVALID_DOCUMENT_REFERENCE
+    )
+
+    causal = validate_combined_answer(
         outcome,
         f"The alarm caused the yield change; see {source_id}.",
     )
+    assert not causal
+    assert causal.reason is CombinedAnswerRejection.CAUSAL_CLAIM
+
+    negated_causal = validate_combined_answer(
+        outcome,
+        "The guide says not to infer low yield as the cause of the alarm.",
+    )
+    assert negated_causal
+
+    false_threshold = validate_combined_answer(
+        outcome, "The recorded yield was above 90%."
+    )
+    assert not false_threshold
+    assert (
+        false_threshold.reason
+        is CombinedAnswerRejection.UNSUPPORTED_MANUFACTURING_VALUE
+    )
+
+    contradictory_threshold = validate_combined_answer(
+        outcome, "The recorded yield was 87.5%, which is above 90%."
+    )
+    assert not contradictory_threshold
+    assert (
+        contradictory_threshold.reason
+        is CombinedAnswerRejection.UNSUPPORTED_MANUFACTURING_VALUE
+    )
+
+    invented_defect = validate_combined_answer(
+        outcome, "The recorded defects included 5 particle defects."
+    )
+    assert not invented_defect
+    assert (
+        invented_defect.reason
+        is CombinedAnswerRejection.UNSUPPORTED_MANUFACTURING_VALUE
+    )
+
+    invented_processed_count = validate_combined_answer(
+        outcome,
+        "The line processed 999 wafers. Production reached 999 wafers. "
+        "Yield is 99.9 percent.",
+    )
+    assert not invented_processed_count
+    assert (
+        invented_processed_count.reason
+        is CombinedAnswerRejection.UNSUPPORTED_MANUFACTURING_VALUE
+    )
+
+    invalid_status = validate_combined_answer(
+        execute_combined_evidence(
+            decision=_decision(EvidenceKind.EQUIPMENT_STATUS),
+            original_query="Find guidance for the recorded equipment status.",
+        ),
+        "Equipment status is idle.",
+    )
+    assert not invalid_status
+    assert (
+        invalid_status.reason is CombinedAnswerRejection.UNSUPPORTED_OPERATIONAL_CLAIM
+    )
+
+    operational = validate_combined_answer(
+        outcome,
+        "The recorded yield indicates no immediate process failure.",
+    )
+    assert not operational
+    assert operational.reason is CombinedAnswerRejection.UNSUPPORTED_OPERATIONAL_CLAIM
+
+
+def test_combined_answer_accepts_grounded_domain_claims_without_inline_citation() -> (
+    None
+):
+    outcome = execute_combined_evidence(
+        decision=_decision(),
+        original_query="Find the manual for the recorded production alarms.",
+    )
+
+    validation = validate_combined_answer(
+        outcome,
+        """### Recorded facts
+1. 200 wafers were inspected: 175 passed and 25 failed.
+2. Yield was 87.5%, which is above 80%.
+3. Defects included 19 edge-chip and 6 scratch.
+
+Calculation: (175 / 200) × 100 = 87.5%.
+The recorded alarm ran from 15:00 to 16:00.
+The structured Sources surface contains the retrieved document references.
+This may suggest tool wear, but it is only a hypothesis that requires validation.
+""",
+    )
+
+    assert validation
+
+
+def test_combined_answer_requires_explicit_validation_for_hypotheses() -> None:
+    outcome = execute_combined_evidence(
+        decision=_decision(),
+        original_query="Find the manual for the recorded production alarms.",
+    )
+
+    validation = validate_combined_answer(
+        outcome,
+        "Tool wear may be a possible hypothesis.",
+    )
+
+    assert not validation
+    assert validation.reason is CombinedAnswerRejection.UNVALIDATED_HYPOTHESIS
+
+    guidance = validate_combined_answer(
+        outcome,
+        "The guide suggests checking the optical path.",
+    )
+    assert guidance
+
+
+def test_combined_answer_validates_defect_distribution_counts() -> None:
+    outcome = execute_combined_evidence(
+        decision=_decision(EvidenceKind.DEFECT_DISTRIBUTION),
+        original_query="Find guidance related to the defect distribution.",
+    )
+
+    validation = validate_combined_answer(
+        outcome,
+        "The distribution contains 999 edge-chip defects; edge-chip: 999. "
+        "Failed wafers: 999.",
+    )
+
+    assert not validation
+    assert validation.reason is CombinedAnswerRejection.UNSUPPORTED_MANUFACTURING_VALUE
+
+
+def test_combined_answer_rejects_source_id_when_documents_are_unavailable() -> None:
+    def unavailable_documents(*args: object, **kwargs: object) -> DocumentSearchResult:
+        raise CombinedToolUnavailable
+
+    outcome = execute_combined_evidence(
+        decision=_decision(),
+        original_query="Find the manual for the recorded production alarms.",
+        document_search_tool=unavailable_documents,
+    )
+
+    validation = validate_combined_answer(
+        outcome,
+        "See fake-guide:missing-section:001.",
+    )
+
+    assert not validation
+    assert validation.reason is CombinedAnswerRejection.INVALID_DOCUMENT_REFERENCE
+
+
+def test_combined_synthesis_contract_guides_small_local_models() -> None:
+    description = COMBINED_EVIDENCE_TOOL.description
+
+    assert "Do not repeat source IDs" in description
+    assert "requires validation" in description
+    assert "Do not claim equipment or process status" in description
+    assert "Do not claim causality" in description
 
 
 def test_combined_fallback_distinguishes_double_failure_from_model_failure() -> None:
