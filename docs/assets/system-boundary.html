@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Industrial AI Agent system boundary</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Open+Sans:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --paper:#fafaf7; --ink:#111827; --muted:#4b5563; --soft:#6b7280; --accent:#3b82f6; --link:#2563eb; }
+    body { background:var(--paper); color:var(--ink); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:32px; font-family:'Open Sans',sans-serif; }
+    .frame { width:100%; max-width:1280px; }
+    .eyebrow { color:var(--muted); font:500 8px/1.4 'IBM Plex Mono',monospace; letter-spacing:.18em; text-transform:uppercase; margin-bottom:8px; }
+    h1 { font:600 28px/1.15 'Space Grotesk',sans-serif; letter-spacing:-.02em; margin-bottom:20px; }
+    svg { width:100%; min-width:960px; display:block; }
+  </style>
+</head>
+<body>
+  <main class="frame">
+    <p class="eyebrow">Architecture · local and synthetic boundary</p>
+    <h1>Industrial AI Agent system boundary</h1>
+    <svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="system-boundary-title system-boundary-desc">
+      <title id="system-boundary-title">Industrial AI Agent system boundary</title>
+      <desc id="system-boundary-desc">Architecture showing a local user entering the web client and FastAPI orchestration, which uses SQLite, deterministic manufacturing evidence, local document evidence, and an optional configured model service.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4b5563"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#3b82f6"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2563eb"/></marker>
+      </defs>
+      <rect width="1280" height="720" fill="#fafaf7"/>
+
+      <rect x="40" y="80" width="224" height="480" rx="8" fill="rgba(17,24,39,.02)" stroke="rgba(17,24,39,.12)"/>
+      <rect x="48" y="84" width="80" height="16" rx="2" fill="#fafaf7"/>
+      <text x="88" y="96" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8" letter-spacing="1.2">CLIENT</text>
+      <rect x="296" y="80" width="464" height="480" rx="8" fill="rgba(17,24,39,.02)" stroke="rgba(17,24,39,.12)"/>
+      <rect x="304" y="84" width="112" height="16" rx="2" fill="#fafaf7"/>
+      <text x="360" y="96" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8" letter-spacing="1.2">APPLICATION</text>
+      <rect x="792" y="80" width="448" height="480" rx="8" fill="rgba(17,24,39,.02)" stroke="rgba(17,24,39,.12)"/>
+      <rect x="800" y="84" width="96" height="16" rx="2" fill="#fafaf7"/>
+      <text x="848" y="96" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8" letter-spacing="1.2">EVIDENCE</text>
+
+      <line x1="152" y1="224" x2="152" y2="320" stroke="#4b5563" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <path d="M224 360 H280 Q288 360 288 352 V204 Q288 196 296 196 H340" fill="none" stroke="#2563eb" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <line x1="500" y1="196" x2="560" y2="196" stroke="#4b5563" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="420" y1="232" x2="420" y2="360" stroke="#4b5563" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="720" y1="184" x2="840" y2="184" stroke="#3b82f6" stroke-width="1.2" marker-end="url(#arrow-accent)"/>
+      <path d="M648 232 V256 Q648 264 656 264 H1112 Q1120 264 1120 256 V236" fill="none" stroke="#4b5563" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <path d="M720 220 H760 Q768 220 768 228 V396 Q768 404 776 404 H940" fill="none" stroke="#2563eb" stroke-width="1" stroke-dasharray="5 4" marker-end="url(#arrow-link)"/>
+
+      <rect x="248" y="304" width="80" height="16" rx="2" fill="#fafaf7"/>
+      <text x="288" y="316" text-anchor="middle" fill="#2563eb" font-family="IBM Plex Mono" font-size="8" letter-spacing=".4">HTTP + SSE</text>
+      <rect x="844" y="380" width="96" height="16" rx="2" fill="#fafaf7"/>
+      <text x="892" y="392" text-anchor="middle" fill="#2563eb" font-family="IBM Plex Mono" font-size="8" letter-spacing=".4">OPTIONAL API</text>
+
+      <g>
+        <rect x="80" y="152" width="144" height="72" rx="6" fill="#fafaf7"/>
+        <rect x="80" y="152" width="144" height="72" rx="6" fill="rgba(75,85,99,.08)" stroke="#6b7280"/>
+        <text x="152" y="184" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">Local user</text>
+        <text x="152" y="204" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">single-user</text>
+      </g>
+      <g>
+        <rect x="80" y="320" width="144" height="80" rx="6" fill="#fafaf7"/>
+        <rect x="80" y="320" width="144" height="80" rx="6" fill="#fff" stroke="#111827"/>
+        <text x="152" y="352" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">Web client</text>
+        <text x="152" y="372" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">React · Ant Design X</text>
+      </g>
+      <g>
+        <rect x="340" y="160" width="160" height="72" rx="6" fill="#fafaf7"/>
+        <rect x="340" y="160" width="160" height="72" rx="6" fill="#fff" stroke="#111827"/>
+        <text x="420" y="192" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">FastAPI</text>
+        <text x="420" y="212" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">HTTP · SSE</text>
+      </g>
+      <g>
+        <rect x="560" y="160" width="160" height="72" rx="6" fill="#fafaf7"/>
+        <rect x="560" y="160" width="160" height="72" rx="6" fill="rgba(59,130,246,.10)" stroke="#3b82f6" stroke-width="1.2"/>
+        <text x="640" y="192" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">Orchestration</text>
+        <text x="640" y="212" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">routing · LangGraph</text>
+      </g>
+      <g>
+        <rect x="340" y="360" width="160" height="72" rx="6" fill="#fafaf7"/>
+        <rect x="340" y="360" width="160" height="72" rx="6" fill="rgba(17,24,39,.05)" stroke="#4b5563"/>
+        <text x="420" y="392" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">SQLite</text>
+        <text x="420" y="412" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">messages · context</text>
+      </g>
+      <g>
+        <rect x="840" y="136" width="160" height="96" rx="6" fill="#fafaf7"/>
+        <rect x="840" y="136" width="160" height="96" rx="6" fill="rgba(59,130,246,.10)" stroke="#3b82f6" stroke-width="1.2"/>
+        <text x="920" y="172" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">Manufacturing</text>
+        <text x="920" y="192" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">evidence</text>
+        <text x="920" y="212" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">tools · synthetic AOI</text>
+      </g>
+      <g>
+        <rect x="1040" y="136" width="160" height="96" rx="6" fill="#fafaf7"/>
+        <rect x="1040" y="136" width="160" height="96" rx="6" fill="rgba(17,24,39,.05)" stroke="#4b5563"/>
+        <text x="1120" y="172" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">Document</text>
+        <text x="1120" y="192" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">evidence</text>
+        <text x="1120" y="212" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">Markdown · uploads</text>
+      </g>
+      <g>
+        <rect x="940" y="360" width="160" height="88" rx="6" fill="#fafaf7"/>
+        <rect x="940" y="360" width="160" height="88" rx="6" fill="rgba(17,24,39,.02)" stroke="rgba(17,24,39,.28)" stroke-dasharray="4 3"/>
+        <text x="1020" y="396" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">Configured model</text>
+        <text x="1020" y="416" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">OpenAI-compatible</text>
+      </g>
+
+      <line x1="40" y1="648" x2="1240" y2="648" stroke="rgba(17,24,39,.12)"/>
+      <text x="40" y="676" fill="#6b7280" font-family="IBM Plex Mono" font-size="8" letter-spacing="1.2">LEGEND</text>
+      <rect x="152" y="664" width="16" height="12" rx="2" fill="rgba(59,130,246,.10)" stroke="#3b82f6"/>
+      <text x="176" y="676" fill="#4b5563" font-family="Open Sans" font-size="8">deterministic focal boundary</text>
+      <line x1="392" y1="672" x2="424" y2="672" stroke="#2563eb" stroke-dasharray="5 4" marker-end="url(#arrow-link)"/>
+      <text x="436" y="676" fill="#4b5563" font-family="Open Sans" font-size="8">optional external model</text>
+    </svg>
+  </main>
+</body>
+</html>

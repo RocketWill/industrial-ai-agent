@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Combined Evidence execution</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Open+Sans:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0} body{background:#fafaf7;color:#111827;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px;font-family:'Open Sans',sans-serif}.frame{width:100%;max-width:1280px}.eyebrow{color:#4b5563;font:500 8px/1.4 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;margin-bottom:8px}h1{font:600 28px/1.15 'Space Grotesk',sans-serif;letter-spacing:-.02em;margin-bottom:20px}svg{width:100%;min-width:960px;display:block}
+  </style>
+</head>
+<body>
+  <main class="frame">
+    <p class="eyebrow">Sequence · evidence execution</p>
+    <h1>Combined Evidence execution</h1>
+    <svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="combined-execution-title combined-execution-desc">
+      <title id="combined-execution-title">Combined Evidence execution</title>
+      <desc id="combined-execution-desc">Sequence showing the workbench submitting a combined request, the API resolving one route, then running manufacturing evidence before document search.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4b5563"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#3b82f6"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2563eb"/></marker>
+      </defs>
+      <rect width="1280" height="720" fill="#fafaf7"/>
+
+      <line x1="136" y1="128" x2="136" y2="612" stroke="rgba(17,24,39,.20)" stroke-dasharray="3 3"/>
+      <line x1="388" y1="128" x2="388" y2="612" stroke="rgba(17,24,39,.20)" stroke-dasharray="3 3"/>
+      <line x1="640" y1="128" x2="640" y2="612" stroke="rgba(17,24,39,.20)" stroke-dasharray="3 3"/>
+      <line x1="892" y1="128" x2="892" y2="612" stroke="rgba(17,24,39,.20)" stroke-dasharray="3 3"/>
+      <line x1="1144" y1="128" x2="1144" y2="612" stroke="rgba(17,24,39,.20)" stroke-dasharray="3 3"/>
+
+      <line x1="136" y1="188" x2="388" y2="188" stroke="#2563eb" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <rect x="188" y="164" width="148" height="12" rx="2" fill="#fafaf7"/><text x="262" y="172" text-anchor="middle" fill="#2563eb" font-family="IBM Plex Mono" font-size="8">POST MESSAGE STREAM</text>
+      <line x1="388" y1="268" x2="640" y2="268" stroke="#4b5563" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <rect x="448" y="244" width="132" height="12" rx="2" fill="#fafaf7"/><text x="514" y="252" text-anchor="middle" fill="#4b5563" font-family="IBM Plex Mono" font-size="8">RESOLVE ROUTE</text>
+      <line x1="640" y1="332" x2="388" y2="332" stroke="#4b5563" stroke-width="1" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+      <rect x="432" y="308" width="164" height="12" rx="2" fill="#fafaf7"/><text x="514" y="316" text-anchor="middle" fill="#4b5563" font-family="IBM Plex Mono" font-size="8">KIND + DOCUMENTS</text>
+      <line x1="388" y1="396" x2="892" y2="396" stroke="#3b82f6" stroke-width="1.2" marker-end="url(#arrow-accent)"/>
+      <rect x="572" y="372" width="136" height="12" rx="2" fill="#fafaf7"/><text x="640" y="380" text-anchor="middle" fill="#3b82f6" font-family="IBM Plex Mono" font-size="8">VALIDATE + EXECUTE</text>
+      <line x1="892" y1="460" x2="388" y2="460" stroke="#4b5563" stroke-width="1" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+      <rect x="552" y="436" width="176" height="12" rx="2" fill="#fafaf7"/><text x="640" y="444" text-anchor="middle" fill="#4b5563" font-family="IBM Plex Mono" font-size="8">TYPED RESULT / FAILURE</text>
+      <line x1="388" y1="524" x2="1144" y2="524" stroke="#4b5563" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <rect x="664" y="500" width="204" height="12" rx="2" fill="#fafaf7"/><text x="766" y="508" text-anchor="middle" fill="#4b5563" font-family="IBM Plex Mono" font-size="8">SEARCH + ALLOWLISTED FIELDS</text>
+      <line x1="1144" y1="588" x2="388" y2="588" stroke="#4b5563" stroke-width="1" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+      <rect x="680" y="564" width="172" height="12" rx="2" fill="#fafaf7"/><text x="766" y="572" text-anchor="middle" fill="#4b5563" font-family="IBM Plex Mono" font-size="8">SOURCES / FAILURE</text>
+
+      <rect x="132" y="180" width="8" height="424" fill="rgba(17,24,39,.06)" stroke="#4b5563" stroke-width=".8"/>
+      <rect x="384" y="180" width="8" height="424" fill="rgba(59,130,246,.10)" stroke="#3b82f6" stroke-width=".8"/>
+      <rect x="636" y="264" width="8" height="80" fill="rgba(17,24,39,.06)" stroke="#4b5563" stroke-width=".8"/>
+      <rect x="888" y="392" width="8" height="80" fill="rgba(17,24,39,.06)" stroke="#4b5563" stroke-width=".8"/>
+      <rect x="1140" y="520" width="8" height="80" fill="rgba(17,24,39,.06)" stroke="#4b5563" stroke-width=".8"/>
+
+      <g><rect x="56" y="64" width="160" height="64" rx="6" fill="#fff" stroke="#111827"/><text x="136" y="92" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">Workbench</text><text x="136" y="112" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">React · SSE</text></g>
+      <g><rect x="308" y="64" width="160" height="64" rx="6" fill="rgba(59,130,246,.10)" stroke="#3b82f6" stroke-width="1.2"/><text x="388" y="92" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">API / SSE runner</text><text x="388" y="112" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">application boundary</text></g>
+      <g><rect x="560" y="64" width="160" height="64" rx="6" fill="#fff" stroke="#111827"/><text x="640" y="92" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">Router</text><text x="640" y="112" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">one decision</text></g>
+      <g><rect x="812" y="64" width="160" height="64" rx="6" fill="rgba(59,130,246,.10)" stroke="#3b82f6" stroke-width="1.2"/><text x="892" y="92" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">Manufacturing</text><text x="892" y="112" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">deterministic tool</text></g>
+      <g><rect x="1064" y="64" width="160" height="64" rx="6" fill="#fff" stroke="#111827"/><text x="1144" y="92" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">Document Search</text><text x="1144" y="112" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">fictional sources</text></g>
+
+      <line x1="40" y1="648" x2="1240" y2="648" stroke="rgba(17,24,39,.12)"/>
+      <text x="40" y="676" fill="#6b7280" font-family="IBM Plex Mono" font-size="8" letter-spacing="1.2">TIME FLOWS TOP TO BOTTOM · RETURNS ARE DASHED</text>
+    </svg>
+  </main>
+</body>
+</html>
