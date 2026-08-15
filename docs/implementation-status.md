@@ -2,7 +2,8 @@
 
 This document is the code-backed feature inventory for the repository. It was
 reviewed against the application code, migrations, tests, and public
-documentation on 2026-08-10.
+documentation on 2026-08-15. The latest recorded verification run remains
+dated separately below.
 
 ## Status rules
 
@@ -63,9 +64,9 @@ matrix. Application README files own setup and contract usage.
 
 ## Verification record
 
-The latest local verification on 2026-08-11 produced:
+The latest local verification on 2026-08-15 produced:
 
-- API: 410 Pytest tests and Ruff passed. No backend static type checker is
+- API: 411 Pytest tests and Ruff passed. No backend static type checker is
   configured in the current development dependency set.
 - Evaluation: all 45 formal scenarios passed. The observed dimension totals
   were route 33/33, tool selection 16/16, argument resolution 4/4, evidence
@@ -76,7 +77,7 @@ The latest local verification on 2026-08-11 produced:
   in 380.98 ms and completed `get_production_summary` in 16.29 ms. These are
   development-machine observations; the matching direct native call took 0.40
   ms. This single comparison is not a performance guarantee or benchmark.
-- Web: 103 Vitest tests passed, TypeScript checking passed, ESLint passed, and
+- Web: 105 Vitest tests passed, TypeScript checking passed, ESLint passed, and
   the Vite production build completed.
 - Browser combined workflow: one explicit production-plus-document request ran
   against saved synthetic AOI context. The final exchange retained a 95.56%
@@ -108,17 +109,33 @@ The latest local verification on 2026-08-11 produced:
   suites successfully.
 
 The Vite build reports a JavaScript chunk-size warning above 500 kB. The main
-JavaScript output is 956.34 kB, or 308.93 kB gzip, while XMarkdown is split into
+JavaScript output is 956.41 kB, or 310.35 kB gzip as reported under Node.js 24,
+while XMarkdown is split into
 a 125.66 kB lazy chunk, or 41.52 kB gzip. The initial JavaScript gzip size is
-above the recorded 244.02 kB baseline. This remains at the review threshold;
-the next frontend dependency change should revisit initial chunk composition
-before expanding the UI further.
+above the earlier 244.02 kB baseline. A direct `gzip -9` measurement of the
+unchanged main artifact was 308.47 kB; the difference from the previous Vite
+report is compressor/runtime behavior rather than source growth. XMarkdown is
+already lazy, and further splitting would change component or loading
+boundaries, so no release-only chunk rewrite or warning-threshold increase was
+made.
 
 ## Remaining hardening
 
-The v0.1 clean-environment acceptance item is complete. Client-disconnect
-persistence behavior for streaming still needs a dedicated integration test;
-this does not block the current v0.1 or v0.1.1 status.
+The v0.1 clean-environment acceptance item is complete. A real-socket
+integration test now verifies that a streaming client disconnect before
+completion leaves the persisted user message without creating a partial
+assistant message. Provider-side generation cancellation is not guaranteed.
+
+v1.0 remains In Progress. Local deterministic checks are current; accepted
+product screenshots, final clean-copy and browser review, two-axis code review,
+publication acceptance, and a green remote GitHub Actions run remain open.
+The v1.0 browser run also exposed and verified a first-stream rendering race:
+the workspace now defers Ant Design X list scrolling until the mounted frame
+instead of calling its imperative handle during the mounting layout effect.
+The same run rejected two screenshot candidates: `llama3.1:8b` reached the
+combined safe fallback after evidence retrieval, while `deepseek-r1:7b` left
+the manufacturing path unavailable. These are valid degraded or partial-
+failure observations, not the required Combined Evidence happy path.
 
 ## Truthfulness notes
 

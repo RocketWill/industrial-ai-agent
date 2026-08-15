@@ -53,9 +53,9 @@ From `apps/web`:
 npm ci
 ```
 
-The lockfile records the exact dependency graph. Use a currently supported
-Node.js release rather than relying on the previously documented Node.js 16
-environment.
+The lockfile records the exact dependency graph. The verified frontend runtime
+is Node.js 24; `package.json` rejects other major release lines rather than
+implying untested compatibility.
 
 ## Run
 
@@ -113,8 +113,12 @@ The web behavior through v0.9 is implemented and verified.
 Streaming uses `fetch` and `ReadableStream`, renders token deltas in memory, and
 offers a keyboard-accessible Stop action. The browser does not treat partial
 assistant text as persisted; the backend creates the record only after it
-consumes a complete non-empty stream. Client-disconnect persistence still
-needs a dedicated integration test.
+consumes a complete non-empty stream. A real-socket backend integration test
+verifies that disconnecting before completion leaves the user message without
+persisting a partial assistant response. Provider-side generation cancellation
+is not guaranteed. The first streaming scroll is deferred until the Ant Design
+X message list has mounted, preventing its imperative scroll handle from
+reading an unavailable internal container during the initial exchange.
 
 The analysis context inspector loads conversation-bound metadata from the API.
 It allows a device to be selected from the fictional catalog and optional lot

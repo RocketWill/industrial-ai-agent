@@ -39,8 +39,9 @@ non-empty completed response. Backend and frontend tests cover event parsing,
 error handling, and the completed-response persistence boundary.
 
 This milestone does not add LangGraph, tool calling, retries, manufacturing
-logic, RAG, or execution traces. Client-disconnect persistence still needs a
-dedicated integration test.
+logic, RAG, or execution traces. A later real-socket integration test verifies
+that a client disconnect before completion does not persist a partial assistant
+message; provider-side generation cancellation is not guaranteed.
 
 ## v0.1.2 — Industrial Chat Workspace UI
 
@@ -347,7 +348,7 @@ turn, persisted evidence history, evidence-tool retries, or causal analysis.
 
 ## v1.0 — Portfolio Release
 
-**Status: Planned**
+**Status: In Progress**
 
 Publish reproducible setup, verified architecture documentation, demo
 scenarios, screenshots, evaluation results, known limitations, security review,
