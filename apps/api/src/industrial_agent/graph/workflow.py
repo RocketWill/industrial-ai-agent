@@ -222,7 +222,16 @@ DOCUMENT_SEARCH_TOOL = ToolDefinition(
 
 COMBINED_EVIDENCE_TOOL = ToolDefinition(
     name="combined_evidence",
-    description="Synthesize bounded manufacturing and document evidence.",
+    description=(
+        "Synthesize bounded manufacturing and document evidence. Separate "
+        "recorded facts, deterministic calculations, document guidance, and "
+        "possible hypotheses. Do not use numbered lists. Do not repeat source "
+        "IDs because the application renders structured Sources. Mark every "
+        "hypothesis as possible and include the exact phrase 'requires "
+        "validation' in that same sentence. "
+        "Do not claim equipment or process status that the evidence does not "
+        "record. Do not claim causality."
+    ),
     parameters={"type": "object", "properties": {}, "additionalProperties": False},
 )
 
