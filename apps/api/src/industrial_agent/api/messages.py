@@ -14,6 +14,7 @@ from industrial_agent.domain.routing import ExtractedContext, TimePreset
 from industrial_agent.graph.combined import CombinedExecutionCancelled
 from industrial_agent.graph.errors import GraphExecutionError
 from industrial_agent.graph.runner import (
+    StreamingExecutionCancelled,
     run_stream_routed_exchange,
     run_sync_exchange,
 )
@@ -294,7 +295,11 @@ def stream_user_message(
                         "message_completed",
                         {"assistant_message": message.model_dump(mode="json")},
                     )
-        except (RoutingClassificationCancelled, CombinedExecutionCancelled):
+        except (
+            RoutingClassificationCancelled,
+            CombinedExecutionCancelled,
+            StreamingExecutionCancelled,
+        ):
             return
         except (
             LLMConfigurationError,

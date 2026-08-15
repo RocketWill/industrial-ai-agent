@@ -1,14 +1,21 @@
 import json
+import socket
+import threading
+import time
+from collections.abc import Generator
 from uuid import UUID
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, func, select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from starlette.requests import Request
+from uvicorn import Config, Server
 
 import industrial_agent.graph.runner as runner_module
 import industrial_agent.graph.workflow as workflow_module
+from industrial_agent.database.session import get_db_session
 from industrial_agent.graph.combined import CombinedToolUnavailable
 from industrial_agent.llm.errors import (
     LLMConfigurationError,
@@ -20,6 +27,7 @@ from industrial_agent.llm.openai_compatible import (
     OpenAICompatibleChatAdapter,
 )
 from industrial_agent.llm.types import CompletionResult, ToolCall
+from industrial_agent.main import create_app
 from industrial_agent.models.message import Message
 from industrial_agent.tools.document_search import DocumentSearchResult
 from industrial_agent.tools.production import ProductionSummaryResult
@@ -855,6 +863,82 @@ def test_sse_combined_cancellation_after_manufacturing_does_not_persist_completi
         f"/conversations/{conversation['id']}/messages"
     ).json()
     assert [message["role"] for message in history] == ["user"]
+
+
+def test_sse_client_disconnect_does_not_persist_partial_assistant_message(
+    database_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    factory = sessionmaker(bind=database_engine)
+    application = create_app()
+
+    def override_db_session() -> Generator[Session, None, None]:
+        with factory() as session:
+            yield session
+
+    application.dependency_overrides[get_db_session] = override_db_session
+    provider_started = threading.Event()
+    release_provider = threading.Event()
+
+    class PausedAdapter:
+        def __enter__(self) -> "PausedAdapter":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def stream(self, _messages: object):
+            provider_started.set()
+            assert release_provider.wait(timeout=5)
+            yield "partial answer"
+
+    monkeypatch.setattr(
+        OpenAICompatibleChatAdapter,
+        "from_settings",
+        classmethod(lambda cls, settings: PausedAdapter()),
+    )
+
+    listening_socket = socket.socket()
+    listening_socket.bind(("127.0.0.1", 0))
+    listening_socket.listen()
+    port = listening_socket.getsockname()[1]
+    server = Server(Config(application, log_level="error", lifespan="off"))
+    server_thread = threading.Thread(
+        target=server.run,
+        kwargs={"sockets": [listening_socket]},
+        daemon=True,
+    )
+    server_thread.start()
+    deadline = time.monotonic() + 5
+    while not server.started and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert server.started
+
+    base_url = f"http://127.0.0.1:{port}"
+    try:
+        with httpx.Client(base_url=base_url, timeout=5) as client:
+            conversation = client.post(
+                "/conversations", json={"title": "Disconnect"}
+            ).json()
+            with client.stream(
+                "POST",
+                f"/conversations/{conversation['id']}/messages/stream",
+                json={"content": "Question"},
+            ):
+                assert provider_started.wait(timeout=5)
+
+            release_provider.set()
+            time.sleep(0.1)
+            history = client.get(
+                f"/conversations/{conversation['id']}/messages"
+            ).json()
+        assert [message["role"] for message in history] == ["user"]
+    finally:
+        release_provider.set()
+        server.should_exit = True
+        server_thread.join(timeout=5)
+        listening_socket.close()
+        application.dependency_overrides.clear()
 
 
 def test_stream_production_tool_error_persists_safe_response(

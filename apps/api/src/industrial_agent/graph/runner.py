@@ -92,6 +92,27 @@ ToolStream = Callable[[Sequence[ChatMessage], ToolResult], Iterator[str]]
 RoutedToolStream = Callable[[Sequence[ChatMessage], ToolResult, object], Iterator[str]]
 
 
+class StreamingExecutionCancelled(RuntimeError):
+    """Raised when the SSE client disconnects before response persistence."""
+
+
+def _collect_stream_parts(
+    parts: Iterator[str], *, is_cancelled: Callable[[], bool]
+) -> list[str]:
+    collected: list[str] = []
+    for part in parts:
+        if is_cancelled():
+            raise StreamingExecutionCancelled(
+                "Streaming response cancelled before completion"
+            )
+        collected.append(part)
+    if is_cancelled():
+        raise StreamingExecutionCancelled(
+            "Streaming response cancelled before completion"
+        )
+    return collected
+
+
 def run_stream_routed_exchange(
     session: Session,
     *,
@@ -154,7 +175,9 @@ def run_stream_routed_exchange(
         )
         return
     if decision.intent is RouteIntent.GENERAL:
-        parts = list(stream(state["messages"]))
+        parts = _collect_stream_parts(
+            stream(state["messages"]), is_cancelled=is_cancelled
+        )
         content_text = "".join(parts)
         for part in parts:
             if part:
@@ -232,8 +255,11 @@ def run_stream_routed_exchange(
                 content=json.dumps(payload, separators=(",", ":")),
             )
             parts.extend(
-                stream_with_tool_result(
-                    state["messages"], tool_result, COMBINED_EVIDENCE_TOOL
+                _collect_stream_parts(
+                    stream_with_tool_result(
+                        state["messages"], tool_result, COMBINED_EVIDENCE_TOOL
+                    ),
+                    is_cancelled=is_cancelled,
                 )
             )
             return "".join(parts)
@@ -296,7 +322,10 @@ def run_stream_routed_exchange(
         arguments=call.arguments,
         content=result_payload.model_dump_json(),
     )
-    parts = list(stream_with_tool_result(tool_state["messages"], tool_result, tool))
+    parts = _collect_stream_parts(
+        stream_with_tool_result(tool_state["messages"], tool_result, tool),
+        is_cancelled=is_cancelled,
+    )
     answer = "".join(parts)
     post_check = validate_answer(decision, evidence, answer)
     if not post_check.sufficient:
