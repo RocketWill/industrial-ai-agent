@@ -9,6 +9,8 @@ import { parseCitation, type DocumentCitation } from "../utils/documentCitation"
 
 const XMarkdown = lazy(() => import("@ant-design/x-markdown").then((module) => ({ default: module.XMarkdown })));
 
+export const PRODUCTION_SUMMARY_COLUMNS = { xs: 1, sm: 2 } as const;
+
 type Props = {
   message: Message;
   isStreaming?: boolean;
@@ -80,12 +82,12 @@ function ProductionEvidenceCard({ evidence }: { evidence: ProductionEvidence }) 
       </div>
       <Descriptions
         size="small"
-        column={2}
+        column={PRODUCTION_SUMMARY_COLUMNS}
         className="evidence-summary"
         items={[
           { key: "equipment", label: "Equipment", children: summary.equipment_id },
           { key: "lot", label: "Lot", children: summary.lot_id ?? "All lots" },
-          { key: "range", label: "Time range", span: 2, children: `${displayTime(summary.start)} - ${displayTime(summary.end)}` },
+          { key: "range", label: "Time range", span: { xs: 1, sm: 2 }, children: `${displayTime(summary.start)} - ${displayTime(summary.end)}` },
           { key: "yield", label: "Yield", children: summary.yield_rate === null ? "No data" : `${(summary.yield_rate * 100).toFixed(2)}%` },
           { key: "inspected", label: "Inspected", children: summary.inspected_wafers },
           { key: "passed", label: "Passed", children: summary.passed_wafers },
