@@ -12,9 +12,9 @@ only allowlisted recorded fields may enrich retrieval. The interface keeps
 calculated values, retrieved sources, model interpretation, and missing
 evidence visibly separate. Co-occurrence is never presented as proof of cause.
 
-> **v1.0 status: In Progress.** Local deterministic verification passes. The
-> release remains open until its screenshots, clean-copy review, publication
-> audit, code review, and remote GitHub Actions run are accepted.
+> **v1.0 status: Implemented.** The release boundary passed local deterministic
+> verification, browser and screenshot review, public-copy and publication
+> review, two-axis code review, and GitHub Actions on 2026-08-15.
 
 ## What the repository demonstrates
 
@@ -99,7 +99,7 @@ npm run lint
 npm run build
 ```
 
-The latest recorded results and open release gates are listed in
+The latest recorded results and release evidence are listed in
 [Implementation Status](docs/implementation-status.md). GitHub Actions runs the
 same deterministic boundary on Ubuntu. Model calls and secrets are excluded
 from CI.
