@@ -45,11 +45,24 @@ describe("ConversationWorkspace scrolling", () => {
     Object.defineProperty(HTMLElement.prototype, "scrollTo", { configurable: true, value: scrollTo });
   });
 
+  it("renders the composer without an invalid textarea height", async () => {
+    const consoleError = vi.spyOn(console, "error");
+
+    render(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByPlaceholderText("Ask about this synthetic analysis")).toBeInTheDocument());
+    expect(consoleError).not.toHaveBeenCalledWith(
+      expect.stringContaining("`NaN` is an invalid value for the `%s` css style property."),
+      "height",
+      expect.anything(),
+    );
+  });
+
   it("positions loaded history at the latest message once without smooth-scroll feedback", async () => {
     render(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
 
     await waitFor(() => expect(scrollTo).toHaveBeenCalled());
-    expect(scrollTo).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(scrollTo).toHaveBeenCalledTimes(1));
     expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0, behavior: "auto" }));
   });
 
@@ -93,7 +106,7 @@ describe("ConversationWorkspace scrolling", () => {
     });
     view.rerender(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
 
-    expect(scrollTo).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(scrollTo).toHaveBeenCalledTimes(1));
     expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0, behavior: "auto" }));
   });
 
@@ -105,6 +118,21 @@ describe("ConversationWorkspace scrolling", () => {
 
     expect(scrollTo).not.toHaveBeenCalled();
     expect(currentState.send).toHaveBeenCalledWith("First question");
+  });
+
+  it("defers the first streaming scroll until the message list has mounted", async () => {
+    currentState = state({ messages: [] });
+    const view = render(<ConversationWorkspace conversationId={conversationId} conversationTitle="New analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
+
+    currentState = state({
+      messages: [messages[0], { ...messages[1], id: "00000000-0000-1000-8000-000000000000", content: "" }],
+      isStreaming: true,
+      runState: { phase: "generating", label: "Generating response" },
+    });
+    view.rerender(<ConversationWorkspace conversationId={conversationId} conversationTitle="New analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
+
+    expect(scrollTo).not.toHaveBeenCalled();
+    await waitFor(() => expect(scrollTo).toHaveBeenCalledTimes(1));
   });
 
   it("repositions once when the selected conversation changes", async () => {
