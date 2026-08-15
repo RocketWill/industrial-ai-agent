@@ -34,12 +34,15 @@ evidence visibly separate. Co-occurrence is never presented as proof of cause.
 
 ## Combined Evidence
 
-The desktop and 390 px screenshots below will show the same accepted local
-happy-path observation. Model wording is not a reproducibility target; the
-route, typed evidence, citations, provenance, and grounding rules are. See the
-[demo contract](docs/demo.md) for the exact prompt and acceptance invariants.
+The desktop and 390 px screenshots below show the same accepted local
+happy-path observation with `qwen3:14b`. Model wording is not a reproducibility
+target; the route, typed evidence, citations, provenance, and grounding rules
+are. See the [demo contract](docs/demo.md) for the exact prompt and acceptance
+invariants.
 
-<!-- Screenshots are added only after the real local browser run is accepted. -->
+![Accepted Combined Evidence desktop observation](docs/assets/combined-evidence-desktop.jpg)
+
+![Accepted Combined Evidence 390 px observation](docs/assets/combined-evidence-mobile-390.jpg)
 
 ## Architecture
 

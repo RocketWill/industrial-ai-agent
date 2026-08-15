@@ -35,7 +35,7 @@ matrix. Application README files own setup and contract usage.
 | Production summary tool | Implemented | Typed `get_production_summary` request/result boundary filters the synthetic AOI dataset, delegates numeric work to the manufacturing domain, participates in synchronous and SSE grounded-answer flows, resolves missing arguments from supported workspace context, and returns current-exchange evidence. | Evidence is not persisted in history; custom or unrecognized time-range labels require clarification. |
 | Equipment status tool | Implemented | Typed `get_equipment_status` input and result contracts query explicit synthetic state intervals at one UTC timestamp, resolve missing time from supported workspace context, return `unknown` when no state is recorded, participate in synchronous and SSE flows, and render current-exchange evidence. | It is not live status. Evidence is not persisted, and no status history or causal interpretation is provided. |
 | Defect distribution tool | Implemented | Typed `get_defect_distribution` request and result contracts filter the synthetic AOI dataset, rank recorded defect categories by count, calculate shares against classified defects, expose unclassified failures and limitations, participate in synchronous and SSE flows, and render current-exchange evidence. | It does not infer causes, trends, or throughput. Evidence is not persisted. |
-| LangGraph orchestration | Implemented | The synchronous graph and SSE runner share an application-owned route decision, deterministic clarification and fallback, single-tool execution, and one bounded manufacturing-then-document combined path. Numeric, citation, and causal-claim validation protect the final answer while retaining valid evidence after model failure. | No persisted runs, planner, multiple manufacturing tools per turn, evidence-tool retries, checkpoints, resume behavior, or graph visualization. |
+| LangGraph orchestration | Implemented | The synchronous graph and SSE runner share an application-owned route decision, deterministic clarification and fallback, single-tool execution, and one bounded manufacturing-then-document combined path. Combined validation checks manufacturing claims, any source IDs included in prose, causal conclusions, and unsupported operational claims while retaining valid evidence after model failure. | Structured Sources own traceability, so inline source IDs are optional. Validation is intentionally bounded to recognized claim forms; there are no persisted runs, planner, multiple manufacturing tools per turn, evidence-tool retries, checkpoints, resume behavior, or graph visualization. |
 | Structured routing | Implemented | Immutable route contracts, a 38-scenario English and Traditional Chinese routing fixture, a high-confidence deterministic gate, one typed classifier call, a 1–30 second timeout, one retry, conservative fallback, safe logs, and shared sync/SSE decisions. | Explicit combined requests select exactly one manufacturing kind plus documents. Routing traces are not persisted, and broader multilingual support is not claimed. |
 | Guided routing choices | Implemented | Combined-route clarifications persist two fixed application-owned actions. The latest unresolved actions survive reload, render as keyboard-accessible buttons, disable during submission, and send a normal user message through the existing SSE workflow. | Choices select one evidence path; they do not execute a multi-tool turn, accept model-generated actions, or use a special action endpoint. |
 | RAG and sources | Implemented | An immutable corpus combines three protected fictional Markdown documents with persistent local uploads. Paragraph- and list-aware chunks stay within H2/H3 sections and use stable section-local citations. A fixed lexical gate, deterministic 256-dimensional feature-hashing embedding, and in-memory cosine index back `search_documents`, including bounded v0.9 query enrichment from recorded manufacturing fields. | Feature hashing is lexical rather than a semantic model. There is no PDF/OCR, external embedding service, persistent vector store, reranking, authentication, cloud storage, or causal inference. |
@@ -66,7 +66,7 @@ matrix. Application README files own setup and contract usage.
 
 The latest local verification on 2026-08-15 produced:
 
-- API: 411 Pytest tests and Ruff passed. No backend static type checker is
+- API: 416 Pytest tests and Ruff passed. No backend static type checker is
   configured in the current development dependency set.
 - Evaluation: all 45 formal scenarios passed. The observed dimension totals
   were route 33/33, tool selection 16/16, argument resolution 4/4, evidence
@@ -77,7 +77,7 @@ The latest local verification on 2026-08-15 produced:
   in 380.98 ms and completed `get_production_summary` in 16.29 ms. These are
   development-machine observations; the matching direct native call took 0.40
   ms. This single comparison is not a performance guarantee or benchmark.
-- Web: 105 Vitest tests passed, TypeScript checking passed, ESLint passed, and
+- Web: 106 Vitest tests passed, TypeScript checking passed, ESLint passed, and
   the Vite production build completed.
 - Browser combined workflow: one explicit production-plus-document request ran
   against saved synthetic AOI context. The final exchange retained a 95.56%
@@ -126,8 +126,8 @@ integration test now verifies that a streaming client disconnect before
 completion leaves the persisted user message without creating a partial
 assistant message. Provider-side generation cancellation is not guaranteed.
 
-v1.0 remains In Progress. Local deterministic checks are current; accepted
-product screenshots, final clean-copy and browser review, two-axis code review,
+v1.0 remains In Progress. Local deterministic checks and accepted product
+screenshots are current; final clean-copy review, two-axis code review,
 publication acceptance, and a green remote GitHub Actions run remain open.
 The v1.0 browser run also exposed and verified a first-stream rendering race:
 the workspace now defers Ant Design X list scrolling until the mounted frame
@@ -136,6 +136,17 @@ The same run rejected two screenshot candidates: `llama3.1:8b` reached the
 combined safe fallback after evidence retrieval, while `deepseek-r1:7b` left
 the manufacturing path unavailable. These are valid degraded or partial-
 failure observations, not the required Combined Evidence happy path.
+`qwen3:14b` later passed a direct OpenAI-compatible tool-call smoke test. After
+the demo lot was corrected to the repository-owned `LOT-DEMO-001`, the full
+browser workflow produced both deterministic manufacturing evidence and three
+document sources, but its final synthesis still failed grounding validation.
+The validator now keeps deterministic manufacturing and claim boundaries
+strict without requiring inline citations or rejecting formatting-only
+numbers. A later `qwen3:14b` browser run passed this revised boundary and was
+captured at the default desktop viewport and 390 px. The 390 px review also
+found and corrected a narrow-screen Production Summary layout regression. The
+final accepted run required every possible interpretation to state that
+validation was still required.
 
 ## Truthfulness notes
 
