@@ -348,7 +348,7 @@ turn, persisted evidence history, evidence-tool retries, or causal analysis.
 
 ## v1.0 — Portfolio Release
 
-**Status: In Progress**
+**Status: Implemented**
 
 Publish reproducible setup, verified architecture documentation, demo
 scenarios, screenshots, evaluation results, known limitations, security review,

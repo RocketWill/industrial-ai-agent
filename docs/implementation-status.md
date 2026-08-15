@@ -126,9 +126,9 @@ integration test now verifies that a streaming client disconnect before
 completion leaves the persisted user message without creating a partial
 assistant message. Provider-side generation cancellation is not guaranteed.
 
-v1.0 remains In Progress. Local deterministic checks and accepted product
-screenshots are current; final clean-copy review, two-axis code review,
-publication acceptance, and a green remote GitHub Actions run remain open.
+v1.0 is Implemented. Its release boundary passed local deterministic checks,
+accepted product screenshots, final public-copy and publication review,
+two-axis code review, and GitHub Actions on 2026-08-15.
 The v1.0 browser run also exposed and verified a first-stream rendering race:
 the workspace now defers Ant Design X list scrolling until the mounted frame
 instead of calling its imperative handle during the mounting layout effect.

@@ -26,16 +26,15 @@ contracts.
 
 ## Status
 
-Milestones through v0.9 are implemented. v1.0 release work is In Progress. The
-current boundary includes the
+Milestones through v1.0 are implemented. The current boundary includes the
 full-stack conversation foundation, deterministic manufacturing tools, local
 document retrieval, bounded routing, guided historical choices, local stdio
 MCP, formal offline evaluation, and one combined manufacturing-plus-document
 workflow. Evidence remains current-exchange-only, and production data,
 authentication, causal analysis, and remote deployment remain out of scope.
-Local deterministic checks and accepted Combined Evidence screenshots are
-current. Final clean-copy and code review, publication acceptance, and remote
-CI remain release gates.
+The v1.0 release boundary passed local deterministic checks, Combined Evidence
+browser and screenshot review, public-copy and publication review, two-axis
+code review, and remote CI on 2026-08-15.
 
 Architecture notes and engineering decisions should be added only when the
 corresponding code or approved decision exists. Local PRDs, specs, and plans
