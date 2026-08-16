@@ -353,3 +353,26 @@ turn, persisted evidence history, evidence-tool retries, or causal analysis.
 Publish reproducible setup, verified architecture documentation, demo
 scenarios, screenshots, evaluation results, known limitations, security review,
 and a clean public repository.
+
+## v2.0 — Persistent Evidence and Model Working Notes
+
+**Status: In Progress**
+
+Open the v2.0 boundary while keeping v1.0 Implemented. Slice 1 adds a
+version-1 typed `MessageRead.evidence_snapshot` union for Production Summary,
+Equipment Status, Defect Distribution, Document Search, Combined Evidence, and
+the explicit Unavailable Evidence state. Slice 2 adds the nullable JSON storage
+boundary for that field.
+
+Implemented slices:
+
+- [x] Define and validate the version-1 Evidence Snapshot read union at the
+  message schema boundary.
+- [x] Add Alembic revision `0006_add_evidence_snapshot` with nullable JSON
+  `messages.evidence_snapshot`, synchronize the Message ORM model, preserve
+  existing messages as readable rows with `NULL` after upgrade, and verify
+  downgrade compatibility.
+
+Snapshot write validation, service construction, atomic persistence, the read
+adapter, service or API wiring, historical reload rendering, and Model Working
+Notes are not implemented in this slice.
