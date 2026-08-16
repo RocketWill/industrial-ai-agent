@@ -6,7 +6,10 @@ from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from industrial_agent.graph.combined import CombinedExchangeEvidence
+from industrial_agent.graph.combined import (
+    CombinedExchangeEvidence,
+    EvidencePathOutcome,
+)
 from industrial_agent.graph.state import EvidenceState
 from industrial_agent.llm.types import ChatMessage
 from industrial_agent.models.message import Message, MessageRole
@@ -31,6 +34,65 @@ class MessageExchange:
 class MessageStreamEvent:
     kind: str
     value: Message | str
+
+
+def current_evidence_to_snapshot(
+    evidence: EvidenceState | None = None,
+    combined_evidence: CombinedExchangeEvidence | None = None,
+) -> dict[str, object] | None:
+    """Convert one validated current-evidence outcome to canonical JSON."""
+    if combined_evidence is not None:
+        def path_payload(path: EvidencePathOutcome) -> dict[str, object]:
+            return {
+                "status": path.status.value,
+                "result": path.result,
+                "error_code": path.error_code,
+            }
+
+        payload: dict[str, object] = {
+            "status": "available",
+            "schema_version": 1,
+            "kind": "combined",
+            "manufacturing_kind": combined_evidence.manufacturing_kind.value,
+            "manufacturing": path_payload(combined_evidence.manufacturing),
+            "documents": path_payload(combined_evidence.documents),
+            "document_query": combined_evidence.document_query,
+            "answer_status": combined_evidence.answer_status.value,
+        }
+    elif evidence is not None and evidence.production_summary is not None:
+        payload = {
+            "status": "available",
+            "schema_version": 1,
+            "kind": "production_summary",
+            "production_summary": evidence.production_summary,
+        }
+    elif evidence is not None and evidence.equipment_status is not None:
+        payload = {
+            "status": "available",
+            "schema_version": 1,
+            "kind": "equipment_status",
+            "equipment_status": evidence.equipment_status,
+        }
+    elif evidence is not None and evidence.defect_distribution is not None:
+        payload = {
+            "status": "available",
+            "schema_version": 1,
+            "kind": "defect_distribution",
+            "defect_distribution": evidence.defect_distribution,
+        }
+    elif evidence is not None and evidence.document_search is not None:
+        payload = {
+            "status": "available",
+            "schema_version": 1,
+            "kind": "document_search",
+            "document_search": evidence.document_search,
+        }
+    else:
+        return None
+
+    return _evidence_snapshot_adapter.validate_python(payload).model_dump(
+        mode="json"
+    )
 
 
 def create_message(

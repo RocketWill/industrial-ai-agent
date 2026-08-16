@@ -362,10 +362,13 @@ Open the v2.0 boundary while keeping v1.0 Implemented. Slice 1 adds a
 version-1 typed `MessageRead.evidence_snapshot` union for Production Summary,
 Equipment Status, Defect Distribution, Document Search, Combined Evidence, and
 the explicit Unavailable Evidence state. Slice 2 adds the nullable JSON storage
-boundary for that field. Slice 3 adds a narrow message-service write boundary:
-`create_message` validates an assistant Evidence Snapshot, stores its canonical
-JSON representation, preserves the JSON round-trip on reads, rejects snapshots
-on user messages, and leaves an omitted assistant snapshot as `NULL`.
+boundary for that field. Slice 3 adds a narrow conversion and message-service
+write boundary: `current_evidence_to_snapshot` converts the four typed single
+evidence outcomes and Combined Evidence outcomes, including partial path
+results, into version-1 canonical snapshot JSON. `create_message` validates an
+assistant Evidence Snapshot, stores its canonical JSON representation, preserves
+the JSON round-trip on reads, rejects snapshots on user messages, and leaves an
+omitted assistant snapshot as `NULL`.
 
 Implemented slices:
 
@@ -375,18 +378,29 @@ Implemented slices:
   `messages.evidence_snapshot`, synchronize the Message ORM model, preserve
   existing messages as readable rows with `NULL` after upgrade, and verify
   downgrade compatibility.
+- [x] Convert Production Summary, Equipment Status, Defect Distribution,
+  Document Search, and Combined Evidence current outcomes into version-1
+  canonical snapshots, retaining per-path partial outcomes.
 - [x] Validate and JSON-round-trip an explicitly supplied assistant Evidence
   Snapshot in the message service, reject snapshots on user messages, and
   preserve `NULL` when an assistant snapshot is omitted.
 
-The message-service boundary is not end-to-end evidence persistence. The
-following work remains open:
+The schema, conversion, and message-service boundaries above are implemented,
+but Slice 3 runtime persistence remains **In Progress**. The synchronous
+workflow's `persist_response` now passes the canonical snapshot through the
+same assistant-message commit path. A focused Production Summary integration
+verifies that the assistant row receives its canonical snapshot; a general
+response persists `evidence_snapshot` as `NULL`. This focused seam does not by
+itself complete Slice 3's atomic-persistence acceptance boundary.
 
-- Convert Current Evidence to snapshots in the workflow, SSE runner, and
-  combined execution paths.
-- Add atomic snapshot persistence to synchronous and SSE exchanges.
+The following work remains open:
+
+- Verify snapshot persistence in the SSE runner.
+- Verify combined and other-route runtime acceptance for Equipment Status,
+  Defect Distribution, and Document Search.
 - Define and verify rollback, cancellation, and client-disconnect behavior
   before an exchange is complete.
-- Complete the read adapter and service/API wiring.
-- Render persisted snapshots during historical reload.
+- Complete the read adapter and service/API wiring, including historical
+  reload responses.
+- Render persisted snapshots during historical reload in the UI.
 - Add Model Working Notes.

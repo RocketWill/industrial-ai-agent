@@ -60,23 +60,30 @@ belongs in deterministic domain code rather than an LLM.
 ## Current milestone boundary
 
 v2.0 Persistent Evidence and Model Working Notes is **In Progress**. Slices 1
-through 3 are implemented. Slice 1 defines the version-1 typed
+and 2 are implemented; Slice 3 runtime persistence is **In Progress**. Slice 1
+defines the version-1 typed
 `MessageRead.evidence_snapshot` union for Production Summary, Equipment Status,
 Defect Distribution, Document Search, Combined Evidence, and the explicit
 Unavailable Evidence state. Slice 2 adds Alembic revision
 `0006_add_evidence_snapshot` with nullable JSON `messages.evidence_snapshot`,
 synchronizes the Message ORM model, keeps existing messages readable with
 `NULL` after upgrade, and passes downgrade compatibility tests. Slice 3 adds a
-narrow message-service boundary that validates explicitly supplied assistant
-Evidence Snapshot values, preserves their JSON round-trip, rejects snapshots on
-user messages, and keeps omitted assistant snapshots `NULL`.
+narrow conversion and message-service boundary. `current_evidence_to_snapshot` converts the four typed
+single evidence outcomes and Combined Evidence outcomes, including partial
+path results, into version-1 canonical snapshot JSON. The message service
+validates explicitly supplied assistant Evidence Snapshot values, preserves
+their JSON round-trip, rejects snapshots on user messages, and keeps omitted
+assistant snapshots `NULL`. The synchronous workflow's `persist_response` now
+passes the canonical snapshot through the same assistant-message commit path.
+A focused Production Summary integration verifies that path; a general
+response persists `evidence_snapshot` as `NULL`.
 
-These changes do not yet provide end-to-end evidence persistence. The workflow,
-SSE runner, and combined execution paths do not convert Current Evidence into
-snapshots; synchronous and SSE exchanges do not persist snapshots atomically;
-rollback, cancellation, and client-disconnect acceptance remains open; and the
-read adapter, service/API wiring, historical reload rendering, and Model
-Working Notes are not yet implemented.
+These changes do not yet provide end-to-end evidence persistence. The focused
+synchronous seam is not the full Slice 3 atomic-persistence acceptance
+boundary. SSE runner persistence, combined and other-route runtime
+acceptance, rollback, cancellation, and client disconnect remain open. The
+read adapter, service/API wiring, historical reload responses and UI, and
+Model Working Notes are not yet implemented.
 
 v1.0 Portfolio Release is **Implemented**. It packages the verified v0.9
 application as a repository-only release. Corrective validation and responsive

@@ -434,6 +434,49 @@ def test_sync_runner_executes_one_production_tool_then_persists_final_answer(
     assert "2026-01-15T13:00:00Z/2026-01-15T17:00:00Z" in first_messages[-1].content
 
 
+def test_sync_runner_persists_production_evidence_snapshot_on_assistant_message(
+    database_session,
+) -> None:
+    conversation = create_conversation(database_session, title="Production")
+
+    def complete(_messages):
+        raise AssertionError("production question should use tools")
+
+    def complete_with_tools(messages, tools, *, tool_call=None):
+        if tool_call is None:
+            return CompletionResult(
+                content=None,
+                tool_calls=(
+                    ToolCall(
+                        call_id="call-001",
+                        name="get_production_summary",
+                        arguments={
+                            "equipment_id": "AOI-WAFER-01",
+                            "start": "2026-01-15T15:00:00Z",
+                            "end": "2026-01-15T18:00:00Z",
+                        },
+                    ),
+                ),
+            )
+        return CompletionResult(content="The synthetic Yield Rate is 85.67%.")
+
+    run_sync_exchange(
+        database_session,
+        conversation_id=conversation.id,
+        content="What is the production yield for AOI-WAFER-01?",
+        complete=complete,
+        complete_with_tools=complete_with_tools,
+    )
+
+    assistant_message = list_messages(database_session, conversation.id)[-1]
+    assert assistant_message.evidence_snapshot is not None
+    assert assistant_message.evidence_snapshot["kind"] == "production_summary"
+    assert (
+        assistant_message.evidence_snapshot["production_summary"]["inspected_wafers"]
+        == 300
+    )
+
+
 def test_sync_runner_executes_equipment_status_tool_with_context(
     database_session,
 ) -> None:

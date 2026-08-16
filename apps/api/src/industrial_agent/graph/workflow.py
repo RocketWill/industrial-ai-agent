@@ -1001,6 +1001,9 @@ def persist_response(session: Session, state: GraphState) -> GraphState:
         role="assistant",
         content=assistant_content,
         suggested_actions=state["suggested_actions"],
+        evidence_snapshot=message_service.current_evidence_to_snapshot(
+            state["evidence"], state["combined_evidence"]
+        ),
     )
     return {
         **state,
