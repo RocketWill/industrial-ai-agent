@@ -1,3 +1,6 @@
+import pytest
+
+import industrial_agent.graph.workflow as workflow_module
 from industrial_agent.domain.routing import (
     DecisionSource,
     ExtractedContext,
@@ -434,6 +437,57 @@ def test_sync_runner_executes_one_production_tool_then_persists_final_answer(
     assert "2026-01-15T13:00:00Z/2026-01-15T17:00:00Z" in first_messages[-1].content
 
 
+def test_sync_runner_does_not_persist_assistant_when_snapshot_construction_fails(
+    database_session, monkeypatch
+) -> None:
+    conversation = create_conversation(database_session, title="Production")
+
+    def complete(_messages):
+        raise AssertionError("production question should use tools")
+
+    def complete_with_tools(messages, tools, *, tool_call=None):
+        if tool_call is None:
+            return CompletionResult(
+                content=None,
+                tool_calls=(
+                    ToolCall(
+                        call_id="call-001",
+                        name="get_production_summary",
+                        arguments={
+                            "equipment_id": "AOI-WAFER-01",
+                            "start": "2026-01-15T15:00:00Z",
+                            "end": "2026-01-15T18:00:00Z",
+                        },
+                    ),
+                ),
+            )
+        return CompletionResult(content="The synthetic Yield Rate is 85.67%.")
+
+    def fail_snapshot(*args, **kwargs):
+        raise ValueError("invalid evidence snapshot")
+
+    monkeypatch.setattr(
+        workflow_module.message_service,
+        "current_evidence_to_snapshot",
+        fail_snapshot,
+    )
+
+    with pytest.raises(ValueError, match="invalid evidence snapshot"):
+        run_sync_exchange(
+            database_session,
+            conversation_id=conversation.id,
+            content="What is the production yield for AOI-WAFER-01?",
+            complete=complete,
+            complete_with_tools=complete_with_tools,
+        )
+
+    persisted = list_messages(database_session, conversation.id)
+    assert [(message.role, message.content) for message in persisted] == [
+        ("user", "What is the production yield for AOI-WAFER-01?")
+    ]
+    assert all(message.evidence_snapshot is None for message in persisted)
+
+
 def test_sync_runner_persists_production_evidence_snapshot_on_assistant_message(
     database_session,
 ) -> None:
@@ -624,6 +678,53 @@ def test_sync_runner_executes_defect_distribution_before_production_summary(
     )
 
 
+def test_sync_runner_persists_empty_defect_distribution_snapshot(
+    database_session,
+) -> None:
+    conversation = create_conversation(database_session, title="Defects")
+
+    def complete(_messages):
+        raise AssertionError("defect question should use the deterministic tool")
+
+    def complete_with_tools(messages, tools, *, tool_call=None):
+        if tool_call is None:
+            return CompletionResult(
+                content=None,
+                tool_calls=(
+                    ToolCall(
+                        call_id="call-defects-empty",
+                        name="get_defect_distribution",
+                        arguments={
+                            "equipment_id": "AOI-WAFER-01",
+                            "start": "2026-01-15T19:00:00Z",
+                            "end": "2026-01-15T20:00:00Z",
+                        },
+                    ),
+                ),
+            )
+        assert tool_call.name == "get_defect_distribution"
+        assert '"classified_defect_count":0' in tool_call.content
+        assert '"items":[]' in tool_call.content
+        return CompletionResult(content="No defects were recorded in that range.")
+
+    run_sync_exchange(
+        database_session,
+        conversation_id=conversation.id,
+        content="Show the defect distribution from 19:00 to 20:00.",
+        complete=complete,
+        complete_with_tools=complete_with_tools,
+    )
+
+    assistant_message = list_messages(database_session, conversation.id)[-1]
+    snapshot = assistant_message.evidence_snapshot
+    assert snapshot is not None
+    assert snapshot["status"] == "available"
+    assert snapshot["kind"] == "defect_distribution"
+    assert snapshot["defect_distribution"]["failed_wafers"] == 0
+    assert snapshot["defect_distribution"]["classified_defect_count"] == 0
+    assert snapshot["defect_distribution"]["items"] == []
+
+
 def test_sync_runner_retrieves_document_sources_for_procedural_question(
     database_session,
 ) -> None:
@@ -653,6 +754,15 @@ def test_sync_runner_retrieves_document_sources_for_procedural_question(
     assert exchange.evidence.document_search.sources[0].section == (
         "OPTICAL-SIGNAL-LOW"
     )
+    assistant_message = list_messages(database_session, conversation.id)[-1]
+    snapshot = assistant_message.evidence_snapshot
+    assert snapshot is not None
+    assert snapshot["status"] == "available"
+    assert snapshot["kind"] == "document_search"
+    assert snapshot["document_search"]["sources"] == [
+        source.model_dump(mode="json")
+        for source in exchange.evidence.document_search.sources
+    ]
 
 
 def test_sync_runner_uses_the_injected_document_corpus_service(
