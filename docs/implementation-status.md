@@ -22,7 +22,7 @@ matrix. Application README files own setup and contract usage.
 | API process health | Implemented | `GET /health` reports whether the FastAPI process responds. | It does not inspect SQLite, the LLM service, or future tools. |
 | Database foundation | Implemented | SQLite, synchronous SQLAlchemy sessions, foreign-key enforcement, and six explicit Alembic revisions, including the nullable `messages.evidence_snapshot` column. | Application startup does not create or migrate schema. |
 | Conversations | Implemented | Create, list newest first, open, and permanently delete conversations. | No rename, archive, restore, or pagination. |
-| Message history | Implemented | Persist user and assistant messages and return deterministic chronological history. Conversation deletion cascades to messages. | No individual message mutation or pagination. |
+| Message history | Implemented | Persist user and assistant messages and return deterministic chronological history. Conversation deletion cascades to messages. The message service validates and JSON-round-trips explicitly supplied assistant Evidence Snapshots, rejects them on user messages, and leaves omitted snapshots `NULL`. | No individual message mutation or pagination. Normal workflow, SSE, and combined paths do not yet convert or atomically persist Current Evidence snapshots. |
 | Synchronous assistant response | Implemented | Persist the user message, use one authoritative route, execute one selected evidence tool or the bounded combined manufacturing-plus-document workflow, validate evidence and the final answer, and persist one non-empty assistant response. | No system prompt, answer retry, model discovery, planner, or persisted evidence history. |
 | Streaming assistant response | Implemented | Send SSE events for the persisted user message, bounded routing progress, token deltas, completion, safe errors, single-tool stages, and ordered path-aware combined stages. The same route and evidence policy is used by the synchronous path. | Evidence-route answer text is buffered for deterministic post-checks before token events are forwarded. Structured evidence remains current-exchange-only. |
 | Conversation continuity | Implemented | Previous user and assistant messages from the selected conversation are included in the next model request. | Workspace context is stored separately and is not yet included in the model prompt. |
@@ -46,18 +46,23 @@ matrix. Application README files own setup and contract usage.
 
 **Status: In Progress**
 
-Slices 1 and 2 are implemented. Slice 1 validates a version-1 typed
+Slices 1 through 3 are implemented. Slice 1 validates a version-1 typed
 `MessageRead.evidence_snapshot` union for Production Summary, Equipment Status,
 Defect Distribution, Document Search, Combined Evidence, and the explicit
 Unavailable Evidence state. Slice 2 adds Alembic revision
 `0006_add_evidence_snapshot` with nullable JSON `messages.evidence_snapshot`,
 synchronizes the Message ORM model, keeps existing messages readable with
-`NULL` after upgrade, and passes downgrade compatibility tests.
+`NULL` after upgrade, and passes downgrade compatibility tests. Slice 3 adds a
+narrow message-service write boundary that validates explicitly supplied
+assistant Evidence Snapshot values, preserves their JSON round-trip, rejects
+snapshots on user messages, and leaves omitted assistant snapshots as `NULL`.
 
-These changes establish the schema and storage shape only. Snapshot write
-validation, service construction, atomic persistence, the read adapter, service
-or API wiring, historical reload rendering, and Model Working Notes are not yet
-implemented.
+These changes do not yet provide end-to-end evidence persistence. The workflow,
+SSE runner, and combined execution paths do not convert Current Evidence into
+snapshots; synchronous and SSE exchanges do not persist snapshots atomically;
+rollback, cancellation, and client-disconnect acceptance remains open; and the
+read adapter, service/API wiring, historical reload rendering, and Model
+Working Notes are not yet implemented.
 
 ## HTTP contracts
 

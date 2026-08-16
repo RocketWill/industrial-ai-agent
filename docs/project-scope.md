@@ -60,18 +60,23 @@ belongs in deterministic domain code rather than an LLM.
 ## Current milestone boundary
 
 v2.0 Persistent Evidence and Model Working Notes is **In Progress**. Slices 1
-and 2 are implemented. Slice 1 defines the version-1 typed
+through 3 are implemented. Slice 1 defines the version-1 typed
 `MessageRead.evidence_snapshot` union for Production Summary, Equipment Status,
 Defect Distribution, Document Search, Combined Evidence, and the explicit
 Unavailable Evidence state. Slice 2 adds Alembic revision
 `0006_add_evidence_snapshot` with nullable JSON `messages.evidence_snapshot`,
 synchronizes the Message ORM model, keeps existing messages readable with
-`NULL` after upgrade, and passes downgrade compatibility tests.
+`NULL` after upgrade, and passes downgrade compatibility tests. Slice 3 adds a
+narrow message-service boundary that validates explicitly supplied assistant
+Evidence Snapshot values, preserves their JSON round-trip, rejects snapshots on
+user messages, and keeps omitted assistant snapshots `NULL`.
 
-These changes establish the schema and storage shape only. Snapshot write
-validation, service construction, atomic persistence, the read adapter, service
-or API wiring, historical reload rendering, and Model Working Notes are not yet
-implemented.
+These changes do not yet provide end-to-end evidence persistence. The workflow,
+SSE runner, and combined execution paths do not convert Current Evidence into
+snapshots; synchronous and SSE exchanges do not persist snapshots atomically;
+rollback, cancellation, and client-disconnect acceptance remains open; and the
+read adapter, service/API wiring, historical reload rendering, and Model
+Working Notes are not yet implemented.
 
 v1.0 Portfolio Release is **Implemented**. It packages the verified v0.9
 application as a repository-only release. Corrective validation and responsive

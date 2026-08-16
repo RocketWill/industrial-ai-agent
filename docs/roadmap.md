@@ -362,7 +362,10 @@ Open the v2.0 boundary while keeping v1.0 Implemented. Slice 1 adds a
 version-1 typed `MessageRead.evidence_snapshot` union for Production Summary,
 Equipment Status, Defect Distribution, Document Search, Combined Evidence, and
 the explicit Unavailable Evidence state. Slice 2 adds the nullable JSON storage
-boundary for that field.
+boundary for that field. Slice 3 adds a narrow message-service write boundary:
+`create_message` validates an assistant Evidence Snapshot, stores its canonical
+JSON representation, preserves the JSON round-trip on reads, rejects snapshots
+on user messages, and leaves an omitted assistant snapshot as `NULL`.
 
 Implemented slices:
 
@@ -372,7 +375,18 @@ Implemented slices:
   `messages.evidence_snapshot`, synchronize the Message ORM model, preserve
   existing messages as readable rows with `NULL` after upgrade, and verify
   downgrade compatibility.
+- [x] Validate and JSON-round-trip an explicitly supplied assistant Evidence
+  Snapshot in the message service, reject snapshots on user messages, and
+  preserve `NULL` when an assistant snapshot is omitted.
 
-Snapshot write validation, service construction, atomic persistence, the read
-adapter, service or API wiring, historical reload rendering, and Model Working
-Notes are not implemented in this slice.
+The message-service boundary is not end-to-end evidence persistence. The
+following work remains open:
+
+- Convert Current Evidence to snapshots in the workflow, SSE runner, and
+  combined execution paths.
+- Add atomic snapshot persistence to synchronous and SSE exchanges.
+- Define and verify rollback, cancellation, and client-disconnect behavior
+  before an exchange is complete.
+- Complete the read adapter and service/API wiring.
+- Render persisted snapshots during historical reload.
+- Add Model Working Notes.

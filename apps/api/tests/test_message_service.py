@@ -26,6 +26,27 @@ UNKNOWN_CONVERSATION_ID = UUID(
 )
 
 
+def _production_snapshot() -> dict[str, object]:
+    return {
+        "status": "available",
+        "schema_version": 1,
+        "kind": "production_summary",
+        "production_summary": {
+            "equipment_id": "AOI-01",
+            "lot_id": None,
+            "start": "2026-01-15T08:00:00Z",
+            "end": "2026-01-15T17:00:00Z",
+            "inspected_wafers": 10,
+            "passed_wafers": 9,
+            "failed_wafers": 1,
+            "yield_rate": 0.9,
+            "defect_counts": [],
+            "alarm_events": [],
+            "limitations": [],
+        },
+    }
+
+
 def test_create_user_message_persists_with_user_role(
     database_session: Session,
     database_engine: Engine,
@@ -67,6 +88,59 @@ def test_internal_create_message_accepts_assistant_role(
     )
 
     assert created.role == "assistant"
+
+
+def test_create_message_persists_validated_assistant_evidence_snapshot(
+    database_session: Session,
+) -> None:
+    conversation = create_conversation(
+        database_session,
+        title="Assistant evidence snapshot",
+    )
+    snapshot = _production_snapshot()
+
+    created = create_message(
+        database_session,
+        conversation_id=conversation.id,
+        role="assistant",
+        content="Production evidence",
+        evidence_snapshot=snapshot,
+    )
+
+    database_session.expire_all()
+    persisted = list_messages(database_session, conversation.id)[0]
+    assert persisted.id == created.id
+    assert persisted.evidence_snapshot == snapshot
+
+
+def test_create_message_rejects_evidence_snapshot_on_user_messages(
+    database_session: Session,
+) -> None:
+    conversation = create_conversation(database_session, title="Invalid evidence")
+
+    with pytest.raises(ValueError, match="user messages"):
+        create_message(
+            database_session,
+            conversation_id=conversation.id,
+            role="user",
+            content="Invalid",
+            evidence_snapshot=_production_snapshot(),
+        )
+
+
+def test_create_message_keeps_missing_assistant_evidence_snapshot_null(
+    database_session: Session,
+) -> None:
+    conversation = create_conversation(database_session, title="No evidence")
+
+    created = create_message(
+        database_session,
+        conversation_id=conversation.id,
+        role="assistant",
+        content="No production evidence",
+    )
+
+    assert created.evidence_snapshot is None
 
 
 def test_create_message_persists_canonical_assistant_actions(
