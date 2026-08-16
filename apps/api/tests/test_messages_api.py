@@ -660,6 +660,15 @@ def test_sync_combined_preserves_manufacturing_when_document_path_fails(
         "result": None,
         "error_code": "TOOL_UNAVAILABLE",
     }
+    snapshot = response.json()["assistant_message"]["evidence_snapshot"]
+    assert snapshot["kind"] == "combined"
+    assert snapshot["manufacturing"]["status"] == "succeeded"
+    assert snapshot["manufacturing"]["result"] == combined["manufacturing"]["result"]
+    assert snapshot["documents"] == {
+        "status": "failed",
+        "result": None,
+        "error_code": "TOOL_UNAVAILABLE",
+    }
 
 
 def test_sse_combined_preserves_documents_when_manufacturing_path_fails(

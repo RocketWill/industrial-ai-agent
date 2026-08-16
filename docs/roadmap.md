@@ -390,14 +390,20 @@ but Slice 3 runtime persistence remains **In Progress**. The synchronous
 workflow's `persist_response` now passes the canonical snapshot through the
 same assistant-message commit path. A focused Production Summary integration
 verifies that the assistant row receives its canonical snapshot; a general
-response persists `evidence_snapshot` as `NULL`. This focused seam does not by
-itself complete Slice 3's atomic-persistence acceptance boundary.
+response persists `evidence_snapshot` as `NULL`. Focused tests also cover the
+Production Summary SSE tool runner: the `tool_result` stage still has only the
+user row, while the final `assistant_message` event carries the canonical
+snapshot. A synchronous Combined partial-failure test retains succeeded
+manufacturing and failed documents (`error_code: TOOL_UNAVAILABLE`). These
+tests reuse shared `persist_response`; no production code changed. These
+focused seams do not by themselves complete Slice 3's atomic-persistence
+acceptance boundary.
 
 The following work remains open:
 
-- Verify snapshot persistence in the SSE runner.
-- Verify combined and other-route runtime acceptance for Equipment Status,
-  Defect Distribution, and Document Search.
+- Verify snapshot persistence and runtime acceptance for the remaining
+  single-route paths (Equipment Status, Defect Distribution, and Document
+  Search) and the combined SSE path.
 - Define and verify rollback, cancellation, and client-disconnect behavior
   before an exchange is complete.
 - Complete the read adapter and service/API wiring, including historical
