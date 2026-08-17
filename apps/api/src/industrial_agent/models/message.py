@@ -56,6 +56,10 @@ class Message(Base):
         default=list,
         server_default="[]",
     )
+    evidence_snapshot: Mapped[dict[str, object] | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

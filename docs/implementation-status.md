@@ -20,7 +20,7 @@ matrix. Application README files own setup and contract usage.
 | Area | Status | Implemented behavior | Current boundary |
 | --- | --- | --- | --- |
 | API process health | Implemented | `GET /health` reports whether the FastAPI process responds. | It does not inspect SQLite, the LLM service, or future tools. |
-| Database foundation | Implemented | SQLite, synchronous SQLAlchemy sessions, foreign-key enforcement, and five explicit Alembic revisions. | Application startup does not create or migrate schema. |
+| Database foundation | Implemented | SQLite, synchronous SQLAlchemy sessions, foreign-key enforcement, and six explicit Alembic revisions, including the nullable `messages.evidence_snapshot` column. | Application startup does not create or migrate schema. |
 | Conversations | Implemented | Create, list newest first, open, and permanently delete conversations. | No rename, archive, restore, or pagination. |
 | Message history | Implemented | Persist user and assistant messages and return deterministic chronological history. Conversation deletion cascades to messages. | No individual message mutation or pagination. |
 | Synchronous assistant response | Implemented | Persist the user message, use one authoritative route, execute one selected evidence tool or the bounded combined manufacturing-plus-document workflow, validate evidence and the final answer, and persist one non-empty assistant response. | No system prompt, answer retry, model discovery, planner, or persisted evidence history. |
@@ -41,6 +41,23 @@ matrix. Application README files own setup and contract usage.
 | RAG and sources | Implemented | An immutable corpus combines three protected fictional Markdown documents with persistent local uploads. Paragraph- and list-aware chunks stay within H2/H3 sections and use stable section-local citations. A fixed lexical gate, deterministic 256-dimensional feature-hashing embedding, and in-memory cosine index back `search_documents`, including bounded v0.9 query enrichment from recorded manufacturing fields. | Feature hashing is lexical rather than a semantic model. There is no PDF/OCR, external embedding service, persistent vector store, reranking, authentication, cloud storage, or causal inference. |
 | MCP | Implemented | An independent official-SDK stdio server exposes `get_production_summary`, `get_equipment_status`, and `get_defect_distribution`. Discovery schemas reuse the native Pydantic contracts; calls return matching structured results plus deterministic text, reject unsupported fields, preserve safe domain errors, sanitize unexpected failures, and have an official-client lifecycle test. | Local stdio only. There is no HTTP transport, authentication, remote deployment, FastAPI, LangGraph, frontend, workspace-context, document-search, or live-data integration. |
 | Evaluation and observability | Implemented | `industrial-agent-eval` runs a strict 45-scenario English and Traditional Chinese suite through existing routing, native tool, combined execution, retrieval, evidence, and answer-validation seams. It reports ten separate dimensions, records retries, fallback and monotonic stage timing, and writes an ignored typed JSON artifact with an exact fixture digest. | This is a deterministic offline baseline, not a model-quality benchmark. There is no LLM judge, live provider call, HTTP or frontend surface, persisted application trace, composite score, latency gate, or automatic baseline update. |
+
+## v2.0 — Persistent Evidence and Model Working Notes
+
+**Status: In Progress**
+
+Slices 1 and 2 are implemented. Slice 1 validates a version-1 typed
+`MessageRead.evidence_snapshot` union for Production Summary, Equipment Status,
+Defect Distribution, Document Search, Combined Evidence, and the explicit
+Unavailable Evidence state. Slice 2 adds Alembic revision
+`0006_add_evidence_snapshot` with nullable JSON `messages.evidence_snapshot`,
+synchronizes the Message ORM model, keeps existing messages readable with
+`NULL` after upgrade, and passes downgrade compatibility tests.
+
+These changes establish the schema and storage shape only. Snapshot write
+validation, service construction, atomic persistence, the read adapter, service
+or API wiring, historical reload rendering, and Model Working Notes are not yet
+implemented.
 
 ## HTTP contracts
 

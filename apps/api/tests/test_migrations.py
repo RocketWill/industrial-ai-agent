@@ -85,7 +85,7 @@ def test_migration_upgrades_empty_database_to_head(
         "conversations",
         "messages",
     }
-    assert read_alembic_versions(database_path) == ["0005_add_suggested_actions"]
+    assert read_alembic_versions(database_path) == ["0006_add_evidence_snapshot"]
 
 
 def test_conversation_migration_creates_required_schema(
@@ -131,6 +131,7 @@ def test_message_migration_creates_required_schema_and_constraints(
         "role": ("VARCHAR(9)", True),
         "content": ("TEXT", True),
         "suggested_actions": ("JSON", True),
+        "evidence_snapshot": ("JSON", False),
         "created_at": ("DATETIME", True),
     }
     assert "ix_messages_conversation_id" in read_indexes(
@@ -236,6 +237,51 @@ def test_suggested_actions_migration_defaults_existing_rows_and_downgrades(
     assert "suggested_actions" not in read_table_columns(database_path, "messages")
 
 
+def test_evidence_snapshot_migration_keeps_existing_messages_readable(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "migration.db"
+    upgrade_result = run_alembic(
+        "upgrade", "0005_add_suggested_actions", database_path
+    )
+    assert upgrade_result.returncode == 0, upgrade_result.stderr
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO conversations (id, title, created_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            """,
+            ("a" * 32, "Existing conversation"),
+        )
+        connection.execute(
+            """
+            INSERT INTO messages (
+                id, conversation_id, role, content, created_at
+            ) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            """,
+            ("b" * 32, "a" * 32, "assistant", "Existing message"),
+        )
+
+    result = run_alembic("upgrade", "head", database_path)
+
+    assert result.returncode == 0, result.stderr
+    assert read_table_columns(database_path, "messages")["evidence_snapshot"] == (
+        "JSON",
+        False,
+    )
+    with sqlite3.connect(database_path) as connection:
+        stored = connection.execute(
+            """
+            SELECT role, content, evidence_snapshot
+            FROM messages
+            WHERE id = ?
+            """,
+            ("b" * 32,),
+        ).fetchone()
+    assert stored == ("assistant", "Existing message", None)
+
+
 def test_message_migration_downgrades_to_conversations(
     tmp_path: Path,
 ) -> None:
@@ -243,7 +289,7 @@ def test_message_migration_downgrades_to_conversations(
     upgrade_result = run_alembic("upgrade", "head", database_path)
     assert upgrade_result.returncode == 0, upgrade_result.stderr
 
-    downgrade_result = run_alembic("downgrade", "-3", database_path)
+    downgrade_result = run_alembic("downgrade", "-4", database_path)
 
     assert downgrade_result.returncode == 0, downgrade_result.stderr
     assert read_database_tables(database_path) == {
@@ -261,7 +307,7 @@ def test_conversation_migration_downgrades_to_foundation(
     database_path = tmp_path / "migration.db"
     upgrade_result = run_alembic("upgrade", "head", database_path)
     assert upgrade_result.returncode == 0, upgrade_result.stderr
-    message_downgrade = run_alembic("downgrade", "-3", database_path)
+    message_downgrade = run_alembic("downgrade", "-4", database_path)
     assert message_downgrade.returncode == 0, message_downgrade.stderr
 
     conversation_downgrade = run_alembic(

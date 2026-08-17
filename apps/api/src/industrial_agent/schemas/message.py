@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -64,6 +64,7 @@ class MessageRead(BaseModel):
     content: str
     suggested_actions: tuple[SuggestedAction, ...] = ()
     created_at: datetime
+    evidence_snapshot: "EvidenceSnapshotRead | None" = None
 
     @field_validator("suggested_actions", mode="before")
     @classmethod
@@ -74,6 +75,8 @@ class MessageRead(BaseModel):
     def validate_role_actions(self) -> Self:
         if self.role == "user" and self.suggested_actions:
             raise ValueError("user messages cannot contain suggested actions")
+        if self.role == "user" and self.evidence_snapshot is not None:
+            raise ValueError("user messages cannot contain evidence snapshots")
         return self
 
     @field_validator("created_at", mode="after")
@@ -105,7 +108,7 @@ class MessageExchangeRead(BaseModel):
 
 
 class CombinedEvidencePathRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, extra="forbid")
 
     status: Literal["succeeded", "empty", "failed", "not_run"]
     result: (
@@ -119,7 +122,7 @@ class CombinedEvidencePathRead(BaseModel):
 
 
 class CombinedEvidenceRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, extra="forbid")
 
     manufacturing_kind: EvidenceKind
     manufacturing: CombinedEvidencePathRead
@@ -143,3 +146,59 @@ class CombinedEvidenceRead(BaseModel):
         ):
             raise ValueError("document path requires a document search result")
         return self
+
+
+class _AvailableEvidenceSnapshotRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True, extra="forbid")
+
+    status: Literal["available"]
+    schema_version: Literal[1]
+
+
+class ProductionSummarySnapshotRead(_AvailableEvidenceSnapshotRead):
+    kind: Literal["production_summary"]
+    production_summary: ProductionSummaryResult
+
+
+class EquipmentStatusSnapshotRead(_AvailableEvidenceSnapshotRead):
+    kind: Literal["equipment_status"]
+    equipment_status: EquipmentStatusResult
+
+
+class DefectDistributionSnapshotRead(_AvailableEvidenceSnapshotRead):
+    kind: Literal["defect_distribution"]
+    defect_distribution: DefectDistributionResult
+
+
+class DocumentSearchSnapshotRead(_AvailableEvidenceSnapshotRead):
+    kind: Literal["document_search"]
+    document_search: DocumentSearchResult
+
+
+class CombinedSnapshotRead(_AvailableEvidenceSnapshotRead, CombinedEvidenceRead):
+    kind: Literal["combined"]
+
+
+class UnavailableEvidenceRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True, extra="forbid")
+
+    status: Literal["unavailable"]
+    code: Literal["unsupported_snapshot_version", "invalid_snapshot"]
+
+
+AvailableEvidenceSnapshotRead = Annotated[
+    ProductionSummarySnapshotRead
+    | EquipmentStatusSnapshotRead
+    | DefectDistributionSnapshotRead
+    | DocumentSearchSnapshotRead
+    | CombinedSnapshotRead,
+    Field(discriminator="kind"),
+]
+
+EvidenceSnapshotRead = Annotated[
+    AvailableEvidenceSnapshotRead | UnavailableEvidenceRead,
+    Field(discriminator="status"),
+]
+
+
+MessageRead.model_rebuild()
