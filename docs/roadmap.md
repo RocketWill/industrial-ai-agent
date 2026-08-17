@@ -384,31 +384,28 @@ Implemented slices:
 - [x] Validate and JSON-round-trip an explicitly supplied assistant Evidence
   Snapshot in the message service, reject snapshots on user messages, and
   preserve `NULL` when an assistant snapshot is omitted.
+- [x] Verify Slice 3 runtime persistence across the four single-evidence paths,
+  Combined success/failure/empty cases, synchronous/SSE parity, rollback, and
+  cancellation or client-disconnect boundaries.
 
-The schema, conversion, and message-service boundaries above are implemented,
-but Slice 3 runtime persistence remains **In Progress**. The synchronous
-workflow's `persist_response` now passes the canonical snapshot through the
-same assistant-message commit path. A focused Production Summary integration
-verifies that the assistant row receives its canonical snapshot; a general
-response persists `evidence_snapshot` as `NULL`. Focused tests also cover the
-Production Summary SSE tool runner: the `tool_result` stage still has only the
-user row, while the final `assistant_message` event carries the canonical
-snapshot. An Equipment Status runtime test verifies that a recorded `unknown`
-result still persists as an available `equipment_status` canonical snapshot,
-without mapping it to missing or unavailable. A synchronous Combined
-partial-failure test retains succeeded manufacturing and failed documents
-(`error_code: TOOL_UNAVAILABLE`). These tests reuse shared `persist_response`;
-no production code changed. These focused seams do not by themselves complete
-Slice 3's atomic-persistence acceptance boundary.
+The schema, conversion, message-service, and runtime-persistence boundaries
+above are implemented. Slice 3 persists canonical snapshots for the four
+single-evidence paths: Production Summary, Equipment Status, Defect
+Distribution, and Document Search with complete sources. Combined success,
+one-path failure, double failure, and empty-result cases retain per-path
+status/result data with matching synchronous and SSE behavior; model failure
+uses the bounded fallback. General responses persist `evidence_snapshot` as
+`NULL`.
 
-The following work remains open:
+Snapshot-construction failure leaves the user row without an assistant row or
+snapshot. An assistant insert failure rolls back the insert, retains the user
+row, and leaves the session usable. Cancellation and a real-socket client
+disconnect likewise leave no assistant row or snapshot. The Slice 3 runtime
+suite reports 99 passed; Ruff and `git diff --check` passed.
 
-- Verify snapshot persistence and runtime acceptance for the remaining
-  Defect Distribution empty-result and Document Search source paths, and the
-  combined SSE path.
-- Define and verify rollback, cancellation, and client-disconnect behavior
-  before an exchange is complete.
-- Complete the read adapter and service/API wiring, including historical
-  reload responses.
-- Render persisted snapshots during historical reload in the UI.
-- Add Model Working Notes.
+The following v2.0 slices remain open:
+
+- [ ] Slice 4 — Complete historical API, reload responses, and UI rendering.
+- [ ] Slice 5 — Add and verify the reasoning parser.
+- [ ] Slice 6 — Add Model Working Notes.
+- [ ] Slice 7 — Complete final v2.0 acceptance.
