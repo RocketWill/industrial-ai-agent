@@ -2,7 +2,7 @@ import { Button, Descriptions, Progress, Tag, Typography } from "antd";
 import { CopyOutlined } from "@ant-design/icons";
 import { Prompts } from "@ant-design/x";
 import { lazy, Suspense, useState } from "react";
-import type { CombinedEvidence, CombinedEvidencePath, Message, ProductionEvidence } from "../api/messages";
+import type { CombinedEvidence, CombinedEvidencePath, EvidenceSnapshot, Message, ProductionEvidence } from "../api/messages";
 import { normalizeAssistantContent } from "../utils/normalizeAssistantContent";
 import DocumentViewer from "./DocumentViewer";
 import { parseCitation, type DocumentCitation } from "../utils/documentCitation";
@@ -293,6 +293,45 @@ function DocumentSourcesCard({ evidence }: { evidence: ProductionEvidence }) {
   );
 }
 
+function HistoricalEvidence({ snapshot, createdAt }: { snapshot: EvidenceSnapshot; createdAt: string }) {
+  if (snapshot.status === "unavailable") {
+    return (
+      <section className="evidence-card evidence-path-state" role="status" aria-label="Historical evidence unavailable">
+        <Typography.Text strong>Historical evidence unavailable</Typography.Text>
+        <Typography.Text type="secondary">{snapshot.code}</Typography.Text>
+      </section>
+    );
+  }
+
+  const evidence: ProductionEvidence = {
+    production_summary: snapshot.kind === "production_summary" ? snapshot.production_summary : null,
+    equipment_status: snapshot.kind === "equipment_status" ? snapshot.equipment_status : null,
+    defect_distribution: snapshot.kind === "defect_distribution" ? snapshot.defect_distribution : null,
+    document_search: snapshot.kind === "document_search" ? snapshot.document_search : null,
+    tool_error: null,
+  };
+
+  return (
+    <section className="historical-evidence" role="region" aria-label="Historical evidence">
+      <header className="evidence-heading">
+        <Typography.Text strong>Historical snapshot</Typography.Text>
+        <Typography.Text type="secondary">{displayTime(createdAt)}</Typography.Text>
+      </header>
+      {snapshot.kind === "combined" ? (
+        <CombinedEvidencePanels combined={snapshot} />
+      ) : snapshot.kind === "production_summary" ? (
+        <ProductionEvidenceCard evidence={evidence} />
+      ) : snapshot.kind === "equipment_status" ? (
+        <EquipmentStatusCard evidence={evidence} />
+      ) : snapshot.kind === "defect_distribution" ? (
+        <DefectDistributionCard evidence={evidence} />
+      ) : (
+        <DocumentSourcesCard evidence={evidence} />
+      )}
+    </section>
+  );
+}
+
 export default function MessageItem({
   message,
   isStreaming = false,
@@ -386,6 +425,9 @@ export default function MessageItem({
           <DocumentSourcesCard evidence={evidence} />
         )}
         {!isUser && combinedEvidence && <CombinedEvidencePanels combined={combinedEvidence} />}
+        {!isUser && !isStreaming && message.evidence_snapshot && (
+          <HistoricalEvidence snapshot={message.evidence_snapshot} createdAt={message.created_at} />
+        )}
       </div>
     </article>
   );

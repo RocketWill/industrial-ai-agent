@@ -4,6 +4,18 @@ import { buildMessagesUrl, listMessages, sendMessage, streamMessage } from "./me
 const id = "11111111-1111-1111-8111-111111111111";
 const message = { id, conversation_id: id, role: "user" as const, content: "Check status", created_at: "2026-07-30T00:00:00Z", suggested_actions: [] };
 const assistant = { ...message, id: "22222222-2222-1222-8222-222222222222", role: "assistant" as const, content: "The status is stable." };
+const productionSummary = { equipment_id: "AOI-WAFER-01", lot_id: null, start: "2026-01-15T13:00:00Z", end: "2026-01-15T17:00:00Z", inspected_wafers: 10, passed_wafers: 9, failed_wafers: 1, yield_rate: 0.9, defect_counts: [], alarm_events: [], limitations: [] };
+const equipmentStatus = { equipment_id: "AOI-WAFER-01", observed_at: "2026-01-15T17:00:00Z", status: "running", effective_start: "2026-01-15T16:00:00Z", effective_end: "2026-01-15T18:00:00Z", source_event_id: "state-003", reason_code: "SYNTHETIC-SCHEDULED-RUN", limitations: [] };
+const defectDistribution = { equipment_id: "AOI-WAFER-01", lot_id: "LOT-DEMO-001", start: "2026-01-15T13:00:00Z", end: "2026-01-15T17:00:00Z", failed_wafers: 1, classified_defect_count: 1, unclassified_failed_wafers: 0, items: [{ category: "scratch", count: 1, share: 1, rank: 1 }], limitations: [] };
+const documentSearch = { query: "OPTICAL-SIGNAL-LOW", sources: [{ source_id: "guide:001", source: "built_in", title: "Alarm Guide", section: "OPTICAL-SIGNAL-LOW", relative_path: "data/synthetic/documents/guide.md", excerpt: "Check the lens.", score: 0.72 }], limitations: [] };
+const combined = { manufacturing_kind: "production", manufacturing: { status: "succeeded", result: productionSummary, error_code: null }, documents: { status: "not_run", result: null, error_code: null }, document_query: "OPTICAL-SIGNAL-LOW", answer_status: "succeeded" };
+const snapshots = {
+  production_summary: { status: "available", schema_version: 1, kind: "production_summary", production_summary: productionSummary },
+  equipment_status: { status: "available", schema_version: 1, kind: "equipment_status", equipment_status: equipmentStatus },
+  defect_distribution: { status: "available", schema_version: 1, kind: "defect_distribution", defect_distribution: defectDistribution },
+  document_search: { status: "available", schema_version: 1, kind: "document_search", document_search: documentSearch },
+  combined: { status: "available", schema_version: 1, kind: "combined", ...combined },
+} as const;
 const suggestedActions = [
   { id: "production_evidence_first", label: "Production evidence", message: "Show the production evidence first." },
   { id: "document_evidence_first", label: "Document evidence", message: "Search the documents first." },
@@ -18,6 +30,33 @@ describe("messages API", () => {
   it("loads validated history", async () => {
     const fetchImplementation = async () => new Response(JSON.stringify([message]), { status: 200 });
     await expect(listMessages(id, fetchImplementation)).resolves.toEqual([message]);
+  });
+
+  it("accepts history without an evidence snapshot", async () => {
+    await expect(listMessages(id, async () => new Response(JSON.stringify([assistant]), { status: 200 }))).resolves.toEqual([assistant]);
+  });
+
+  it.each(Object.entries(snapshots))("accepts %s historical evidence snapshot", async (_kind, evidence_snapshot) => {
+    const historicalAssistant = { ...assistant, evidence_snapshot };
+    await expect(listMessages(id, async () => new Response(JSON.stringify([historicalAssistant]), { status: 200 }))).resolves.toEqual([historicalAssistant]);
+  });
+
+  it("accepts unavailable historical evidence", async () => {
+    const historicalAssistant = { ...assistant, evidence_snapshot: { status: "unavailable", code: "invalid_snapshot" } };
+    await expect(listMessages(id, async () => new Response(JSON.stringify([historicalAssistant]), { status: 200 }))).resolves.toEqual([historicalAssistant]);
+  });
+
+  it.each([
+    { ...snapshots.production_summary, kind: "unknown" },
+    { ...snapshots.production_summary, schema_version: 2 },
+    { ...snapshots.production_summary, equipment_status: equipmentStatus },
+  ])("rejects invalid historical evidence snapshot", async (evidence_snapshot) => {
+    const historicalAssistant = { ...assistant, evidence_snapshot };
+    await expect(listMessages(id, async () => new Response(JSON.stringify([historicalAssistant]), { status: 200 }))).rejects.toThrow("Message request failed");
+  });
+
+  it("rejects a user-owned evidence snapshot", async () => {
+    await expect(listMessages(id, async () => new Response(JSON.stringify([{ ...message, evidence_snapshot: snapshots.production_summary }]), { status: 200 }))).rejects.toThrow("Message request failed");
   });
 
   it("accepts the canonical guided routing actions on assistant messages", async () => {
@@ -39,100 +78,22 @@ describe("messages API", () => {
     const requests: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
     const fetchImplementation = async (input: RequestInfo | URL, init?: RequestInit) => {
       requests.push({ input, init });
-      return new Response(JSON.stringify({ user_message: message, assistant_message: assistant, evidence: null }), { status: 201 });
+      return new Response(JSON.stringify({ user_message: message, assistant_message: assistant }), { status: 201 });
     };
-    await expect(sendMessage(id, "  Check status  ", fetchImplementation)).resolves.toEqual({ user_message: message, assistant_message: assistant, evidence: null });
+    await expect(sendMessage(id, "  Check status  ", fetchImplementation)).resolves.toEqual({ user_message: message, assistant_message: assistant });
     expect(requests[0]).toEqual({ input: `/api/conversations/${id}/messages`, init: { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify({ content: "Check status" }) } });
   });
 
-  it("accepts deterministic equipment-status evidence", async () => {
-    const evidence = {
-      production_summary: null,
-      equipment_status: {
-        equipment_id: "AOI-WAFER-01",
-        observed_at: "2026-01-15T17:00:00Z",
-        status: "running",
-        effective_start: "2026-01-15T16:00:00Z",
-        effective_end: "2026-01-15T18:00:00Z",
-        source_event_id: "state-003",
-        reason_code: "SYNTHETIC-SCHEDULED-RUN",
-        limitations: [],
-      },
-      tool_error: null,
-    };
-    const fetchImplementation = async () => new Response(
-      JSON.stringify({ user_message: message, assistant_message: assistant, evidence }),
-      { status: 201 },
-    );
-
-    await expect(sendMessage(id, "Check status", fetchImplementation)).resolves.toEqual({
-      user_message: message,
-      assistant_message: assistant,
-      evidence,
-    });
+  it.each(Object.entries(snapshots))("accepts %s evidence on an assistant exchange", async (_kind, evidence_snapshot) => {
+    const exchange = { user_message: message, assistant_message: { ...assistant, evidence_snapshot } };
+    await expect(sendMessage(id, "Check status", async () => new Response(JSON.stringify(exchange), { status: 201 }))).resolves.toEqual(exchange);
   });
 
-  it("accepts deterministic defect-distribution evidence", async () => {
-    const evidence = {
-      production_summary: null,
-      equipment_status: null,
-      defect_distribution: {
-        equipment_id: "AOI-WAFER-01",
-        lot_id: "LOT-DEMO-001",
-        start: "2026-01-15T13:00:00Z",
-        end: "2026-01-15T17:00:00Z",
-        failed_wafers: 30,
-        classified_defect_count: 30,
-        unclassified_failed_wafers: 0,
-        items: [
-          { category: "edge-chip", count: 19, share: 19 / 30, rank: 1 },
-          { category: "scratch", count: 11, share: 11 / 30, rank: 2 },
-        ],
-        limitations: [],
-      },
-      tool_error: null,
-    };
-    const fetchImplementation = async () => new Response(
-      JSON.stringify({ user_message: message, assistant_message: assistant, evidence }),
-      { status: 201 },
-    );
-
-    await expect(sendMessage(id, "Show defect distribution", fetchImplementation)).resolves.toEqual({
-      user_message: message,
-      assistant_message: assistant,
-      evidence,
-    });
+  it("accepts unavailable evidence on an assistant exchange", async () => {
+    const exchange = { user_message: message, assistant_message: { ...assistant, evidence_snapshot: { status: "unavailable", code: "unsupported_snapshot_version" } } };
+    await expect(sendMessage(id, "Check status", async () => new Response(JSON.stringify(exchange), { status: 201 }))).resolves.toEqual(exchange);
   });
 
-  it("accepts retrieved document-source evidence", async () => {
-    const evidence = {
-      production_summary: null,
-      document_search: {
-        query: "OPTICAL-SIGNAL-LOW operator check",
-        sources: [{
-          source_id: "aoi-alarm-guide:002",
-          source: "built_in",
-          title: "AOI Wafer Inspector Alarm Guide",
-          section: "OPTICAL-SIGNAL-LOW",
-          relative_path: "data/synthetic/documents/aoi-wafer-inspector-alarm-guide.md",
-          excerpt: "Check the optical lens cover.",
-          score: 0.72,
-        }],
-        limitations: [],
-      },
-      tool_error: null,
-    };
-    const fetchImplementation = async () => new Response(
-      JSON.stringify({ user_message: message, assistant_message: assistant, evidence }),
-      { status: 201 },
-    );
-
-    await expect(sendMessage(id, "Check the manual", fetchImplementation)).resolves.toEqual({
-      user_message: message,
-      assistant_message: assistant,
-      evidence,
-    });
-  });
 
   it("validates safe routing progress events", async () => {
     const body = [

@@ -54,7 +54,7 @@ export function useMessages(conversationId: string | null, api: MessageApi = def
     busy.current = true; setSending(true); setError(null); setEvidence(null); setCombinedEvidence(null); setRunState({ phase: "generating", label: "Generating response" });
     try {
       if (!api.streamMessage) {
-        const exchange = await api.sendMessage(id, content); setMessages((current) => [...current, exchange.user_message, exchange.assistant_message]); setEvidence(exchange.evidence); setCombinedEvidence(exchange.combined_evidence ?? null); setRunState({ phase: "success", label: null }); setDraft(""); return true;
+        const exchange = await api.sendMessage(id, content); setMessages((current) => [...current, exchange.user_message, exchange.assistant_message]); setRunState({ phase: "success", label: null }); setDraft(""); return true;
       }
       const abortController = new AbortController(); controller.current = abortController; setStreaming(true);
       const placeholder: Message = { id: placeholderId, conversation_id: id, role: "assistant", content: "", created_at: new Date().toISOString(), suggested_actions: [] };
@@ -105,7 +105,7 @@ export function useMessages(conversationId: string | null, api: MessageApi = def
         } else if (event.type === "combined_evidence_completed") {
           setCombinedEvidence((current) => current ? { ...current, answer_status: event.answer_status } : current);
         } else if (event.type === "message_completed") {
-          setMessages((current) => current.map((message) => message.id === placeholder.id ? event.assistant_message : message)); setRunState({ phase: "success", label: null }); setDraft("");
+          setMessages((current) => current.map((message) => message.id === placeholder.id ? event.assistant_message : message)); setEvidence(null); setCombinedEvidence(null); setRunState({ phase: "success", label: null }); setDraft("");
         } else if (event.type === "error") { throw new Error(event.message); }
       }
       return true;

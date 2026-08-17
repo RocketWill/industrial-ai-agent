@@ -7,6 +7,7 @@ export type Message = {
   content: string;
   created_at: string;
   suggested_actions: readonly SuggestedAction[];
+  evidence_snapshot?: EvidenceSnapshot | null;
 };
 export type SuggestedAction =
   | { id: "production_evidence_first"; label: "Production evidence"; message: "Show the production evidence first." }
@@ -63,7 +64,14 @@ export type CombinedEvidence =
   | (CombinedEvidenceBase & { manufacturing_kind: "equipment_status"; manufacturing: CombinedEvidencePath<NonNullable<ProductionEvidence["equipment_status"]>> })
   | (CombinedEvidenceBase & { manufacturing_kind: "defect_distribution"; manufacturing: CombinedEvidencePath<NonNullable<ProductionEvidence["defect_distribution"]>> });
 
-export type MessageExchange = { user_message: Message; assistant_message: Message; evidence: ProductionEvidence | null; combined_evidence?: CombinedEvidence | null };
+export type EvidenceSnapshot =
+  | { status: "available"; schema_version: 1; kind: "production_summary"; production_summary: NonNullable<ProductionEvidence["production_summary"]> }
+  | { status: "available"; schema_version: 1; kind: "equipment_status"; equipment_status: NonNullable<ProductionEvidence["equipment_status"]> }
+  | { status: "available"; schema_version: 1; kind: "defect_distribution"; defect_distribution: NonNullable<ProductionEvidence["defect_distribution"]> }
+  | { status: "available"; schema_version: 1; kind: "document_search"; document_search: NonNullable<ProductionEvidence["document_search"]> }
+  | ({ status: "available"; schema_version: 1; kind: "combined" } & CombinedEvidence)
+  | { status: "unavailable"; code: "unsupported_snapshot_version" | "invalid_snapshot" };
+export type MessageExchange = { user_message: Message; assistant_message: Message };
 export type RouteIntent =
   | "general"
   | "production_summary"
@@ -104,11 +112,19 @@ export class MessageApiError extends Error {
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  const actual = Object.keys(value);
+  return actual.length === keys.length && actual.every((key) => keys.includes(key));
+}
 function isMessage(value: unknown): value is Message {
   if (typeof value !== "object" || value === null) return false;
   const item = value as Message;
   const validActions = Array.isArray(item.suggested_actions) && item.suggested_actions.every(isSuggestedAction);
-  return UUID.test(item.id) && UUID.test(item.conversation_id) && (item.role === "user" || item.role === "assistant") && typeof item.content === "string" && item.content.trim().length > 0 && item.content.length <= 10000 && typeof item.created_at === "string" && !Number.isNaN(Date.parse(item.created_at)) && validActions && (item.role === "assistant" || item.suggested_actions.length === 0);
+  const validSnapshot = item.evidence_snapshot === undefined || item.evidence_snapshot === null || (item.role === "assistant" && isEvidenceSnapshot(item.evidence_snapshot));
+  return UUID.test(item.id) && UUID.test(item.conversation_id) && (item.role === "user" || item.role === "assistant") && typeof item.content === "string" && item.content.trim().length > 0 && item.content.length <= 10000 && typeof item.created_at === "string" && !Number.isNaN(Date.parse(item.created_at)) && validActions && (item.role === "assistant" || item.suggested_actions.length === 0) && validSnapshot;
 }
 function isSuggestedAction(value: unknown): value is SuggestedAction {
   if (typeof value !== "object" || value === null) return false;
@@ -117,7 +133,7 @@ function isSuggestedAction(value: unknown): value is SuggestedAction {
     || (action.id === "document_evidence_first" && action.label === "Document evidence" && action.message === "Search the documents first.");
 }
 function isExchange(value: unknown): value is MessageExchange {
-  return typeof value === "object" && value !== null && isMessage((value as MessageExchange).user_message) && isMessage((value as MessageExchange).assistant_message) && isEvidence((value as MessageExchange).evidence) && ((value as MessageExchange).combined_evidence === undefined || isCombinedEvidence((value as MessageExchange).combined_evidence));
+  return isRecord(value) && isMessage(value.user_message) && isMessage(value.assistant_message);
 }
 function isEvidence(value: unknown): value is ProductionEvidence | null {
   if (value === null) return true;
@@ -133,6 +149,33 @@ function isEvidence(value: unknown): value is ProductionEvidence | null {
   const documentSearch = item.document_search;
   const validDocumentSearch = documentSearch !== null && documentSearch !== undefined && typeof documentSearch === "object" && typeof documentSearch.query === "string" && Array.isArray(documentSearch.sources) && documentSearch.sources.every((source) => typeof source.source_id === "string" && (source.source === "built_in" || source.source === "local_upload") && typeof source.title === "string" && typeof source.section === "string" && typeof source.relative_path === "string" && typeof source.excerpt === "string" && typeof source.score === "number" && source.score >= 0 && source.score <= 1) && Array.isArray(documentSearch.limitations) && documentSearch.limitations.every((limitation) => typeof limitation === "string");
   return validSummary || validStatus || validDistribution || validDocumentSearch || item.tool_error !== null;
+}
+function isEvidenceSnapshot(value: unknown): value is EvidenceSnapshot {
+  if (!isRecord(value)) return false;
+  if (value.status === "unavailable") {
+    return hasExactKeys(value, ["status", "code"])
+      && (value.code === "unsupported_snapshot_version" || value.code === "invalid_snapshot");
+  }
+  if (value.status !== "available" || value.schema_version !== 1) return false;
+  if (value.kind === "production_summary") {
+    return hasExactKeys(value, ["status", "schema_version", "kind", "production_summary"])
+      && isEvidence({ production_summary: value.production_summary, tool_error: null });
+  }
+  if (value.kind === "equipment_status") {
+    return hasExactKeys(value, ["status", "schema_version", "kind", "equipment_status"])
+      && isEvidence({ production_summary: null, equipment_status: value.equipment_status, tool_error: null });
+  }
+  if (value.kind === "defect_distribution") {
+    return hasExactKeys(value, ["status", "schema_version", "kind", "defect_distribution"])
+      && isEvidence({ production_summary: null, defect_distribution: value.defect_distribution, tool_error: null });
+  }
+  if (value.kind === "document_search") {
+    return hasExactKeys(value, ["status", "schema_version", "kind", "document_search"])
+      && isEvidence({ production_summary: null, document_search: value.document_search, tool_error: null });
+  }
+  return value.kind === "combined"
+    && hasExactKeys(value, ["status", "schema_version", "kind", "manufacturing_kind", "manufacturing", "documents", "document_query", "answer_status"])
+    && isCombinedEvidence(value);
 }
 function isCombinedPath(value: unknown, isResult: (result: unknown) => boolean): value is CombinedEvidencePath {
   if (typeof value !== "object" || value === null) return false;
