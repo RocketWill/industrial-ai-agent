@@ -11,7 +11,13 @@ workbench implemented across the frontend milestones.
   2.9.0, Vitest, and React Testing Library;
 - a `GET /health` client with runtime response validation;
 - conversation loading, creation, selection, and deletion through the existing API;
-- persisted message history and synchronous user/assistant exchanges;
+- persisted message history and synchronous user/assistant exchanges, with
+  canonical completed Evidence Snapshots attached to assistant messages;
+- strict runtime validation of Evidence Snapshots returned by the message API;
+- historical Evidence Snapshot panels under their owning assistant messages,
+  with a `Historical snapshot` label and capture time, reusing the existing
+  evidence panels; missing snapshots render no historical panel, while
+  unavailable snapshots keep the answer visible with compact status;
 - synchronous and SSE routing for explicit English and Traditional Chinese
   requests, with typed classification for ambiguous requests;
 - reload-safe `Production evidence` and `Document evidence` choices on the
@@ -120,6 +126,14 @@ is not guaranteed. The first streaming scroll is deferred until the Ant Design
 X message list has mounted, preventing its imperative scroll handle from
 reading an unavailable internal container during the initial exchange.
 
+Slice 4 keeps current Evidence scoped to the active request. Completed
+assistant messages carry canonical Evidence Snapshots that pass strict runtime
+validation and render beneath their owning message after history reload.
+Available snapshots reuse the existing production, equipment, defect, document,
+and combined panels with a `Historical snapshot` label and capture time. A
+missing snapshot renders no historical evidence region; an unavailable
+snapshot keeps the answer visible and shows compact status.
+
 The analysis context inspector loads conversation-bound metadata from the API.
 It allows a device to be selected from the fictional catalog and optional lot
 and supported time-range values to be saved. Changes remain local until Save,
@@ -143,7 +157,7 @@ shows indexing and failure states, and confirms local deletion by document
 name. The drawer warns that files remain on local disk and that retrieved text
 may be sent to the configured model.
 
-Evidence is not persisted across reloads, and the browser does not display a
-full tool timeline or manufacturing charts. Deterministic routing supports
-English and Traditional Chinese only; ambiguous requests still depend on the
-configured routing model.
+The browser does not provide an evidence browser, a full evidence timeline,
+manufacturing charts, or pagination. Model Working Notes are not implemented.
+Deterministic routing supports English and Traditional Chinese only; ambiguous
+requests still depend on the configured routing model.

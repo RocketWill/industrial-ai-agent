@@ -387,6 +387,13 @@ Implemented slices:
 - [x] Verify Slice 3 runtime persistence across the four single-evidence paths,
   Combined success/failure/empty cases, synchronous/SSE parity, rollback, and
   cancellation or client-disconnect boundaries.
+- [x] Complete the frontend Evidence Snapshot boundary: strictly validate five
+  available kinds, explicit unavailable states, and missing snapshots; keep
+  snapshots on assistant messages across history reload; clear current
+  evidence on SSE completion after applying the returned persisted assistant;
+  and render historical snapshots with a label and message capture time using
+  the existing evidence panels while keeping the assistant message visible
+  when evidence is unavailable.
 
 The schema, conversion, message-service, and runtime-persistence boundaries
 above are implemented. Slice 3 persists canonical snapshots for the four
@@ -403,20 +410,29 @@ row, and leaves the session usable. Cancellation and a real-socket client
 disconnect likewise leave no assistant row or snapshot. The Slice 3 runtime
 suite reports 99 passed; Ruff and `git diff --check` passed.
 
-Slice 4's backend contract seam is implemented: completed `MessageExchangeRead`
-responses contain only `user_message` and `assistant_message`; canonical
-evidence appears only at `assistant_message.evidence_snapshot`; synchronous
-completion and `GET` history return matching snapshots; legacy top-level
-`evidence` and `combined_evidence` fields are removed; and current SSE tool
-events remain available. The Slice 4 frontend TypeScript/runtime state,
-historical evidence rendering, and unavailable-evidence UI remain in progress.
-The backend contract suite reports 66 passed; Ruff and `git diff --check`
-passed.
+Slice 4 is implemented across the backend and frontend. Completed
+`MessageExchangeRead` responses contain only `user_message` and
+`assistant_message`; canonical evidence appears only at
+`assistant_message.evidence_snapshot`; synchronous completion and `GET`
+history return matching snapshots; legacy top-level `evidence` and
+`combined_evidence` fields are removed; and current SSE tool events remain
+available. The frontend strictly validates five available snapshot kinds,
+explicit unavailable states, and missing snapshots; keeps snapshots on the
+assistant message across history reload; clears current evidence on SSE
+completion after applying the returned persisted assistant; and renders
+historical snapshots with a label and message capture time by reusing the
+existing evidence panels. An unavailable snapshot keeps the assistant message
+visible. Slice 4 focused verification reports 69 frontend and 41 backend
+tests; the full Web suite reports 127 passed, with TypeScript checking and the
+production build passing. ESLint completed with the existing
+`react-refresh/only-export-components` warning. Ant Design CLI `info`, `lint`, `doctor`, and
+`bug-cli` were blocked by the existing missing
+`@oxc-parser/binding-darwin-arm64` optional native package. No browser
+acceptance was run for this slice; the existing Vite chunk-size warning is
+retained.
 
 The following v2.0 slices remain open:
 
-- [ ] Slice 4 — Complete frontend TypeScript/runtime state, historical evidence
-  rendering, and unavailable-evidence UI.
 - [ ] Slice 5 — Add and verify the reasoning parser.
 - [ ] Slice 6 — Add Model Working Notes.
 - [ ] Slice 7 — Complete final v2.0 acceptance.

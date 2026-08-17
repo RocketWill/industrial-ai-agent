@@ -2,7 +2,7 @@
 
 This document is the code-backed feature inventory for the repository. It was
 reviewed against the application code, migrations, tests, and public
-documentation on 2026-08-15. The latest recorded verification run remains
+documentation on 2026-08-17. The latest recorded verification run remains
 dated separately below.
 
 ## Status rules
@@ -22,17 +22,17 @@ matrix. Application README files own setup and contract usage.
 | API process health | Implemented | `GET /health` reports whether the FastAPI process responds. | It does not inspect SQLite, the LLM service, or future tools. |
 | Database foundation | Implemented | SQLite, synchronous SQLAlchemy sessions, foreign-key enforcement, and six explicit Alembic revisions, including the nullable `messages.evidence_snapshot` column. | Application startup does not create or migrate schema. |
 | Conversations | Implemented | Create, list newest first, open, and permanently delete conversations. | No rename, archive, restore, or pagination. |
-| Message history | Implemented | Persist user and assistant messages and return deterministic chronological history. Conversation deletion cascades to messages. The message service validates and JSON-round-trips assistant Evidence Snapshots, rejects them on user messages, and leaves omitted snapshots `NULL`. Completed sync and SSE evidence paths persist version-1 canonical snapshots, including Combined partial outcomes and complete document sources. | No individual message mutation or pagination. Frontend TypeScript/runtime state, historical evidence rendering, and unavailable-evidence UI remain open in Slice 4. |
-| Synchronous assistant response | Implemented | Persist the user message, use one authoritative route, execute one selected evidence tool or the bounded combined manufacturing-plus-document workflow, validate evidence and the final answer, and persist one non-empty assistant response. | No system prompt, answer retry, model discovery, planner, or frontend historical evidence reload. |
-| Streaming assistant response | Implemented | Send SSE events for the persisted user message, bounded routing progress, token deltas, completion, safe errors, single-tool stages, and ordered path-aware combined stages. Completed evidence paths persist the same canonical snapshot contract as synchronous responses; current SSE tool events remain available. | Evidence-route answer text is buffered for deterministic post-checks before token events are forwarded. Frontend historical evidence rendering and unavailable-evidence UI remain open in Slice 4. |
+| Message history | Implemented | Persist user and assistant messages and return deterministic chronological history. Conversation deletion cascades to messages. The message service validates and JSON-round-trips assistant Evidence Snapshots, rejects them on user messages, and leaves omitted snapshots `NULL`. Completed sync and SSE evidence paths persist version-1 canonical snapshots, including Combined partial outcomes and complete document sources. Reloaded assistant messages retain their message-owned snapshots for historical rendering. | No individual message mutation or pagination. |
+| Synchronous assistant response | Implemented | Persist the user message, use one authoritative route, execute one selected evidence tool or the bounded combined manufacturing-plus-document workflow, validate evidence and the final answer, and persist one non-empty assistant response with its canonical snapshot when an evidence path produces one. | No system prompt, answer retry, model discovery, or planner. |
+| Streaming assistant response | Implemented | Send SSE events for the persisted user message, bounded routing progress, token deltas, completion, safe errors, single-tool stages, and ordered path-aware combined stages. Completed evidence paths persist the same canonical snapshot contract as synchronous responses; current SSE tool events remain available. On completion, the frontend applies the returned persisted assistant message and clears current evidence. | Evidence-route answer text is buffered for deterministic post-checks before token events are forwarded. |
 | Conversation continuity | Implemented | Previous user and assistant messages from the selected conversation are included in the next model request. | Workspace context is stored separately and is not yet included in the model prompt. |
 | Workspace context API | Implemented | Read and partially update conversation-bound environment, device, lot, time range, and data source; synchronous and SSE production paths resolve saved device, lot, and supported synthetic time presets when tool arguments are missing. | Context is not injected into the general model prompt. Custom or unrecognized time-range labels still require clarification. |
 | Synthetic device catalog | Implemented | `GET /devices` returns three deterministic fictional device identities and validates selected device IDs. | No live status, telemetry, production records, or mutable catalog. |
 | React conversation workflow | Implemented | Load, create, select, and delete conversations; reload history; send messages through SSE; display routing, retry or fallback, tool, evidence, and response states; stop generation; and report failures. | There is no persisted trace timeline, message editing, regeneration, new-response counter, or pagination. |
-| Industrial workspace shell | Implemented | Ant Design 6.5.1 and Ant Design X 2.9.0 provide a dark-first responsive workbench with grouped conversations, Bubble messages, a controlled Sender, XMarkdown, processing states, stable latest-message following, and current-exchange single or combined evidence. Combined exchanges keep manufacturing and document loading, empty, failure, and result regions separate. | There is no persisted evidence history, complete tool timeline, manufacturing chart surface, PDF ingestion, or multi-user document administration. |
+| Industrial workspace shell | Implemented | Ant Design 6.5.1 and Ant Design X 2.9.0 provide a dark-first responsive workbench with grouped conversations, Bubble messages, a controlled Sender, XMarkdown, processing states, stable latest-message following, and current-exchange single or combined evidence. Combined exchanges keep manufacturing and document loading, empty, failure, and result regions separate. Reloaded assistant messages render canonical historical snapshots with a label and message capture time through the existing evidence panels; unavailable snapshots keep the message visible. | There is no persisted complete tool timeline, manufacturing chart surface, PDF ingestion, or multi-user document administration. |
 | Context editor | Implemented | Select a fictional device, enter an optional lot, choose an executable 1, 4, 8, or 24 hour preset, keep edits in a local draft, Save or Reset explicitly, and guard navigation while changes are unsaved. Loading and failures remain visible in the inspector. | Data source and environment remain read-only synthetic metadata; arbitrary UTC start and end entry is not implemented. |
 | Manufacturing domain | Implemented | Immutable Equipment, Production Lot, Inspection Record, Defect Count, Alarm Event, Time Range, Production Summary, Defect Distribution, and Equipment State Interval types; deterministic yield and ranked defect aggregation; overlapping alarm selection; explicit empty-result behavior; point-in-time recorded-status lookup; and one fictional AOI dataset. | Throughput is deferred until a later dataset and unit contract exists. There is no database persistence, live data, inferred equipment state, or causal analysis. |
-| Production summary tool | Implemented | Typed `get_production_summary` request/result boundary filters the synthetic AOI dataset, delegates numeric work to the manufacturing domain, participates in synchronous and SSE grounded-answer flows, resolves missing arguments from supported workspace context, and returns current-exchange evidence. | Focused sync/SSE runtime tests verify canonical snapshot attachment; frontend UI consumption remains incomplete. Custom or unrecognized time-range labels require clarification. |
+| Production summary tool | Implemented | Typed `get_production_summary` request/result boundary filters the synthetic AOI dataset, delegates numeric work to the manufacturing domain, participates in synchronous and SSE grounded-answer flows, resolves missing arguments from supported workspace context, and returns current-exchange evidence. Its canonical snapshot is also rendered in historical assistant messages through the existing production panel. | Custom or unrecognized time-range labels require clarification. |
 | Equipment status tool | Implemented | Typed `get_equipment_status` input and result contracts query explicit synthetic state intervals at one UTC timestamp, resolve missing time from supported workspace context, return `unknown` when no state is recorded, participate in synchronous and SSE flows, and persist canonical snapshots without treating recorded `unknown` as unavailable. | It is not live status. No status history or causal interpretation is provided. |
 | Defect distribution tool | Implemented | Typed `get_defect_distribution` request and result contracts filter the synthetic AOI dataset, rank recorded defect categories by count, calculate shares against classified defects, expose unclassified failures and limitations, participate in synchronous and SSE flows, and persist canonical snapshots including valid empty results. | It does not infer causes, trends, or throughput. |
 | LangGraph orchestration | Implemented | The synchronous graph and SSE runner share an application-owned route decision, deterministic clarification and fallback, single-tool execution, and one bounded manufacturing-then-document combined path. Combined validation checks manufacturing claims, any source IDs included in prose, causal conclusions, and unsupported operational claims while retaining valid evidence after model failure. | Structured Sources own traceability, so inline source IDs are optional. Validation is intentionally bounded to recognized claim forms; there are no persisted runs, planner, multiple manufacturing tools per turn, evidence-tool retries, checkpoints, resume behavior, or graph visualization. |
@@ -46,7 +46,7 @@ matrix. Application README files own setup and contract usage.
 
 **Status: In Progress**
 
-Slices 1 through 3 and the Slice 4 backend contract seam are implemented.
+Slices 1 through 4 are implemented.
 Slice 1 validates a version-1 typed
 `MessageRead.evidence_snapshot` union for Production Summary, Equipment Status,
 Defect Distribution, Document Search, Combined Evidence, and the explicit
@@ -71,15 +71,26 @@ assistant row or snapshot; database failure also rolls back the session. The
 Slice 3 runtime suite reports 99 passed, with Ruff and `git diff --check`
 passing.
 
-Slice 4's backend contract seam is implemented: completed `MessageExchangeRead`
-responses contain only `user_message` and `assistant_message`; canonical
-evidence appears only at `assistant_message.evidence_snapshot`; synchronous
-completion and `GET` history return matching snapshots; legacy top-level
-`evidence` and `combined_evidence` fields are removed; and current SSE tool
-events remain available. The frontend TypeScript/runtime state, historical
-evidence rendering, and unavailable-evidence UI remain open in Slice 4. The
-backend contract suite reports 66 passed, with Ruff and `git diff --check`
-passing.
+Slice 4 is implemented across the backend and frontend. Completed
+`MessageExchangeRead` responses contain only `user_message` and
+`assistant_message`; canonical evidence appears only at
+`assistant_message.evidence_snapshot`; synchronous completion and `GET`
+history return matching snapshots; legacy top-level `evidence` and
+`combined_evidence` fields are removed; and current SSE tool events remain
+available. The frontend strictly validates five available snapshot kinds,
+explicit unavailable states, and missing snapshots; keeps snapshots on the
+assistant message across history reload; clears current evidence on SSE
+completion after applying the returned persisted assistant; and renders
+historical snapshots with a label and message capture time by reusing the
+existing evidence panels. An unavailable snapshot keeps the assistant message
+visible. Slice 4 focused verification reports 69 frontend and 41 backend
+tests; the full Web suite reports 127 passed, with TypeScript checking and the
+production build passing. ESLint completed with the existing
+`react-refresh/only-export-components` warning. Ant Design CLI `info`, `lint`, `doctor`, and
+`bug-cli` were blocked by the existing missing
+`@oxc-parser/binding-darwin-arm64` optional native package. No browser
+acceptance was run for this slice; the existing Vite chunk-size warning is
+retained.
 Provider reasoning parsing, Model Working Notes, and final v2.0 acceptance
 remain open in Slices 5 through 7.
 
@@ -105,7 +116,7 @@ remain open in Slices 5 through 7.
 
 ## Verification record
 
-The latest local verification on 2026-08-15 produced:
+The latest full-release verification on 2026-08-15 produced:
 
 - API: 416 Pytest tests and Ruff passed. No backend static type checker is
   configured in the current development dependency set.
@@ -118,8 +129,10 @@ The latest local verification on 2026-08-15 produced:
   in 380.98 ms and completed `get_production_summary` in 16.29 ms. These are
   development-machine observations; the matching direct native call took 0.40
   ms. This single comparison is not a performance guarantee or benchmark.
-- Web: 106 Vitest tests passed, TypeScript checking passed, ESLint passed, and
-  the Vite production build completed.
+- Slice 4 was verified separately on 2026-08-17: 69 focused frontend tests and
+  41 backend contract tests passed. The full Web suite then passed 127 Vitest
+  tests and TypeScript checking; ESLint completed with the existing Fast
+  Refresh warning, and the Vite production build completed.
 - Browser combined workflow: one explicit production-plus-document request ran
   against saved synthetic AOI context. The final exchange retained a 95.56%
   Production Summary and three cited document sources when model synthesis was
@@ -140,25 +153,21 @@ The latest local verification on 2026-08-15 produced:
   the selected action, removed the resolved choices, and completed with the
   deterministic Production summary surface. The configured model took about
   23 seconds to finish the answer after evidence arrived.
-- Ant Design CLI diagnostics could not start because the global CLI installation
-  is missing the `@oxc-parser/binding-darwin-arm64` optional native package.
-  The CLI's own `bug-cli` preview fails at the same startup boundary. No Ant
-  Design component API changed in this slice; TypeScript, ESLint, tests, and
-  the production build still passed.
+- Ant Design CLI `info`, `lint`, `doctor`, and `bug-cli` were blocked at startup
+  because the global CLI installation is missing the
+  `@oxc-parser/binding-darwin-arm64` optional native package. No Ant Design
+  component API changed in this slice; TypeScript, ESLint, tests, and the
+  production build still passed. No browser acceptance was run for Slice 4.
 - Clean copy: git archive output installed API and Web dependencies from the
   committed lockfiles, applied all migrations, and reran the API and Web test
   suites successfully.
 
-The Vite build reports a JavaScript chunk-size warning above 500 kB. The main
-JavaScript output is 956.41 kB, or 310.35 kB gzip as reported under Node.js 24,
-while XMarkdown is split into
-a 125.66 kB lazy chunk, or 41.52 kB gzip. The initial JavaScript gzip size is
-above the earlier 244.02 kB baseline. A direct `gzip -9` measurement of the
-unchanged main artifact was 308.47 kB; the difference from the previous Vite
-report is compressor/runtime behavior rather than source growth. XMarkdown is
-already lazy, and further splitting would change component or loading
-boundaries, so no release-only chunk rewrite or warning-threshold increase was
-made.
+The existing Vite build reports a JavaScript chunk-size warning above 500 kB;
+the warning is retained. The 2026-08-17 Slice 4 build reported a 958.86 kB main
+JavaScript output, or 309.44 kB gzip, while XMarkdown remained a 125.66 kB lazy
+chunk, or 41.52 kB gzip. The initial JavaScript gzip size remains above the
+earlier 244.02 kB baseline. XMarkdown is already lazy, and no loading boundary
+or warning threshold changed in Slice 4.
 
 ## Remaining hardening
 
