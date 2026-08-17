@@ -27,7 +27,8 @@ portfolio project.
   evidence handoff for final synchronous and SSE model responses;
 - bounded combined execution for one manufacturing tool followed by Document
   Search, with ordered SSE progress, independent path states, safe partial
-  success, and current-exchange-only structured evidence;
+  success, active-request structured evidence, and canonical completed Evidence
+  Snapshots on assistant messages;
 - conversation-bound Workspace Context `GET` and `PATCH` endpoints;
 - deterministic fictional device catalog and device-ID validation;
 - an independent local stdio MCP server for production summary, recorded
@@ -142,7 +143,7 @@ assistant response. A successful request returns both new records:
     "id": "uuid",
     "conversation_id": "uuid",
     "role": "user",
-    "content": "What caused the yield drop?",
+    "content": "How does this project work?",
     "created_at": "2026-07-30T00:00:00Z"
   },
   "assistant_message": {
@@ -150,10 +151,18 @@ assistant response. A successful request returns both new records:
     "conversation_id": "uuid",
     "role": "assistant",
     "content": "...",
-    "created_at": "2026-07-30T00:00:01Z"
+    "created_at": "2026-07-30T00:00:01Z",
+    "evidence_snapshot": null
   }
 }
 ```
+
+For a completed evidence route, canonical evidence appears only at
+`assistant_message.evidence_snapshot`. The synchronous completion response and
+`GET /conversations/<conversation-id>/messages` history return the same
+snapshot, while the exchange envelope has no top-level `evidence` or
+`combined_evidence` fields. General responses keep `evidence_snapshot` as
+`null`.
 
 When adapter configuration is missing or the compatible service cannot return
 a usable answer, the endpoint returns `503` with this fixed response:
@@ -328,16 +337,19 @@ records the resolved environment.
 
 ## Current limitations
 
-The API persists Conversation, user Message, and assistant Message records.
-The adapter can call a configured compatible service for one supported
-tool-call exchange, but has no answer retry, system prompt, or model-discovery
-behavior. Ambiguous routing requires exactly one valid `classify_request` tool
-call. LangGraph provides a compiled synchronous workflow with one authoritative
-route and one selected tool execution. The SSE endpoint
-supports production summaries, ranked defect distributions, and recorded
-equipment status. Focused document questions use the same flow with retrieved
-source evidence, emitting routing progress, `tool_call_started`, `tool_result`,
-final text, and completion events. Its
+The API persists Conversation, user Message, and assistant Message records,
+including canonical completed Evidence Snapshots when an evidence route
+produces one. Active-request Evidence and SSE tool events remain scoped to that
+request; history returns the completed snapshot attached to its assistant
+message. The adapter can call a configured compatible service for one
+supported tool-call exchange, but has no answer retry, system prompt, or
+model-discovery behavior. Ambiguous routing requires exactly one valid
+`classify_request` tool call. LangGraph provides a compiled synchronous
+workflow with one authoritative route and one selected tool execution. The SSE
+endpoint supports production summaries, ranked defect distributions, and
+recorded equipment status. Focused document questions use the same flow with
+retrieved source evidence, emitting routing progress, `tool_call_started`,
+`tool_result`, final text, and completion events. Its
 grounded answer is forwarded as a provider-token stream after a successful
 tool result. For Combined Evidence, the structured Sources surface owns
 traceability, so the model does not need to repeat source IDs inline. If it
@@ -353,6 +365,9 @@ and returns SSE events for `message_started`, routing progress, `token`,
 `message_completed`, and `error`. An evidence route can additionally emit
 `tool_call_started` and `tool_result`. Only a non-empty completed assistant
 response is persisted.
+
+The API does not provide an evidence browser or a persisted evidence timeline,
+and Model Working Notes are not implemented.
 
 The conversation-bound Workspace Context contract provides `GET` and `PATCH`
 endpoints at `/conversations/{conversation_id}/context`. It stores optional

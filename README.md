@@ -19,7 +19,8 @@ evidence visibly separate. Co-occurrence is never presented as proof of cause.
 ## What the repository demonstrates
 
 - FastAPI and SQLite conversation persistence with explicit Alembic migrations;
-- synchronous and SSE assistant exchanges with completed-response persistence;
+- synchronous and SSE assistant exchanges with completed-response persistence
+  and canonical Evidence Snapshots attached to assistant messages;
 - deterministic production summary, recorded equipment status, and defect
   distribution tools over one fictional AOI dataset;
 - structured English and Traditional Chinese routing with bounded retry,
@@ -49,8 +50,10 @@ invariants.
 The browser sends message requests through the FastAPI SSE boundary. The
 application owns routing and calls deterministic domain tools before asking an
 optional OpenAI-compatible model to synthesize an answer. SQLite stores
-conversations, messages, and workspace context, while structured tool and
-source evidence remains limited to the current exchange.
+conversations, messages, workspace context, and canonical completed Evidence
+Snapshots on assistant messages. Current Evidence remains scoped to the active
+request; reloading history returns each completed snapshot with the assistant
+message that produced it.
 
 See [Architecture](docs/architecture.md) for the system boundary and Combined
 Evidence sequence.
@@ -120,9 +123,10 @@ from CI.
 
 This is a local, single-user application. It has no authentication,
 multi-tenant isolation, public deployment stack, live equipment integration,
-persistent vector store, PDF/OCR ingestion, persisted evidence history,
-pagination, or arbitrary planner-driven multi-tool execution. Local Markdown
-uploads may be sent to the configured model service when retrieved.
+persistent vector store, PDF/OCR ingestion, an evidence browser or complete
+evidence timeline, pagination, Model Working Notes, or arbitrary
+planner-driven multi-tool execution. Local Markdown uploads may be sent to the
+configured model service when retrieved.
 
 Dependency findings and their current exposure are recorded in the
 [Security Review](docs/security-review.md). Evaluation scope and raw-artifact
