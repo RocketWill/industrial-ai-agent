@@ -403,9 +403,20 @@ row, and leaves the session usable. Cancellation and a real-socket client
 disconnect likewise leave no assistant row or snapshot. The Slice 3 runtime
 suite reports 99 passed; Ruff and `git diff --check` passed.
 
+Slice 4's backend contract seam is implemented: completed `MessageExchangeRead`
+responses contain only `user_message` and `assistant_message`; canonical
+evidence appears only at `assistant_message.evidence_snapshot`; synchronous
+completion and `GET` history return matching snapshots; legacy top-level
+`evidence` and `combined_evidence` fields are removed; and current SSE tool
+events remain available. The Slice 4 frontend TypeScript/runtime state,
+historical evidence rendering, and unavailable-evidence UI remain in progress.
+The backend contract suite reports 66 passed; Ruff and `git diff --check`
+passed.
+
 The following v2.0 slices remain open:
 
-- [ ] Slice 4 — Complete historical API, reload responses, and UI rendering.
+- [ ] Slice 4 — Complete frontend TypeScript/runtime state, historical evidence
+  rendering, and unavailable-evidence UI.
 - [ ] Slice 5 — Add and verify the reasoning parser.
 - [ ] Slice 6 — Add Model Working Notes.
 - [ ] Slice 7 — Complete final v2.0 acceptance.

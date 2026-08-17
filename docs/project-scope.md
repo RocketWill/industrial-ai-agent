@@ -60,7 +60,7 @@ belongs in deterministic domain code rather than an LLM.
 ## Current milestone boundary
 
 v2.0 Persistent Evidence and Model Working Notes is **In Progress**. Slices 1
-through 3 are implemented. Slice 1
+through 3 and the Slice 4 backend contract seam are implemented. Slice 1
 defines the version-1 typed
 `MessageRead.evidence_snapshot` union for Production Summary, Equipment Status,
 Defect Distribution, Document Search, Combined Evidence, and the explicit
@@ -85,9 +85,19 @@ rolls back, retains the user row, and leaves the session usable. Cancellation
 and a real-socket client disconnect leave no assistant row or snapshot. The
 runtime suite reports 99 passed; Ruff and `git diff --check` passed.
 
-The following v2.0 slices are not yet implemented:
+Slice 4's backend contract seam is implemented: completed `MessageExchangeRead`
+responses contain only `user_message` and `assistant_message`; canonical
+evidence appears only at `assistant_message.evidence_snapshot`; synchronous
+completion and `GET` history return matching snapshots; legacy top-level
+`evidence` and `combined_evidence` fields are removed; and current SSE tool
+events remain available. The frontend TypeScript/runtime state, historical
+evidence rendering, and unavailable-evidence UI remain incomplete. The backend
+contract suite reports 66 passed; Ruff and `git diff --check` passed.
 
-- Slice 4 — Historical API, reload responses, and UI rendering.
+The following v2.0 work remains:
+
+- Slice 4 — Frontend TypeScript/runtime state, historical evidence rendering,
+  and unavailable-evidence UI.
 - Slice 5 — Reasoning parser.
 - Slice 6 — Model Working Notes.
 - Slice 7 — Final v2.0 acceptance.
