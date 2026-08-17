@@ -46,7 +46,7 @@ matrix. Application README files own setup and contract usage.
 
 **Status: In Progress**
 
-Slices 1 through 4 are implemented.
+Slices 1 through 5 are implemented.
 Slice 1 validates a version-1 typed
 `MessageRead.evidence_snapshot` union for Production Summary, Equipment Status,
 Defect Distribution, Document Search, Combined Evidence, and the explicit
@@ -91,8 +91,21 @@ production build passing. ESLint completed with the existing
 `@oxc-parser/binding-darwin-arm64` optional native package. No browser
 acceptance was run for this slice; the existing Vite chunk-size warning is
 retained.
-Provider reasoning parsing, Model Working Notes, and final v2.0 acceptance
-remain open in Slices 5 through 7.
+
+Slice 5 is implemented at the provider-adapter boundary. Final-answer stream
+normalization emits separate internal reasoning items for explicit provider
+`reasoning_content` deltas and literal lowercase, non-nesting
+`<think>...</think>` wrappers. It handles arbitrary tag chunk splits, multiple
+wrappers, answer text around wrappers, unclosed wrappers, and reasoning-only
+responses while preserving the existing empty-response behavior. A fixed
+16,000-Unicode-character cap emits one truncation item, discards further
+reasoning, and continues consuming the final-answer stream. Synchronous general
+and post-tool final answers strip recognized wrapper reasoning; initial tool
+selection, default stream behavior, and providers without reasoning remain
+unchanged. Slice 5 focused verification reports 51 passed; the full API suite
+reports 459 passed, with Ruff and `git diff --check` passing. Model Working
+Notes are not yet exposed through SSE or the frontend.
+Model Working Notes and final v2.0 acceptance remain open in Slices 6 and 7.
 
 ## HTTP contracts
 
@@ -133,6 +146,9 @@ The latest full-release verification on 2026-08-15 produced:
   41 backend contract tests passed. The full Web suite then passed 127 Vitest
   tests and TypeScript checking; ESLint completed with the existing Fast
   Refresh warning, and the Vite production build completed.
+- Slice 5 was verified separately on 2026-08-17: 51 focused provider-reasoning
+  tests passed, and the full API suite then passed 459 tests. Ruff and
+  `git diff --check` passed.
 - Browser combined workflow: one explicit production-plus-document request ran
   against saved synthetic AOI context. The final exchange retained a 95.56%
   Production Summary and three cited document sources when model synthesis was
