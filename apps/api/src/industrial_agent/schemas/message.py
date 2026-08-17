@@ -103,8 +103,6 @@ class EvidenceRead(BaseModel):
 class MessageExchangeRead(BaseModel):
     user_message: MessageRead
     assistant_message: MessageRead
-    evidence: EvidenceRead | None = None
-    combined_evidence: "CombinedEvidenceRead | None" = None
 
 
 class CombinedEvidencePathRead(BaseModel):

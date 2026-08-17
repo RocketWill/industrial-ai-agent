@@ -286,6 +286,96 @@ def test_stream_production_message_emits_tool_events(
     assert 'data: {"text":"92.5%."}' in response.text
 
 
+def test_sync_production_evidence_is_canonical_and_reloadable(
+    conversation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conversation = create_conversation(conversation_client)
+    conversation_client.patch(
+        f"/conversations/{conversation['id']}/context",
+        json={"device": "AOI-WAFER-01", "time_range": "Last 4 hours"},
+    )
+
+    class FakeRouterAdapter:
+        def __enter__(self) -> "FakeRouterAdapter":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def complete_with_tools(self, _messages, *, tools, tool_call=None):
+            assert tool_call is None
+            assert tools[0].name == "classify_request"
+            return CompletionResult(
+                content=None,
+                tool_calls=(
+                    ToolCall(
+                        call_id="route-production-contract",
+                        name="classify_request",
+                        arguments={
+                            "intent": "production",
+                            "reason_code": "production_request",
+                        },
+                    ),
+                ),
+            )
+
+    class FakeAnswerAdapter:
+        def __enter__(self) -> "FakeAnswerAdapter":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def complete_with_tools(self, _messages, *, tools, tool_call=None):
+            if tool_call is None:
+                assert tools[0].name == "get_production_summary"
+                return CompletionResult(
+                    content=None,
+                    tool_calls=(
+                        ToolCall(
+                            call_id="production-contract",
+                            name="get_production_summary",
+                            arguments={
+                                "equipment_id": "AOI-WAFER-01",
+                                "start": "2026-01-15T13:00:00Z",
+                                "end": "2026-01-15T17:00:00Z",
+                            },
+                        ),
+                    ),
+                )
+            return CompletionResult(content="Yield is 92.5%.")
+
+    monkeypatch.setattr(
+        OpenAICompatibleChatAdapter,
+        "router_from_settings",
+        classmethod(lambda cls, settings: FakeRouterAdapter()),
+    )
+    monkeypatch.setattr(
+        OpenAICompatibleChatAdapter,
+        "from_settings",
+        classmethod(lambda cls, settings: FakeAnswerAdapter()),
+    )
+
+    response = conversation_client.post(
+        f"/conversations/{conversation['id']}/messages",
+        json={"content": "What is the production yield?"},
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assistant = payload["assistant_message"]
+    snapshot = assistant["evidence_snapshot"]
+    assert "evidence" not in payload
+    assert "combined_evidence" not in payload
+    history = conversation_client.get(
+        f"/conversations/{conversation['id']}/messages"
+    ).json()
+    assert next(item for item in history if item["id"] == assistant["id"])[
+        "evidence_snapshot"
+    ] == snapshot
+
+
 def test_stream_equipment_status_message_emits_recorded_status_evidence(
     conversation_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
@@ -571,11 +661,12 @@ def test_sync_combined_request_returns_current_exchange_evidence(
 
     assert response.status_code == 201
     payload = response.json()
+    combined = payload["assistant_message"]["evidence_snapshot"]
     assert payload["assistant_message"]["suggested_actions"] == []
-    assert payload["combined_evidence"]["manufacturing_kind"] == manufacturing_kind
-    assert payload["combined_evidence"]["manufacturing"]["status"] == "succeeded"
-    assert payload["combined_evidence"]["documents"]["status"] == "succeeded"
-    assert payload["combined_evidence"]["answer_status"] == "succeeded"
+    assert combined["manufacturing_kind"] == manufacturing_kind
+    assert combined["manufacturing"]["status"] == "succeeded"
+    assert combined["documents"]["status"] == "succeeded"
+    assert combined["answer_status"] == "succeeded"
     history = conversation_client.get(
         f"/conversations/{conversation['id']}/messages"
     ).json()
@@ -616,8 +707,8 @@ def test_sync_combined_model_failure_keeps_current_exchange_evidence(
 
     assert response.status_code == 201
     payload = response.json()
-    combined = payload["combined_evidence"]
     snapshot = payload["assistant_message"]["evidence_snapshot"]
+    combined = snapshot
     assert combined["answer_status"] == "fallback"
     assert combined["manufacturing"]["status"] == "succeeded"
     assert combined["documents"]["status"] == "succeeded"
@@ -661,7 +752,7 @@ def test_sync_combined_preserves_manufacturing_when_document_path_fails(
     )
 
     assert response.status_code == 201
-    combined = response.json()["combined_evidence"]
+    combined = response.json()["assistant_message"]["evidence_snapshot"]
     assert combined["manufacturing"]["status"] == "succeeded"
     assert combined["documents"] == {
         "status": "failed",
@@ -808,8 +899,8 @@ def test_combined_sync_and_sse_keep_failure_and_empty_status_parity(
 
     assert sync_response.status_code == 201
     sync_payload = sync_response.json()
-    sync_combined = sync_payload["combined_evidence"]
     sync_snapshot = sync_payload["assistant_message"]["evidence_snapshot"]
+    sync_combined = sync_snapshot
     assert sync_snapshot["kind"] == "combined"
     for path in ("manufacturing", "documents"):
         for field in ("status", "result", "error_code"):
