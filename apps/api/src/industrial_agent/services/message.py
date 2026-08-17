@@ -2,6 +2,7 @@ from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from uuid import UUID
 
+from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -9,8 +10,13 @@ from industrial_agent.graph.combined import CombinedExchangeEvidence
 from industrial_agent.graph.state import EvidenceState
 from industrial_agent.llm.types import ChatMessage
 from industrial_agent.models.message import Message, MessageRole
-from industrial_agent.schemas.message import SuggestedAction
+from industrial_agent.schemas.message import (
+    EvidenceSnapshotRead,
+    SuggestedAction,
+)
 from industrial_agent.services.conversation import get_conversation
+
+_evidence_snapshot_adapter = TypeAdapter(EvidenceSnapshotRead)
 
 
 @dataclass(frozen=True)
@@ -34,9 +40,12 @@ def create_message(
     role: MessageRole,
     content: str,
     suggested_actions: Sequence[SuggestedAction] = (),
+    evidence_snapshot: object | None = None,
 ) -> Message:
     if role == "user" and suggested_actions:
         raise ValueError("user messages cannot contain suggested actions")
+    if role == "user" and evidence_snapshot is not None:
+        raise ValueError("user messages cannot contain evidence snapshots")
     get_conversation(session, conversation_id)
     message = Message(
         conversation_id=conversation_id,
@@ -45,6 +54,13 @@ def create_message(
         suggested_actions=[
             action.model_dump(mode="json") for action in suggested_actions
         ],
+        evidence_snapshot=(
+            None
+            if evidence_snapshot is None
+            else _evidence_snapshot_adapter.validate_python(
+                evidence_snapshot
+            ).model_dump(mode="json")
+        ),
     )
     session.add(message)
     session.commit()
