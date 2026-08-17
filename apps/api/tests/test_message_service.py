@@ -5,6 +5,15 @@ import pytest
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from industrial_agent.domain.routing import EvidenceKind
+from industrial_agent.graph.combined import (
+    CombinedAnswerStatus,
+    CombinedEvidenceOutcome,
+    CombinedExchangeEvidence,
+    EvidencePathOutcome,
+    EvidencePathStatus,
+)
+from industrial_agent.graph.state import EvidenceState
 from industrial_agent.llm.errors import LLMConnectionError
 from industrial_agent.llm.types import ChatMessage
 from industrial_agent.models.message import Message
@@ -18,8 +27,10 @@ from industrial_agent.services.message import (
     create_message,
     create_message_exchange,
     create_user_message,
+    current_evidence_to_snapshot,
     list_messages,
 )
+from industrial_agent.tools.production import ProductionSummaryResult
 
 UNKNOWN_CONVERSATION_ID = UUID(
     "00000000-0000-0000-0000-000000000099"
@@ -45,6 +56,22 @@ def _production_snapshot() -> dict[str, object]:
             "limitations": [],
         },
     }
+
+
+def _production_result() -> ProductionSummaryResult:
+    return ProductionSummaryResult(
+        equipment_id="AOI-01",
+        lot_id=None,
+        start=datetime(2026, 1, 15, 8, tzinfo=UTC),
+        end=datetime(2026, 1, 15, 17, tzinfo=UTC),
+        inspected_wafers=10,
+        passed_wafers=9,
+        failed_wafers=1,
+        yield_rate=0.9,
+        defect_counts=(),
+        alarm_events=(),
+        limitations=(),
+    )
 
 
 def test_create_user_message_persists_with_user_role(
@@ -111,6 +138,43 @@ def test_create_message_persists_validated_assistant_evidence_snapshot(
     persisted = list_messages(database_session, conversation.id)[0]
     assert persisted.id == created.id
     assert persisted.evidence_snapshot == snapshot
+
+
+def test_current_evidence_conversion_preserves_available_production_summary() -> None:
+    snapshot = current_evidence_to_snapshot(
+        evidence=EvidenceState(production_summary=_production_result()),
+    )
+
+    assert snapshot["kind"] == "production_summary"
+    assert snapshot["status"] == "available"
+    assert snapshot["production_summary"]["equipment_id"] == "AOI-01"
+
+
+def test_current_evidence_conversion_preserves_combined_partial_failure() -> None:
+    combined = CombinedExchangeEvidence(
+        evidence=CombinedEvidenceOutcome(
+            manufacturing_kind=EvidenceKind.PRODUCTION,
+            manufacturing=EvidencePathOutcome(
+                status=EvidencePathStatus.SUCCEEDED,
+                result=_production_result(),
+            ),
+            documents=EvidencePathOutcome(
+                status=EvidencePathStatus.FAILED,
+                error_code="TOOL_UNAVAILABLE",
+            ),
+            document_query="alarm reset",
+        ),
+        answer_status=CombinedAnswerStatus.FALLBACK,
+    )
+
+    snapshot = current_evidence_to_snapshot(combined_evidence=combined)
+
+    assert snapshot["kind"] == "combined"
+    assert snapshot["status"] == "available"
+    assert snapshot["manufacturing"]["status"] == "succeeded"
+    assert snapshot["manufacturing"]["result"]["equipment_id"] == "AOI-01"
+    assert snapshot["documents"]["status"] == "failed"
+    assert snapshot["documents"]["error_code"] == "TOOL_UNAVAILABLE"
 
 
 def test_create_message_rejects_evidence_snapshot_on_user_messages(
