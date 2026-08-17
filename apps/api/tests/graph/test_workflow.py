@@ -477,6 +477,51 @@ def test_sync_runner_persists_production_evidence_snapshot_on_assistant_message(
     )
 
 
+def test_sync_runner_persists_unknown_equipment_status_snapshot(
+    database_session,
+) -> None:
+    conversation = create_conversation(database_session, title="Status")
+
+    def complete(_messages):
+        raise AssertionError("equipment-status question should use tools")
+
+    def complete_with_tools(messages, tools, *, tool_call=None):
+        if tool_call is None:
+            return CompletionResult(
+                content=None,
+                tool_calls=(
+                    ToolCall(
+                        call_id="call-status-unknown",
+                        name="get_equipment_status",
+                        arguments={
+                            "equipment_id": "AOI-WAFER-01",
+                            "at": "2026-01-15T19:00:00Z",
+                        },
+                    ),
+                ),
+            )
+        assert tool_call.name == "get_equipment_status"
+        assert '"status":"unknown"' in tool_call.content
+        return CompletionResult(content="No recorded equipment status is available.")
+
+    run_sync_exchange(
+        database_session,
+        conversation_id=conversation.id,
+        content="What was the equipment status at 19:00?",
+        complete=complete,
+        complete_with_tools=complete_with_tools,
+    )
+
+    assistant_message = list_messages(database_session, conversation.id)[-1]
+    assert assistant_message.evidence_snapshot is not None
+    assert assistant_message.evidence_snapshot["kind"] == "equipment_status"
+    assert assistant_message.evidence_snapshot["status"] == "available"
+    assert (
+        assistant_message.evidence_snapshot["equipment_status"]["status"]
+        == "unknown"
+    )
+
+
 def test_sync_runner_executes_equipment_status_tool_with_context(
     database_session,
 ) -> None:

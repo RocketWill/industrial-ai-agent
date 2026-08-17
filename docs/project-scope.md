@@ -79,16 +79,20 @@ A focused Production Summary integration verifies that path; a general
 response persists `evidence_snapshot` as `NULL`. Focused tests also cover the
 Production Summary SSE tool runner: the `tool_result` stage still has only the
 user row, while the final `assistant_message` event carries the canonical
-snapshot. A synchronous Combined partial-failure test retains succeeded
-manufacturing and failed documents (`error_code: TOOL_UNAVAILABLE`). These
-tests reuse shared `persist_response`; no production code changed.
+snapshot. An Equipment Status runtime test verifies that a recorded `unknown`
+result still persists as an available `equipment_status` canonical snapshot,
+without mapping it to missing or unavailable. A synchronous Combined
+partial-failure test retains succeeded manufacturing and failed documents
+(`error_code: TOOL_UNAVAILABLE`). These tests reuse shared `persist_response`;
+no production code changed.
 
 These changes do not yet provide end-to-end evidence persistence. The focused
 synchronous seam is not the full Slice 3 atomic-persistence acceptance
-boundary. Runtime acceptance for the remaining single-route paths and the
-combined SSE path, rollback, cancellation, and client disconnect remain open.
-The read adapter, service/API wiring, historical reload responses and UI, and
-Model Working Notes are not yet implemented.
+boundary. Runtime acceptance for the remaining Defect Distribution
+empty-result and Document Search source paths and the combined SSE path,
+rollback, cancellation, and client disconnect remain open. The read adapter,
+service/API wiring, historical reload responses and UI, and Model Working
+Notes are not yet implemented.
 
 v1.0 Portfolio Release is **Implemented**. It packages the verified v0.9
 application as a repository-only release. Corrective validation and responsive
