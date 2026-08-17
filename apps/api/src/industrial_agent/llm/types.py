@@ -66,6 +66,28 @@ class ToolResult:
 
 
 @dataclass(frozen=True, slots=True)
+class FinalAnswerDelta:
+    """One literal final-answer fragment from a streaming completion."""
+
+    content: str
+
+
+@dataclass(frozen=True, slots=True)
+class ReasoningDelta:
+    """One literal provider-reasoning fragment from a streaming completion."""
+
+    content: str
+
+
+@dataclass(frozen=True, slots=True)
+class ReasoningTruncated:
+    """Marker emitted once when provider reasoning reaches its display cap."""
+
+
+StreamItem = FinalAnswerDelta | ReasoningDelta | ReasoningTruncated
+
+
+@dataclass(frozen=True, slots=True)
 class CompletionResult:
     """A model completion containing text, one tool call, or neither."""
 
