@@ -616,9 +616,17 @@ def test_sync_combined_model_failure_keeps_current_exchange_evidence(
 
     assert response.status_code == 201
     payload = response.json()
-    assert payload["combined_evidence"]["answer_status"] == "fallback"
-    assert payload["combined_evidence"]["manufacturing"]["status"] == "succeeded"
-    assert payload["combined_evidence"]["documents"]["status"] == "succeeded"
+    combined = payload["combined_evidence"]
+    snapshot = payload["assistant_message"]["evidence_snapshot"]
+    assert combined["answer_status"] == "fallback"
+    assert combined["manufacturing"]["status"] == "succeeded"
+    assert combined["documents"]["status"] == "succeeded"
+    assert snapshot["kind"] == "combined"
+    assert snapshot["answer_status"] == "fallback"
+    assert snapshot["manufacturing"]["status"] == "succeeded"
+    assert snapshot["documents"]["status"] == "succeeded"
+    assert snapshot["manufacturing"]["result"] == combined["manufacturing"]["result"]
+    assert snapshot["documents"]["result"] == combined["documents"]["result"]
     assert payload["assistant_message"]["content"] == (
         "Evidence was retrieved, but a combined interpretation could not be "
         "completed. Review the evidence below."
@@ -799,7 +807,13 @@ def test_combined_sync_and_sse_keep_failure_and_empty_status_parity(
     )
 
     assert sync_response.status_code == 201
-    sync_combined = sync_response.json()["combined_evidence"]
+    sync_payload = sync_response.json()
+    sync_combined = sync_payload["combined_evidence"]
+    sync_snapshot = sync_payload["assistant_message"]["evidence_snapshot"]
+    assert sync_snapshot["kind"] == "combined"
+    for path in ("manufacturing", "documents"):
+        for field in ("status", "result", "error_code"):
+            assert sync_snapshot[path][field] == sync_combined[path][field]
     assert sync_combined["manufacturing"]["status"] == manufacturing_status
     assert sync_combined["documents"]["status"] == document_status
     stream_events = []
@@ -834,12 +848,14 @@ def test_combined_sync_and_sse_keep_failure_and_empty_status_parity(
     completed = next(
         payload for event, payload in stream_events if event == "message_completed"
     )
-    sync_text = sync_response.json()["assistant_message"]["content"]
+    assert completed["assistant_message"]["evidence_snapshot"] == sync_snapshot
+    sync_text = sync_payload["assistant_message"]["content"]
     assert completed["assistant_message"]["content"] == sync_text
     stream_history = conversation_client.get(
         f"/conversations/{stream_conversation['id']}/messages"
     ).json()
     assert stream_history[-1]["content"] == sync_text
+    assert stream_history[-1]["evidence_snapshot"] == sync_snapshot
 
 
 def test_sse_combined_cancellation_after_manufacturing_does_not_persist_completion(

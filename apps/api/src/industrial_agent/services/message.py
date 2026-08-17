@@ -125,7 +125,11 @@ def create_message(
         ),
     )
     session.add(message)
-    session.commit()
+    try:
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
     session.refresh(message)
     return message
 

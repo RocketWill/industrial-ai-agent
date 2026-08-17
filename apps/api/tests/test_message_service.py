@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import pytest
-from sqlalchemy import Engine, func, select
+from sqlalchemy import Engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from industrial_agent.domain.routing import EvidenceKind
@@ -305,6 +305,65 @@ def test_create_message_exchange_keeps_user_message_when_completion_fails(
         (message.role, message.content)
         for message in list_messages(database_session, conversation.id)
     ] == [("user", "Keep this question")]
+
+
+def test_create_message_rolls_back_failed_assistant_insert(
+    database_session: Session,
+    database_engine: Engine,
+) -> None:
+    conversation = create_conversation(
+        database_session,
+        title="Failed assistant insert",
+    )
+    conversation_id = conversation.id
+    user_message = create_user_message(
+        database_session,
+        conversation_id=conversation_id,
+        content="Keep this question",
+    )
+    failure = RuntimeError("simulated assistant message insert failure")
+    failed = False
+
+    def fail_assistant_insert(
+        _conn: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: bool,
+    ) -> None:
+        nonlocal failed
+        normalized_statement = statement.upper()
+        if (
+            not failed
+            and "INSERT" in normalized_statement
+            and "MESSAGES" in normalized_statement
+        ):
+            failed = True
+            raise failure
+
+    event.listen(database_engine, "before_cursor_execute", fail_assistant_insert)
+    try:
+        with pytest.raises(RuntimeError, match="simulated assistant"):
+            create_message(
+                database_session,
+                conversation_id=conversation_id,
+                role="assistant",
+                content="Production evidence",
+                evidence_snapshot=_production_snapshot(),
+            )
+    finally:
+        event.remove(
+            database_engine,
+            "before_cursor_execute",
+            fail_assistant_insert,
+        )
+
+    messages = list_messages(database_session, conversation_id)
+    assert [(message.id, message.role) for message in messages] == [
+        (user_message.id, "user"),
+    ]
+    assert all(message.evidence_snapshot is None for message in messages)
 
 
 def test_list_messages_returns_chronological_deterministic_order(
