@@ -60,7 +60,7 @@ belongs in deterministic domain code rather than an LLM.
 ## Current milestone boundary
 
 v2.0 Persistent Evidence and Model Working Notes is **In Progress**. Slices 1
-through 4 are implemented. Slice 1
+through 5 are implemented. Slice 1
 defines the version-1 typed
 `MessageRead.evidence_snapshot` union for Production Summary, Equipment Status,
 Defect Distribution, Document Search, Combined Evidence, and the explicit
@@ -106,9 +106,22 @@ production build passing. ESLint completed with the existing
 acceptance was run for this slice; the existing Vite chunk-size warning is
 retained.
 
+Slice 5 is implemented at the provider-adapter boundary. Final-answer stream
+normalization emits separate internal reasoning items for explicit provider
+`reasoning_content` deltas and literal lowercase, non-nesting
+`<think>...</think>` wrappers. It handles arbitrary tag chunk splits, multiple
+wrappers, answer text around wrappers, unclosed wrappers, and reasoning-only
+responses while preserving the existing empty-response behavior. A fixed
+16,000-Unicode-character cap emits one truncation item, discards further
+reasoning, and continues consuming the final-answer stream. Synchronous general
+and post-tool final answers strip recognized wrapper reasoning; initial tool
+selection, default stream behavior, and providers without reasoning remain
+unchanged. Slice 5 focused verification reports 51 passed; the full API suite
+reports 459 passed, with Ruff and `git diff --check` passing. Model Working
+Notes are not yet exposed through SSE or the frontend.
+
 The following v2.0 work remains:
 
-- Slice 5 — Reasoning parser.
 - Slice 6 — Model Working Notes.
 - Slice 7 — Final v2.0 acceptance.
 

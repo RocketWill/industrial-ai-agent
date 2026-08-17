@@ -394,6 +394,8 @@ Implemented slices:
   and render historical snapshots with a label and message capture time using
   the existing evidence panels while keeping the assistant message visible
   when evidence is unavailable.
+- [x] Normalize explicit provider reasoning and literal `<think>` wrappers into
+  bounded internal stream items without contaminating Final Answer content.
 
 The schema, conversion, message-service, and runtime-persistence boundaries
 above are implemented. Slice 3 persists canonical snapshots for the four
@@ -431,8 +433,21 @@ production build passing. ESLint completed with the existing
 acceptance was run for this slice; the existing Vite chunk-size warning is
 retained.
 
+Slice 5 is implemented at the provider-adapter boundary. Final-answer stream
+normalization emits separate internal reasoning items for explicit provider
+`reasoning_content` deltas and literal lowercase, non-nesting
+`<think>...</think>` wrappers. It handles arbitrary tag chunk splits, multiple
+wrappers, answer text around wrappers, unclosed wrappers, and reasoning-only
+responses while preserving the existing empty-response behavior. A fixed
+16,000-Unicode-character cap emits one truncation item, discards further
+reasoning, and continues consuming the final-answer stream. Synchronous general
+and post-tool final answers strip recognized wrapper reasoning; initial tool
+selection, default stream behavior, and providers without reasoning remain
+unchanged. Slice 5 focused verification reports 51 passed; the full API suite
+reports 459 passed, with Ruff and `git diff --check` passing. Model Working
+Notes are not yet exposed through SSE or the frontend.
+
 The following v2.0 slices remain open:
 
-- [ ] Slice 5 — Add and verify the reasoning parser.
 - [ ] Slice 6 — Add Model Working Notes.
 - [ ] Slice 7 — Complete final v2.0 acceptance.
