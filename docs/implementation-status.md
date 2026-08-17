@@ -22,9 +22,9 @@ matrix. Application README files own setup and contract usage.
 | API process health | Implemented | `GET /health` reports whether the FastAPI process responds. | It does not inspect SQLite, the LLM service, or future tools. |
 | Database foundation | Implemented | SQLite, synchronous SQLAlchemy sessions, foreign-key enforcement, and six explicit Alembic revisions, including the nullable `messages.evidence_snapshot` column. | Application startup does not create or migrate schema. |
 | Conversations | Implemented | Create, list newest first, open, and permanently delete conversations. | No rename, archive, restore, or pagination. |
-| Message history | Implemented | Persist user and assistant messages and return deterministic chronological history. Conversation deletion cascades to messages. The message service validates and JSON-round-trips explicitly supplied assistant Evidence Snapshots, rejects them on user messages, and leaves omitted snapshots `NULL`. A conversion seam maps four typed single-evidence outcomes and Combined Evidence outcomes, including partial path results, into version-1 canonical snapshots. | No individual message mutation or pagination. Focused sync Production Summary, recorded-`unknown` Equipment Status, SSE Production Summary, and Combined partial-failure runtime tests cover canonical snapshot attachment; remaining Defect Distribution empty-result, Document Search source, combined SSE, rollback, API/reload, and UI acceptance is open. |
+| Message history | Implemented | Persist user and assistant messages and return deterministic chronological history. Conversation deletion cascades to messages. The message service validates and JSON-round-trips assistant Evidence Snapshots, rejects them on user messages, and leaves omitted snapshots `NULL`. Completed sync and SSE evidence paths persist version-1 canonical snapshots, including Combined partial outcomes and complete document sources. | No individual message mutation or pagination. Historical API convergence, reload rendering, and UI consumption remain open in Slice 4. |
 | Synchronous assistant response | Implemented | Persist the user message, use one authoritative route, execute one selected evidence tool or the bounded combined manufacturing-plus-document workflow, validate evidence and the final answer, and persist one non-empty assistant response. | No system prompt, answer retry, model discovery, planner, or historical evidence reload. |
-| Streaming assistant response | Implemented | Send SSE events for the persisted user message, bounded routing progress, token deltas, completion, safe errors, single-tool stages, and ordered path-aware combined stages. The same route and evidence policy is used by the synchronous path. | Evidence-route answer text is buffered for deterministic post-checks before token events are forwarded. Structured evidence remains current-exchange-only. |
+| Streaming assistant response | Implemented | Send SSE events for the persisted user message, bounded routing progress, token deltas, completion, safe errors, single-tool stages, and ordered path-aware combined stages. Completed evidence paths persist the same canonical snapshot contract as synchronous responses. | Evidence-route answer text is buffered for deterministic post-checks before token events are forwarded. Historical reload rendering remains open in Slice 4. |
 | Conversation continuity | Implemented | Previous user and assistant messages from the selected conversation are included in the next model request. | Workspace context is stored separately and is not yet included in the model prompt. |
 | Workspace context API | Implemented | Read and partially update conversation-bound environment, device, lot, time range, and data source; synchronous and SSE production paths resolve saved device, lot, and supported synthetic time presets when tool arguments are missing. | Context is not injected into the general model prompt. Custom or unrecognized time-range labels still require clarification. |
 | Synthetic device catalog | Implemented | `GET /devices` returns three deterministic fictional device identities and validates selected device IDs. | No live status, telemetry, production records, or mutable catalog. |
@@ -33,8 +33,8 @@ matrix. Application README files own setup and contract usage.
 | Context editor | Implemented | Select a fictional device, enter an optional lot, choose an executable 1, 4, 8, or 24 hour preset, keep edits in a local draft, Save or Reset explicitly, and guard navigation while changes are unsaved. Loading and failures remain visible in the inspector. | Data source and environment remain read-only synthetic metadata; arbitrary UTC start and end entry is not implemented. |
 | Manufacturing domain | Implemented | Immutable Equipment, Production Lot, Inspection Record, Defect Count, Alarm Event, Time Range, Production Summary, Defect Distribution, and Equipment State Interval types; deterministic yield and ranked defect aggregation; overlapping alarm selection; explicit empty-result behavior; point-in-time recorded-status lookup; and one fictional AOI dataset. | Throughput is deferred until a later dataset and unit contract exists. There is no database persistence, live data, inferred equipment state, or causal analysis. |
 | Production summary tool | Implemented | Typed `get_production_summary` request/result boundary filters the synthetic AOI dataset, delegates numeric work to the manufacturing domain, participates in synchronous and SSE grounded-answer flows, resolves missing arguments from supported workspace context, and returns current-exchange evidence. | Focused sync/SSE runtime tests verify canonical snapshot attachment; historical reload and UI consumption remain incomplete. Custom or unrecognized time-range labels require clarification. |
-| Equipment status tool | Implemented | Typed `get_equipment_status` input and result contracts query explicit synthetic state intervals at one UTC timestamp, resolve missing time from supported workspace context, return `unknown` when no state is recorded, participate in synchronous and SSE flows, render current-exchange evidence, and preserve a recorded `unknown` result as an available `equipment_status` canonical snapshot in the focused synchronous persistence path. | It is not live status. Evidence persistence is not complete for the remaining route/runtime paths, and no status history or causal interpretation is provided. |
-| Defect distribution tool | Implemented | Typed `get_defect_distribution` request and result contracts filter the synthetic AOI dataset, rank recorded defect categories by count, calculate shares against classified defects, expose unclassified failures and limitations, participate in synchronous and SSE flows, and render current-exchange evidence. | It does not infer causes, trends, or throughput. Evidence is not persisted. |
+| Equipment status tool | Implemented | Typed `get_equipment_status` input and result contracts query explicit synthetic state intervals at one UTC timestamp, resolve missing time from supported workspace context, return `unknown` when no state is recorded, participate in synchronous and SSE flows, and persist canonical snapshots without treating recorded `unknown` as unavailable. | It is not live status. No status history or causal interpretation is provided. |
+| Defect distribution tool | Implemented | Typed `get_defect_distribution` request and result contracts filter the synthetic AOI dataset, rank recorded defect categories by count, calculate shares against classified defects, expose unclassified failures and limitations, participate in synchronous and SSE flows, and persist canonical snapshots including valid empty results. | It does not infer causes, trends, or throughput. |
 | LangGraph orchestration | Implemented | The synchronous graph and SSE runner share an application-owned route decision, deterministic clarification and fallback, single-tool execution, and one bounded manufacturing-then-document combined path. Combined validation checks manufacturing claims, any source IDs included in prose, causal conclusions, and unsupported operational claims while retaining valid evidence after model failure. | Structured Sources own traceability, so inline source IDs are optional. Validation is intentionally bounded to recognized claim forms; there are no persisted runs, planner, multiple manufacturing tools per turn, evidence-tool retries, checkpoints, resume behavior, or graph visualization. |
 | Structured routing | Implemented | Immutable route contracts, a 38-scenario English and Traditional Chinese routing fixture, a high-confidence deterministic gate, one typed classifier call, a 1–30 second timeout, one retry, conservative fallback, safe logs, and shared sync/SSE decisions. | Explicit combined requests select exactly one manufacturing kind plus documents. Routing traces are not persisted, and broader multilingual support is not claimed. |
 | Guided routing choices | Implemented | Combined-route clarifications persist two fixed application-owned actions. The latest unresolved actions survive reload, render as keyboard-accessible buttons, disable during submission, and send a normal user message through the existing SSE workflow. | Choices select one evidence path; they do not execute a multi-tool turn, accept model-generated actions, or use a special action endpoint. |
@@ -46,7 +46,7 @@ matrix. Application README files own setup and contract usage.
 
 **Status: In Progress**
 
-Slices 1 and 2 are implemented. Slice 3 runtime persistence is **In Progress**.
+Slices 1 through 3 are implemented.
 Slice 1 validates a version-1 typed
 `MessageRead.evidence_snapshot` union for Production Summary, Equipment Status,
 Defect Distribution, Document Search, Combined Evidence, and the explicit
@@ -61,23 +61,19 @@ canonical snapshot JSON. The message service validates explicitly supplied
 assistant Evidence Snapshot values, preserves their JSON round-trip, rejects
 snapshots on user messages, and leaves omitted assistant snapshots as `NULL`.
 
-The synchronous workflow's `persist_response` now passes the canonical snapshot
-through the same assistant-message commit path. A focused Production Summary
-integration verifies that path; a general response persists
-`evidence_snapshot` as `NULL`. Focused tests also cover the Production Summary
-SSE tool runner: the `tool_result` stage still has only the user row, while the
-final `assistant_message` event carries the canonical snapshot. An Equipment
-Status runtime test verifies that a recorded `unknown` result still persists as
-an available `equipment_status` canonical snapshot, without mapping it to
-missing or unavailable. A synchronous Combined partial-failure test retains
-succeeded manufacturing and failed documents (`error_code: TOOL_UNAVAILABLE`).
-These tests reuse shared `persist_response`; no production code changed. This
-focused seam does not complete Slice 3's atomic-persistence acceptance
-boundary. Runtime acceptance for the remaining Defect Distribution
-empty-result and Document Search source paths and the combined SSE path,
-rollback, cancellation, and client disconnect remain open. The read adapter,
-service/API wiring, historical reload responses and UI, and Model Working
-Notes are not yet implemented.
+Slice 3 persists canonical snapshots through the same assistant-message commit
+path for all four single-evidence kinds and Combined success, failure, empty,
+and bounded-fallback outcomes. Document Search retains complete source
+snapshots, and synchronous and SSE completion return matching persisted data.
+Snapshot construction failure, assistant insert failure, cancellation, and a
+real-socket client disconnect leave the committed user message without an
+assistant row or snapshot; database failure also rolls back the session. The
+Slice 3 runtime suite reports 99 passed, with Ruff and `git diff --check`
+passing.
+
+Historical API convergence and reload rendering remain open in Slice 4.
+Provider reasoning parsing, Model Working Notes, and final v2.0 acceptance
+remain open in Slices 5 through 7.
 
 ## HTTP contracts
 

@@ -60,7 +60,7 @@ belongs in deterministic domain code rather than an LLM.
 ## Current milestone boundary
 
 v2.0 Persistent Evidence and Model Working Notes is **In Progress**. Slices 1
-and 2 are implemented; Slice 3 runtime persistence is **In Progress**. Slice 1
+through 3 are implemented. Slice 1
 defines the version-1 typed
 `MessageRead.evidence_snapshot` union for Production Summary, Equipment Status,
 Defect Distribution, Document Search, Combined Evidence, and the explicit
@@ -76,23 +76,21 @@ their JSON round-trip, rejects snapshots on user messages, and keeps omitted
 assistant snapshots `NULL`. The synchronous workflow's `persist_response` now
 passes the canonical snapshot through the same assistant-message commit path.
 A focused Production Summary integration verifies that path; a general
-response persists `evidence_snapshot` as `NULL`. Focused tests also cover the
-Production Summary SSE tool runner: the `tool_result` stage still has only the
-user row, while the final `assistant_message` event carries the canonical
-snapshot. An Equipment Status runtime test verifies that a recorded `unknown`
-result still persists as an available `equipment_status` canonical snapshot,
-without mapping it to missing or unavailable. A synchronous Combined
-partial-failure test retains succeeded manufacturing and failed documents
-(`error_code: TOOL_UNAVAILABLE`). These tests reuse shared `persist_response`;
-no production code changed.
+response persists `evidence_snapshot` as `NULL`. Slice 3 runtime persistence
+covers the four single-evidence paths, including complete Document Search
+sources, and Combined success/failure/empty cases with matching synchronous and
+SSE behavior and bounded fallback. Snapshot-construction failure retains the
+user row without an assistant row or snapshot. An assistant insert failure
+rolls back, retains the user row, and leaves the session usable. Cancellation
+and a real-socket client disconnect leave no assistant row or snapshot. The
+runtime suite reports 99 passed; Ruff and `git diff --check` passed.
 
-These changes do not yet provide end-to-end evidence persistence. The focused
-synchronous seam is not the full Slice 3 atomic-persistence acceptance
-boundary. Runtime acceptance for the remaining Defect Distribution
-empty-result and Document Search source paths and the combined SSE path,
-rollback, cancellation, and client disconnect remain open. The read adapter,
-service/API wiring, historical reload responses and UI, and Model Working
-Notes are not yet implemented.
+The following v2.0 slices are not yet implemented:
+
+- Slice 4 — Historical API, reload responses, and UI rendering.
+- Slice 5 — Reasoning parser.
+- Slice 6 — Model Working Notes.
+- Slice 7 — Final v2.0 acceptance.
 
 v1.0 Portfolio Release is **Implemented**. It packages the verified v0.9
 application as a repository-only release. Corrective validation and responsive
