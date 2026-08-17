@@ -13,15 +13,32 @@ from industrial_agent.llm.errors import (
 from industrial_agent.llm.openai_compatible import (
     OpenAICompatibleChatAdapter,
 )
-from industrial_agent.llm.types import ChatMessage, ToolDefinition, ToolResult
+from industrial_agent.llm.types import (
+    ChatMessage,
+    FinalAnswerDelta,
+    ReasoningDelta,
+    ReasoningTruncated,
+    ToolDefinition,
+    ToolResult,
+)
+
+
+def _stream_body(*deltas: dict[str, object]) -> str:
+    lines = [f"data: {json.dumps({'choices': [{'delta': delta}]})}" for delta in deltas]
+    return "\n\n".join(lines) + "\n\ndata: [DONE]\n\n"
+
+
+def _adapter(body: str) -> OpenAICompatibleChatAdapter:
+    return OpenAICompatibleChatAdapter.from_settings(
+        Settings(LLM_MODEL="test-model"),
+        transport=httpx.MockTransport(lambda _request: httpx.Response(200, text=body)),
+    )
 
 
 def test_complete_sends_compatible_request_and_returns_text() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.method == "POST"
-        assert str(request.url) == (
-            "http://llm.example/v1/chat/completions"
-        )
+        assert str(request.url) == ("http://llm.example/v1/chat/completions")
         assert json.loads(request.content) == {
             "model": "test-model",
             "messages": [
@@ -33,11 +50,7 @@ def test_complete_sends_compatible_request_and_returns_text() -> None:
         assert request.headers["authorization"] == "Bearer local-secret"
         return httpx.Response(
             200,
-            json={
-                "choices": [
-                    {"message": {"content": "  Final answer  "}}
-                ]
-            },
+            json={"choices": [{"message": {"content": "  Final answer  "}}]},
         )
 
     settings = Settings(
@@ -78,9 +91,9 @@ def test_complete_omits_authorization_without_api_key() -> None:
     )
 
     with adapter:
-        assert adapter.complete(
-            [ChatMessage(role="user", content="Question")]
-        ) == "Answer"
+        assert (
+            adapter.complete([ChatMessage(role="user", content="Question")]) == "Answer"
+        )
 
 
 def test_complete_with_tools_sends_schema_and_parses_one_tool_call() -> None:
@@ -266,9 +279,7 @@ def test_from_settings_rejects_missing_model() -> None:
 def test_close_keeps_caller_owned_client_open() -> None:
     client = httpx.Client(
         base_url="http://llm.example/v1",
-        transport=httpx.MockTransport(
-            lambda _request: httpx.Response(200)
-        ),
+        transport=httpx.MockTransport(lambda _request: httpx.Response(200)),
     )
     adapter = OpenAICompatibleChatAdapter(
         model="test-model",
@@ -284,9 +295,7 @@ def test_close_keeps_caller_owned_client_open() -> None:
 def test_close_closes_factory_owned_client() -> None:
     adapter = OpenAICompatibleChatAdapter.from_settings(
         Settings(LLM_MODEL="test-model"),
-        transport=httpx.MockTransport(
-            lambda _request: httpx.Response(200)
-        ),
+        transport=httpx.MockTransport(lambda _request: httpx.Response(200)),
     )
 
     adapter.close()
@@ -297,9 +306,7 @@ def test_close_closes_factory_owned_client() -> None:
 def test_context_manager_closes_factory_owned_client() -> None:
     with OpenAICompatibleChatAdapter.from_settings(
         Settings(LLM_MODEL="test-model"),
-        transport=httpx.MockTransport(
-            lambda _request: httpx.Response(200)
-        ),
+        transport=httpx.MockTransport(lambda _request: httpx.Response(200)),
     ) as adapter:
         assert not adapter.is_closed
 
@@ -417,8 +424,8 @@ def test_stream_yields_compatible_deltas() -> None:
         return httpx.Response(
             200,
             text=(
-                "data: {\"choices\":[{\"delta\":{\"content\":\"Hel\"}}]}\n\n"
-                "data: {\"choices\":[{\"delta\":{\"content\":\"lo\"}}]}\n\n"
+                'data: {"choices":[{"delta":{"content":"Hel"}}]}\n\n'
+                'data: {"choices":[{"delta":{"content":"lo"}}]}\n\n'
                 "data: [DONE]\n\n"
             ),
         )
@@ -443,7 +450,7 @@ def test_stream_with_tool_result_sends_tool_messages_and_deltas() -> None:
         return httpx.Response(
             200,
             text=(
-                "data: {\"choices\":[{\"delta\":{\"content\":\"Grounded\"}}]}\n\n"
+                'data: {"choices":[{"delta":{"content":"Grounded"}}]}\n\n'
                 "data: [DONE]\n\n"
             ),
         )
@@ -467,10 +474,299 @@ def test_stream_with_tool_result_sends_tool_messages_and_deltas() -> None:
         ) == ["Grounded"]
 
 
+def test_stream_with_reasoning_separates_explicit_provider_reasoning() -> None:
+    adapter = _adapter(
+        _stream_body(
+            {"reasoning_content": "private"},
+            {"content": "Answer"},
+        )
+    )
+
+    with adapter:
+        assert list(
+            adapter.stream(
+                [ChatMessage(role="user", content="Q")],
+                include_reasoning=True,
+            )
+        ) == [ReasoningDelta("private"), FinalAnswerDelta("Answer")]
+
+
+def test_stream_with_reasoning_supports_provider_without_reasoning() -> None:
+    adapter = _adapter(_stream_body({"content": "Answer"}))
+
+    with adapter:
+        assert list(
+            adapter.stream(
+                [ChatMessage(role="user", content="Q")],
+                include_reasoning=True,
+            )
+        ) == [FinalAnswerDelta("Answer")]
+
+
+def test_stream_with_reasoning_forwards_exact_unicode_display_limit() -> None:
+    reasoning = "界" * 16_000
+    adapter = _adapter(
+        _stream_body(
+            {"reasoning_content": reasoning},
+            {"content": "Answer"},
+        )
+    )
+
+    with adapter:
+        items = list(
+            adapter.stream(
+                [ChatMessage(role="user", content="Q")],
+                include_reasoning=True,
+            )
+        )
+
+    assert items == [
+        ReasoningDelta(reasoning),
+        ReasoningTruncated(),
+        FinalAnswerDelta("Answer"),
+    ]
+
+
+def test_stream_with_reasoning_truncates_once_and_keeps_final_answer() -> None:
+    adapter = _adapter(
+        _stream_body(
+            {"reasoning_content": "a" * 15_999},
+            {"reasoning_content": "界b"},
+            {"reasoning_content": "discarded"},
+            {"content": "Answer"},
+        )
+    )
+
+    with adapter:
+        items = list(
+            adapter.stream(
+                [ChatMessage(role="user", content="Q")],
+                include_reasoning=True,
+            )
+        )
+
+    reasoning_items = [item for item in items if isinstance(item, ReasoningDelta)]
+    assert "".join(item.content for item in reasoning_items) == "a" * 15_999 + "界"
+    assert items.count(ReasoningTruncated()) == 1
+    assert items[-1] == FinalAnswerDelta("Answer")
+
+
+def test_stream_with_reasoning_truncates_literal_think_content_once() -> None:
+    adapter = _adapter(
+        _stream_body(
+            {"content": "<think>" + "界" * 15_999},
+            {"content": "界discarded</think>Answer"},
+        )
+    )
+
+    with adapter:
+        items = list(
+            adapter.stream(
+                [ChatMessage(role="user", content="Q")],
+                include_reasoning=True,
+            )
+        )
+
+    reasoning_items = [item for item in items if isinstance(item, ReasoningDelta)]
+    assert "".join(item.content for item in reasoning_items) == "界" * 16_000
+    assert items.count(ReasoningTruncated()) == 1
+    assert items[-1] == FinalAnswerDelta("Answer")
+
+
+def test_complete_removes_literal_reasoning_from_final_answer() -> None:
+    adapter = OpenAICompatibleChatAdapter.from_settings(
+        Settings(LLM_MODEL="test-model"),
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(
+                200,
+                json={
+                    "choices": [
+                        {"message": {"content": "<think>private</think>Answer"}}
+                    ]
+                },
+            )
+        ),
+    )
+
+    with adapter:
+        assert adapter.complete([ChatMessage(role="user", content="Q")]) == "Answer"
+
+
+@pytest.mark.parametrize("content", ["<think>private", "<think>private</think>"])
+def test_complete_rejects_reasoning_only_without_leaking_content(
+    content: str,
+) -> None:
+    adapter = OpenAICompatibleChatAdapter.from_settings(
+        Settings(LLM_MODEL="test-model"),
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(
+                200,
+                json={"choices": [{"message": {"content": content}}]},
+            )
+        ),
+    )
+
+    with adapter, pytest.raises(LLMResponseError) as error:
+        adapter.complete([ChatMessage(role="user", content="Q")])
+
+    assert "private" not in str(error.value)
+
+
+def test_complete_with_tool_result_removes_literal_reasoning() -> None:
+    adapter = OpenAICompatibleChatAdapter.from_settings(
+        Settings(LLM_MODEL="test-model"),
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(
+                200,
+                json={
+                    "choices": [
+                        {"message": {"content": "<think>private</think>Grounded"}}
+                    ]
+                },
+            )
+        ),
+    )
+
+    with adapter:
+        result = adapter.complete_with_tools(
+            [ChatMessage(role="user", content="Q")],
+            tools=(),
+            tool_call=ToolResult(
+                call_id="call-001",
+                name="get_production_summary",
+                arguments={},
+                content="{}",
+            ),
+        )
+
+    assert result.content == "Grounded"
+    assert result.tool_calls == ()
+
+
+def test_stream_with_reasoning_removes_multiple_literal_think_wrappers() -> None:
+    adapter = _adapter(
+        _stream_body(
+            {"content": "Before <think>first"},
+            {"content": " thought</think> middle <think>second"},
+            {"content": " thought</think> after"},
+        )
+    )
+
+    with adapter:
+        assert list(
+            adapter.stream(
+                [ChatMessage(role="user", content="Q")],
+                include_reasoning=True,
+            )
+        ) == [
+            FinalAnswerDelta("Before "),
+            ReasoningDelta("first"),
+            ReasoningDelta(" thought"),
+            FinalAnswerDelta(" middle "),
+            ReasoningDelta("second"),
+            ReasoningDelta(" thought"),
+            FinalAnswerDelta(" after"),
+        ]
+
+
+@pytest.mark.parametrize(
+    ("parts", "expected"),
+    [
+        (
+            ["<", "think>secret</", "think>Answer"],
+            [ReasoningDelta("secret"), FinalAnswerDelta("Answer")],
+        ),
+        (
+            ["before <thi", "nk>secret</thi", "nk>after"],
+            [
+                FinalAnswerDelta("before "),
+                ReasoningDelta("secret"),
+                FinalAnswerDelta("after"),
+            ],
+        ),
+        (
+            ["<think>secret</think", ">Answer"],
+            [ReasoningDelta("secret"), FinalAnswerDelta("Answer")],
+        ),
+    ],
+)
+def test_stream_with_reasoning_handles_literal_tag_splits(
+    parts: list[str],
+    expected: list[object],
+) -> None:
+    adapter = _adapter(_stream_body(*({"content": part} for part in parts)))
+
+    with adapter:
+        assert (
+            list(
+                adapter.stream(
+                    [ChatMessage(role="user", content="Q")],
+                    include_reasoning=True,
+                )
+            )
+            == expected
+        )
+
+
+def test_stream_with_reasoning_rejects_unclosed_wrapper_without_leaking_reasoning() -> (
+    None
+):
+    secret = "do not expose this"
+    adapter = _adapter(_stream_body({"content": f"<think>{secret}"}))
+
+    with adapter, pytest.raises(LLMResponseError) as error:
+        list(
+            adapter.stream(
+                [ChatMessage(role="user", content="Q")],
+                include_reasoning=True,
+            )
+        )
+
+    assert secret not in str(error.value)
+
+
+def test_stream_with_reasoning_rejects_reasoning_only_response_without_leak() -> None:
+    secret = "private chain"
+    adapter = _adapter(_stream_body({"reasoning_content": secret}))
+
+    with adapter, pytest.raises(LLMResponseError) as error:
+        list(
+            adapter.stream(
+                [ChatMessage(role="user", content="Q")],
+                include_reasoning=True,
+            )
+        )
+
+    assert secret not in str(error.value)
+
+
+def test_stream_with_tool_result_with_reasoning_uses_same_normalization() -> None:
+    adapter = _adapter(
+        _stream_body(
+            {"content": "<think>private</think>Grounded"},
+        )
+    )
+
+    with adapter:
+        assert list(
+            adapter.stream_with_tool_result(
+                [ChatMessage(role="user", content="Q")],
+                tools=(),
+                tool_call=ToolResult(
+                    call_id="call-001",
+                    name="get_production_summary",
+                    arguments={},
+                    content="{}",
+                ),
+                include_reasoning=True,
+            )
+        ) == [ReasoningDelta("private"), FinalAnswerDelta("Grounded")]
+
+
 def test_stream_rejects_incomplete_or_malformed_response() -> None:
     responses = [
-        "data: {\"choices\":[]}\n\ndata: [DONE]\n\n",
-        "data: {\"choices\":[{\"delta\":{}}]}\n\ndata: [DONE]\n\n",
+        'data: {"choices":[]}\n\ndata: [DONE]\n\n',
+        'data: {"choices":[{"delta":{}}]}\n\ndata: [DONE]\n\n',
     ]
     for body in responses:
         adapter = OpenAICompatibleChatAdapter.from_settings(
