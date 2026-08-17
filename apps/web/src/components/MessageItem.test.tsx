@@ -12,6 +12,31 @@ const message: Message = {
   suggested_actions: [],
 };
 
+const historicalProduction = {
+  equipment_id: "AOI-WAFER-01",
+  lot_id: null,
+  start: "2026-01-15T13:00:00Z",
+  end: "2026-01-15T17:00:00Z",
+  inspected_wafers: 300,
+  passed_wafers: 257,
+  failed_wafers: 43,
+  yield_rate: 257 / 300,
+  defect_counts: [],
+  alarm_events: [],
+  limitations: [],
+};
+
+const historicalCombined = {
+  status: "available" as const,
+  schema_version: 1 as const,
+  kind: "combined" as const,
+  manufacturing_kind: "production" as const,
+  manufacturing: { status: "succeeded" as const, result: historicalProduction, error_code: null },
+  documents: { status: "empty" as const, result: { query: "guide", sources: [], limitations: ["no_relevant_sources"] }, error_code: null },
+  document_query: "guide",
+  answer_status: "succeeded" as const,
+};
+
 describe("MessageItem", () => {
   it("does not render internal reasoning text", () => {
     render(<MessageItem message={message} />);
@@ -52,6 +77,39 @@ describe("MessageItem", () => {
     expect(screen.getByText("Production summary")).toBeInTheDocument();
     expect(screen.getByText("85.67%")).toBeInTheDocument();
     expect(screen.getByText("Deterministic")).toBeInTheDocument();
+  });
+
+  it("renders an assistant historical production snapshot with its capture time", () => {
+    render(<MessageItem message={{ ...message, evidence_snapshot: { status: "available", schema_version: 1, kind: "production_summary", production_summary: historicalProduction } }} />);
+
+    const historical = screen.getByRole("region", { name: "Historical evidence" });
+    expect(within(historical).getByText("Historical snapshot")).toBeInTheDocument();
+    expect(within(historical).getByText(new Date(message.created_at).toLocaleString())).toBeInTheDocument();
+    expect(within(historical).getByText("Production summary")).toBeInTheDocument();
+  });
+
+  it("renders both existing evidence panels for a historical combined snapshot", () => {
+    render(<MessageItem message={{ ...message, evidence_snapshot: historicalCombined }} />);
+
+    const historical = screen.getByRole("region", { name: "Historical evidence" });
+    expect(within(historical).getByRole("region", { name: "Combined evidence" })).toBeInTheDocument();
+    expect(within(historical).getByText("Production summary")).toBeInTheDocument();
+    expect(within(historical).getByRole("region", { name: "Retrieved document sources" })).toBeInTheDocument();
+  });
+
+  it("keeps the message visible when its historical snapshot is unavailable", () => {
+    render(<MessageItem message={{ ...message, evidence_snapshot: { status: "unavailable", code: "invalid_snapshot" } }} />);
+
+    expect(screen.getByText("Visible answer")).toBeInTheDocument();
+    const unavailable = screen.getByRole("status", { name: "Historical evidence unavailable" });
+    expect(within(unavailable).getByText("invalid_snapshot")).toBeInTheDocument();
+  });
+
+  it.each([undefined, null])("renders no historical evidence region when the snapshot is %s", (evidence_snapshot) => {
+    render(<MessageItem message={{ ...message, evidence_snapshot }} />);
+
+    expect(screen.getByText("Visible answer")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Historical evidence" })).not.toBeInTheDocument();
   });
 
   it("uses one production summary column at the narrow breakpoint", () => {

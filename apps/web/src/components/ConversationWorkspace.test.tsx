@@ -153,6 +153,48 @@ describe("ConversationWorkspace scrolling", () => {
     expect(container.querySelector(".user-bubble-content")).toBeNull();
   });
 
+  it("renders historical evidence from a reloaded assistant message without conversation evidence state", async () => {
+    const historicalProduction = {
+      equipment_id: "AOI-WAFER-01",
+      lot_id: null,
+      start: "2026-01-15T13:00:00Z",
+      end: "2026-01-15T17:00:00Z",
+      inspected_wafers: 300,
+      passed_wafers: 257,
+      failed_wafers: 43,
+      yield_rate: 257 / 300,
+      defect_counts: [],
+      alarm_events: [],
+      limitations: [],
+    };
+    const assistant = {
+      ...messages[1],
+      content: "Reloaded answer",
+      evidence_snapshot: {
+        status: "available" as const,
+        schema_version: 1 as const,
+        kind: "production_summary" as const,
+        production_summary: historicalProduction,
+      },
+    };
+    currentState = state({ messages: [messages[0], assistant] });
+    const view = render(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
+
+    expect(await screen.findByText("Reloaded answer")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Historical evidence" })).toBeInTheDocument();
+    expect(screen.getByText("Historical snapshot")).toBeInTheDocument();
+    expect(screen.getByText("Production summary")).toBeInTheDocument();
+
+    currentState = state({
+      messages: [{ ...messages[0] }, { ...assistant, evidence_snapshot: { status: "unavailable", code: "invalid_snapshot" } }],
+    });
+    view.rerender(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
+
+    expect(await screen.findByText("Reloaded answer")).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Historical evidence unavailable" })).toBeInTheDocument();
+    expect(screen.getByText("invalid_snapshot")).toBeInTheDocument();
+  });
+
   it("adds the animated frame only to the active streaming assistant bubble", () => {
     const view = render(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
     currentState = state({
