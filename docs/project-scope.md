@@ -76,13 +76,18 @@ their JSON round-trip, rejects snapshots on user messages, and keeps omitted
 assistant snapshots `NULL`. The synchronous workflow's `persist_response` now
 passes the canonical snapshot through the same assistant-message commit path.
 A focused Production Summary integration verifies that path; a general
-response persists `evidence_snapshot` as `NULL`.
+response persists `evidence_snapshot` as `NULL`. Focused tests also cover the
+Production Summary SSE tool runner: the `tool_result` stage still has only the
+user row, while the final `assistant_message` event carries the canonical
+snapshot. A synchronous Combined partial-failure test retains succeeded
+manufacturing and failed documents (`error_code: TOOL_UNAVAILABLE`). These
+tests reuse shared `persist_response`; no production code changed.
 
 These changes do not yet provide end-to-end evidence persistence. The focused
 synchronous seam is not the full Slice 3 atomic-persistence acceptance
-boundary. SSE runner persistence, combined and other-route runtime
-acceptance, rollback, cancellation, and client disconnect remain open. The
-read adapter, service/API wiring, historical reload responses and UI, and
+boundary. Runtime acceptance for the remaining single-route paths and the
+combined SSE path, rollback, cancellation, and client disconnect remain open.
+The read adapter, service/API wiring, historical reload responses and UI, and
 Model Working Notes are not yet implemented.
 
 v1.0 Portfolio Release is **Implemented**. It packages the verified v0.9
