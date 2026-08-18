@@ -340,4 +340,16 @@ describe("ConversationWorkspace scrolling", () => {
 
     expect(screen.getByRole("button", { name: "Production evidence" })).toBeDisabled();
   });
+
+  it("keeps the visible streaming cancel control usable", async () => {
+    const cancelStreaming = vi.fn();
+    currentState = state({ isSending: true, isStreaming: true, cancelStreaming });
+    render(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
+
+    const cancelButton = screen.getByRole("button", { name: /stop|cancel/i });
+    expect(cancelButton).toBeEnabled();
+    await userEvent.click(cancelButton);
+
+    expect(cancelStreaming).toHaveBeenCalledTimes(1);
+  });
 });
