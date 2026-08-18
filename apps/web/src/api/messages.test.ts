@@ -122,6 +122,20 @@ describe("messages API", () => {
     ]);
   });
 
+  it("parses ephemeral reasoning events without changing their payload", async () => {
+    const body = [
+      'event: reasoning_delta\ndata: {"content":"<b>literal</b>"}\n\n',
+      'event: reasoning_truncated\ndata: {}\n\n',
+    ].join("");
+    const events = [];
+    for await (const event of streamMessage(id, "Analyze this", new AbortController().signal, async () => new Response(body, { status: 200 }))) events.push(event);
+
+    expect(events).toEqual([
+      { type: "reasoning_delta", content: "<b>literal</b>" },
+      { type: "reasoning_truncated" },
+    ]);
+  });
+
   it("validates path-aware combined evidence events", async () => {
     const result = {
       equipment_id: "AOI-WAFER-01", lot_id: null,

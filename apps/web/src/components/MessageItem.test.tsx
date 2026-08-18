@@ -1,6 +1,9 @@
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { useState } from "react";
+import { describe, expect, it, vi } from "vitest";
 import type { Message } from "../api/messages";
+import type { WorkingNotesState } from "../hooks/useMessages";
 import MessageItem, { PRODUCTION_SUMMARY_COLUMNS } from "./MessageItem";
 
 const message: Message = {
@@ -37,11 +40,66 @@ const historicalCombined = {
   answer_status: "succeeded" as const,
 };
 
+const workingNotes: WorkingNotesState = {
+  content: "inspect <b>not html</b> then compare",
+  status: "active",
+  open: true,
+};
+
 describe("MessageItem", () => {
   it("does not render internal reasoning text", () => {
     render(<MessageItem message={message} />);
     expect(screen.getByText("Visible answer")).toBeInTheDocument();
     expect(screen.queryByText("private")).not.toBeInTheDocument();
+  });
+
+  it.each([undefined, null])("does not render working notes when the prop is %s", (notes) => {
+    render(<MessageItem message={message} workingNotes={notes} />);
+    expect(screen.queryByText("Model working notes")).not.toBeInTheDocument();
+  });
+
+  it("renders active working notes as native disclosure text, not markup", () => {
+    const { container } = render(<MessageItem message={message} workingNotes={workingNotes} />);
+    const details = screen.getByRole("group", { name: "Model working notes" });
+    expect(details.tagName).toBe("DETAILS");
+    expect(details).toHaveAttribute("open");
+    expect(screen.getByText("inspect <b>not html</b> then compare")).toBeInTheDocument();
+    expect(container.querySelector(".working-notes-body b")).toBeNull();
+    expect(details.querySelector("[aria-live]")).toBeNull();
+    expect(details.querySelector(".working-notes-body")).toBeInTheDocument();
+  });
+
+  it("lets a controlled disclosure close and reopen with pointer and keyboard", async () => {
+    const user = userEvent.setup();
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      return <MessageItem message={message} workingNotes={{ ...workingNotes, open }} onWorkingNotesOpenChange={setOpen} />;
+    }
+    render(<Harness />);
+    const summary = screen.getByText("Model working notes");
+    await user.click(summary);
+    expect(screen.getByRole("group", { name: "Model working notes" })).not.toHaveAttribute("open");
+    summary.focus();
+    fireEvent.click(summary, { detail: 0 });
+    expect(screen.getByRole("group", { name: "Model working notes" })).toHaveAttribute("open");
+  });
+
+  it.each([
+    ["truncated", "Truncated"],
+    ["interrupted", "Interrupted"],
+  ] as const)("renders the %s working-notes status", (status, label) => {
+    render(<MessageItem message={message} workingNotes={{ ...workingNotes, status }} />);
+    expect(screen.getByText(label)).toBeInTheDocument();
+  });
+
+  it("copies only Final Answer content, never working notes", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(navigator.clipboard, "writeText").mockImplementation(writeText);
+    render(<MessageItem message={message} workingNotes={workingNotes} />);
+    await user.click(screen.getByRole("button", { name: "Copy message" }));
+    expect(writeText).toHaveBeenCalledWith("Visible answer");
+    expect(writeText.mock.calls[0]?.[0]).not.toContain("inspect");
   });
 
   it("renders assistant Markdown while escaping raw HTML", async () => {

@@ -3,6 +3,7 @@ import { CopyOutlined } from "@ant-design/icons";
 import { Prompts } from "@ant-design/x";
 import { lazy, Suspense, useState } from "react";
 import type { CombinedEvidence, CombinedEvidencePath, EvidenceSnapshot, Message, ProductionEvidence } from "../api/messages";
+import type { WorkingNotesState } from "../hooks/useMessages";
 import { normalizeAssistantContent } from "../utils/normalizeAssistantContent";
 import DocumentViewer from "./DocumentViewer";
 import { parseCitation, type DocumentCitation } from "../utils/documentCitation";
@@ -20,6 +21,8 @@ type Props = {
   showSuggestedActions?: boolean;
   suggestedActionsDisabled?: boolean;
   onSuggestedAction?: (message: string) => void;
+  workingNotes?: WorkingNotesState | null;
+  onWorkingNotesOpenChange?: (open: boolean) => void;
 };
 
 function PathState({ label, path }: { label: string; path: CombinedEvidencePath }) {
@@ -341,11 +344,18 @@ export default function MessageItem({
   showSuggestedActions = false,
   suggestedActionsDisabled = false,
   onSuggestedAction = () => undefined,
+  workingNotes = null,
+  onWorkingNotesOpenChange,
 }: Props) {
   const isUser = message.role === "user";
   const content = isUser
     ? message.content
     : normalizeAssistantContent(message.content);
+  const workingNotesStatus = workingNotes?.status === "truncated"
+    ? "Truncated"
+    : workingNotes?.status === "interrupted"
+      ? "Interrupted"
+      : null;
 
   return (
     <article
@@ -377,6 +387,21 @@ export default function MessageItem({
           </Suspense>
         ) : (
           <ThinkingIndicator label={runLabel ?? "Generating response"} />
+        )}
+        {!isUser && workingNotes && (
+          <details
+            className="working-notes-disclosure"
+            aria-label="Model working notes"
+            data-status={workingNotes.status}
+            open={workingNotes.open}
+            onToggle={(event) => onWorkingNotesOpenChange?.(event.currentTarget.open)}
+          >
+            <summary>
+              Model working notes
+              {workingNotesStatus && <span className="working-notes-status">{workingNotesStatus}</span>}
+            </summary>
+            <div className="working-notes-body">{workingNotes.content}</div>
+          </details>
         )}
         {!isStreaming && content && (
           <Button
