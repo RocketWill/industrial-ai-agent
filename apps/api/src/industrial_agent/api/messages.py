@@ -191,8 +191,8 @@ def create_user_message(
             detail="Assistant response is temporarily unavailable",
         ) from error
     return MessageExchangeRead(
-        user_message=MessageRead.model_validate(exchange.user_message),
-        assistant_message=MessageRead.model_validate(
+        user_message=MessageRead.from_stored_message(exchange.user_message),
+        assistant_message=MessageRead.from_stored_message(
             exchange.assistant_message
         ),
     )
@@ -253,7 +253,7 @@ def stream_user_message(
             )
             for event in events:
                 if event.kind == "user_message":
-                    message = MessageRead.model_validate(event.payload)
+                    message = MessageRead.from_stored_message(event.payload)
                     yield _sse_event(
                         "message_started",
                         {"user_message": message.model_dump(mode="json")},
@@ -282,7 +282,7 @@ def stream_user_message(
                 }:
                     yield _sse_event(event.kind, event.payload)
                 elif event.kind == "assistant_message":
-                    message = MessageRead.model_validate(event.payload)
+                    message = MessageRead.from_stored_message(event.payload)
                     yield _sse_event(
                         "message_completed",
                         {"assistant_message": message.model_dump(mode="json")},
@@ -341,4 +341,4 @@ def list_messages(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Conversation not found",
         ) from error
-    return [MessageRead.model_validate(message) for message in messages]
+    return [MessageRead.from_stored_message(message) for message in messages]

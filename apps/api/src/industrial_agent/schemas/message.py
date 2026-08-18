@@ -1,12 +1,21 @@
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Annotated, Literal, Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 from industrial_agent.domain.routing import EvidenceKind
-from industrial_agent.models.message import MessageRole
+from industrial_agent.models.message import Message, MessageRole
 from industrial_agent.tools.defect_distribution import DefectDistributionResult
 from industrial_agent.tools.document_search import DocumentSearchResult
 from industrial_agent.tools.equipment_status import EquipmentStatusResult
@@ -70,6 +79,35 @@ class MessageRead(BaseModel):
     @classmethod
     def normalize_missing_actions(cls, value: object) -> object:
         return () if value is None else value
+
+    @classmethod
+    def from_stored_message(cls, message: Message) -> "MessageRead":
+        """Preserve history when a stored snapshot cannot be read safely."""
+        value = message.evidence_snapshot
+        if value is None:
+            return cls.model_validate(message)
+        try:
+            _evidence_snapshot_adapter.validate_python(value)
+        except ValidationError:
+            code = (
+                "unsupported_snapshot_version"
+                if isinstance(value, Mapping)
+                and "schema_version" in value
+                and value.get("schema_version") != 1
+                else "invalid_snapshot"
+            )
+            return cls.model_validate(
+                {
+                    "id": message.id,
+                    "conversation_id": message.conversation_id,
+                    "role": message.role,
+                    "content": message.content,
+                    "suggested_actions": message.suggested_actions,
+                    "created_at": message.created_at,
+                    "evidence_snapshot": {"status": "unavailable", "code": code},
+                }
+            )
+        return cls.model_validate(message)
 
     @model_validator(mode="after")
     def validate_role_actions(self) -> Self:
@@ -199,4 +237,5 @@ EvidenceSnapshotRead = Annotated[
 ]
 
 
+_evidence_snapshot_adapter = TypeAdapter(EvidenceSnapshotRead)
 MessageRead.model_rebuild()
