@@ -320,11 +320,7 @@ class OpenAICompatibleChatAdapter:
                     "LLM service returned empty assistant content"
                 )
             return CompletionResult(
-                content=(
-                    _clean_final_answer(content)
-                    if tool_call is not None
-                    else content.strip()
-                )
+                content=_clean_final_answer(content)
             )
         try:
             raw_call = raw_tool_calls[0]

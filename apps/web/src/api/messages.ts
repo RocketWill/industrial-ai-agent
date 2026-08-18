@@ -102,6 +102,8 @@ export type MessageStreamEvent =
   | { type: "tool_result"; evidence: ProductionEvidence }
   | { type: "combined_tool_result"; path: "manufacturing" | "documents"; manufacturing_kind: ManufacturingEvidenceKind; outcome: CombinedEvidencePath }
   | { type: "combined_evidence_completed"; answer_status: "succeeded" | "fallback" }
+  | { type: "reasoning_delta"; content: string }
+  | { type: "reasoning_truncated" }
   | { type: "token"; text: string }
   | { type: "message_completed"; assistant_message: Message }
   | { type: "error"; code: string; message: string };
@@ -230,6 +232,8 @@ function parseStreamEvent(event: string, data: string): MessageStreamEvent {
     const answerStatus = (value as { answer_status?: unknown }).answer_status;
     if (answerStatus === "succeeded" || answerStatus === "fallback") return { type: event, answer_status: answerStatus };
   }
+  if (event === "reasoning_delta" && isRecord(value) && hasExactKeys(value, ["content"]) && typeof value.content === "string") return { type: event, content: value.content };
+  if (event === "reasoning_truncated" && isRecord(value) && hasExactKeys(value, [])) return { type: event };
   if (event === "message_completed" && typeof value === "object" && value !== null && isMessage((value as { assistant_message: unknown }).assistant_message)) return { type: event, assistant_message: (value as { assistant_message: Message }).assistant_message };
   if (event === "error" && typeof value === "object" && value !== null && typeof (value as { code: unknown }).code === "string" && typeof (value as { message: unknown }).message === "string") return { type: event, code: (value as { code: string }).code, message: (value as { message: string }).message };
   throw new Error("invalid streaming event");

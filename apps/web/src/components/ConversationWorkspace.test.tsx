@@ -19,6 +19,7 @@ const state = (overrides: Partial<MessageState> = {}): MessageState => ({
   messages,
   evidence: null,
   combinedEvidence: null,
+  workingNotes: null,
   runState: { phase: "idle", label: null },
   isLoading: false,
   isSending: false,
@@ -29,6 +30,7 @@ const state = (overrides: Partial<MessageState> = {}): MessageState => ({
   reload: vi.fn(),
   send: vi.fn().mockResolvedValue(true),
   cancelStreaming: vi.fn(),
+  setWorkingNotesOpen: vi.fn(),
   ...overrides,
 });
 
@@ -151,6 +153,44 @@ describe("ConversationWorkspace scrolling", () => {
     expect(container.querySelectorAll(".assistant-bubble-content")).toHaveLength(1);
     expect(container.querySelector(".assistant-bubble-streaming")).toBeNull();
     expect(container.querySelector(".user-bubble-content")).toBeNull();
+  });
+
+  it("shows working notes only on the latest assistant message after streaming completes", () => {
+    currentState = state({
+      messages: [
+        messages[0],
+        { ...messages[1], content: "Earlier answer" },
+        { ...messages[1], id: "51111111-1111-1111-8111-111111111111", content: "Latest answer" },
+      ],
+      isStreaming: false,
+      workingNotes: { content: "Inspect the latest result", status: "complete", open: false },
+    });
+
+    render(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
+
+    expect(screen.getAllByText("Model working notes")).toHaveLength(1);
+    expect(screen.getByText("Inspect the latest result")).toBeInTheDocument();
+  });
+
+  it("forwards working-notes disclosure changes to the message state", async () => {
+    const setWorkingNotesOpen = vi.fn();
+    currentState = state({
+      workingNotes: { content: "Inspect the latest result", status: "active", open: true },
+      setWorkingNotesOpen,
+    });
+
+    render(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
+
+    fireEvent.click(screen.getByText("Model working notes"));
+    await waitFor(() => expect(setWorkingNotesOpen).toHaveBeenCalledWith(false));
+  });
+
+  it("renders no working-notes disclosure when the state is empty", () => {
+    currentState = state({ workingNotes: null });
+
+    render(<ConversationWorkspace conversationId={conversationId} conversationTitle="Analysis" onOpenNavigation={vi.fn()} onOpenContext={vi.fn()} />);
+
+    expect(screen.queryByText("Model working notes")).not.toBeInTheDocument();
   });
 
   it("renders historical evidence from a reloaded assistant message without conversation evidence state", async () => {

@@ -185,7 +185,7 @@ def test_stream_message_returns_ordered_sse_events(
         def __exit__(self, *args: object) -> None:
             return None
 
-        def stream(self, _: object):
+        def stream(self, _: object, *, include_reasoning: bool = False):
             yield "Hello"
             yield " world"
 
@@ -218,6 +218,148 @@ def test_stream_message_returns_ordered_sse_events(
         ("user", "Question"),
         ("assistant", "Hello world"),
     ]
+
+
+def test_stream_general_working_notes_are_ephemeral_and_ordered(
+    conversation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conversation = create_conversation(conversation_client)
+
+    class FakeAdapter:
+        def __enter__(self) -> "FakeAdapter":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def stream(self, _messages, *, include_reasoning: bool = False):
+            assert include_reasoning is True
+            from industrial_agent.llm.types import FinalAnswerDelta, ReasoningDelta
+
+            yield ReasoningDelta(content="internal note")
+            yield FinalAnswerDelta(content="final answer")
+
+    monkeypatch.setattr(
+        OpenAICompatibleChatAdapter,
+        "from_settings",
+        classmethod(lambda cls, settings: FakeAdapter()),
+    )
+    response = conversation_client.post(
+        f"/conversations/{conversation['id']}/messages/stream",
+        json={"content": "Question"},
+    )
+
+    assert response.status_code == 200
+    assert response.text.index("event: reasoning_delta") < response.text.index(
+        'data: {"text":"final answer"}'
+    )
+    assert 'data: {"content":"internal note"}' in response.text
+    history = conversation_client.get(
+        f"/conversations/{conversation['id']}/messages"
+    ).json()
+    assert history[-1]["content"] == "final answer"
+    assert 'data: {"content":"internal note"}' not in response.text.split(
+        "event: message_completed", 1
+    )[1]
+
+
+def test_stream_post_tool_working_notes_truncate_once_and_do_not_persist(
+    conversation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conversation = create_conversation(conversation_client)
+    conversation_client.patch(
+        f"/conversations/{conversation['id']}/context",
+        json={"device": "AOI-WAFER-01", "time_range": "Last 4 hours"},
+    )
+
+    class FakeAdapter:
+        def __enter__(self) -> "FakeAdapter":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def complete_with_tools(self, _messages, *, tools, tool_call=None):
+            return CompletionResult(
+                content=None,
+                tool_calls=(
+                    ToolCall(
+                        call_id="call-001",
+                        name="get_production_summary",
+                        arguments={
+                            "equipment_id": "AOI-WAFER-01",
+                            "start": "2026-01-15T13:00:00Z",
+                            "end": "2026-01-15T17:00:00Z",
+                        },
+                    ),
+                ),
+            )
+
+        def stream_with_tool_result(
+            self, _messages, *, tools, tool_call, include_reasoning: bool = False
+        ):
+            assert include_reasoning is True
+            from industrial_agent.llm.types import (
+                FinalAnswerDelta,
+                ReasoningDelta,
+                ReasoningTruncated,
+            )
+
+            yield ReasoningDelta(content="internal note")
+            yield ReasoningTruncated()
+            yield FinalAnswerDelta(content="final answer")
+
+    monkeypatch.setattr(
+        OpenAICompatibleChatAdapter,
+        "from_settings",
+        classmethod(lambda cls, settings: FakeAdapter()),
+    )
+    response = conversation_client.post(
+        f"/conversations/{conversation['id']}/messages/stream",
+        json={"content": "What is the production yield?"},
+    )
+
+    assert response.status_code == 200
+    assert response.text.count("event: reasoning_truncated") == 1
+    assert 'data: {"text":"final answer"}' in response.text
+    history = conversation_client.get(
+        f"/conversations/{conversation['id']}/messages"
+    ).json()
+    assert history[-1]["content"] == "final answer"
+    assert "internal note" not in history[-1]["content"]
+
+
+def test_sync_response_does_not_persist_literal_reasoning(
+    conversation_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conversation = create_conversation(conversation_client)
+
+    class FakeAdapter:
+        def __enter__(self) -> "FakeAdapter":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def complete(self, _messages):
+            return "final answer"
+
+    monkeypatch.setattr(
+        OpenAICompatibleChatAdapter,
+        "from_settings",
+        classmethod(lambda cls, settings: FakeAdapter()),
+    )
+    response = conversation_client.post(
+        f"/conversations/{conversation['id']}/messages",
+        json={"content": "Question"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["assistant_message"]["content"] == "final answer"
+    assert "reasoning" not in response.text
 
 
 def test_stream_production_message_emits_tool_events(
@@ -257,7 +399,9 @@ def test_stream_production_message_emits_tool_events(
                 )
             return CompletionResult(content="Yield is 92.5%.")
 
-        def stream_with_tool_result(self, messages, *, tools, tool_call):
+        def stream_with_tool_result(
+            self, messages, *, tools, tool_call, include_reasoning: bool = False
+        ):
             yield "Yield is "
             yield "92.5%."
 
@@ -410,7 +554,9 @@ def test_stream_equipment_status_message_emits_recorded_status_evidence(
                 )
             return CompletionResult(content="The recorded status is running.")
 
-        def stream_with_tool_result(self, messages, *, tools, tool_call):
+        def stream_with_tool_result(
+            self, messages, *, tools, tool_call, include_reasoning: bool = False
+        ):
             assert tools[0].name == "get_equipment_status"
             assert '"status":"running"' in tool_call.content
             yield "The recorded status is "
@@ -477,7 +623,9 @@ def test_stream_defect_distribution_message_emits_ranked_evidence(
                 ),
             )
 
-        def stream_with_tool_result(self, messages, *, tools, tool_call):
+        def stream_with_tool_result(
+            self, messages, *, tools, tool_call, include_reasoning: bool = False
+        ):
             assert tools[0].name == "get_defect_distribution"
             assert '"category":"edge-chip"' in tool_call.content
             yield "Edge-chip is the top recorded defect."
@@ -527,7 +675,9 @@ def test_stream_document_question_emits_retrieved_source_evidence(
         def complete_with_tools(self, messages, *, tools, tool_call=None):
             raise AssertionError("document routing must not ask the model for args")
 
-        def stream_with_tool_result(self, messages, *, tools, tool_call):
+        def stream_with_tool_result(
+            self, messages, *, tools, tool_call, include_reasoning: bool = False
+        ):
             assert tools[0].name == "search_documents"
             assert '"section":"OPTICAL-SIGNAL-LOW"' in tool_call.content
             yield "Check the fictional optical lens cover "
@@ -570,7 +720,9 @@ def test_stream_combined_request_emits_both_evidence_paths(
         def __exit__(self, *args: object) -> None:
             return None
 
-        def stream_with_tool_result(self, _messages, *, tools, tool_call):
+        def stream_with_tool_result(
+            self, _messages, *, tools, tool_call, include_reasoning: bool = False
+        ):
             assert tools[0].name == "combined_evidence"
             payload = json.loads(tool_call.content)
             source_id = payload["documents"]["result"]["sources"][0]["source_id"]
@@ -1003,7 +1155,9 @@ def test_sse_client_disconnect_does_not_persist_partial_assistant_message(
         def __exit__(self, *args: object) -> None:
             return None
 
-        def stream(self, _messages: object):
+        def stream(
+            self, _messages: object, *, include_reasoning: bool = False
+        ):
             provider_started.set()
             assert release_provider.wait(timeout=5)
             yield "partial answer"
@@ -1088,7 +1242,9 @@ def test_stream_production_tool_error_persists_safe_response(
                 ),
             )
 
-        def stream_with_tool_result(self, messages, *, tools, tool_call):
+        def stream_with_tool_result(
+            self, messages, *, tools, tool_call, include_reasoning: bool = False
+        ):
             raise AssertionError("Tool errors must not call the provider stream")
 
     monkeypatch.setattr(

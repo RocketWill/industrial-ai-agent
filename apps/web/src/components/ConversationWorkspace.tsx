@@ -39,6 +39,7 @@ export default function ConversationWorkspace({ conversationId, conversationTitl
   const [showScrollButton, setShowScrollButton] = useState(false);
   const latestMessage = state.messages[state.messages.length - 1];
   const latestMessageKey = latestMessage ? `${latestMessage.id}:${latestMessage.content.length}` : "";
+  const latestAssistantIndex = state.messages.reduce((latestIndex, message, index) => message.role === "assistant" ? index : latestIndex, -1);
 
   const submit = useCallback((value?: string) => {
     if (value !== undefined && value !== state.draft) state.setDraft(value);
@@ -61,6 +62,7 @@ export default function ConversationWorkspace({ conversationId, conversationTitl
 
   const items = useMemo<BubbleItemType[]>(() => state.messages.map((message, index) => {
     const isActiveAssistant = message.id === placeholderId;
+    const isLatestAssistant = index === latestAssistantIndex && message.role === "assistant";
     const evidence = index === state.messages.length - 1 && message.role === "assistant" ? state.evidence : null;
     const combinedEvidence = index === state.messages.length - 1 && message.role === "assistant" ? state.combinedEvidence : null;
     const status = isActiveAssistant
@@ -91,6 +93,8 @@ export default function ConversationWorkspace({ conversationId, conversationTitl
           showSuggestedActions={index === state.messages.length - 1 && message.role === "assistant"}
           suggestedActionsDisabled={state.isSending}
           onSuggestedAction={submit}
+          workingNotes={isLatestAssistant ? state.workingNotes : null}
+          onWorkingNotesOpenChange={isLatestAssistant ? state.setWorkingNotesOpen : undefined}
         />
         );
 
@@ -101,7 +105,7 @@ export default function ConversationWorkspace({ conversationId, conversationTitl
         ) : messageItem;
       },
     };
-  }), [state.combinedEvidence, state.evidence, state.isSending, state.isStreaming, state.messages, state.runState, submit]);
+  }), [latestAssistantIndex, state.combinedEvidence, state.evidence, state.isSending, state.isStreaming, state.messages, state.runState, state.setWorkingNotesOpen, state.workingNotes, submit]);
 
   useLayoutEffect(() => {
     pendingInitialScroll.current = true;

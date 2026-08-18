@@ -227,7 +227,7 @@ def stream_user_message(
             with OpenAICompatibleChatAdapter.from_settings(
                 Settings()
             ) as adapter:
-                yield from adapter.stream(messages)
+                yield from adapter.stream(messages, include_reasoning=True)
 
         try:
             def stream_with_tool_result(messages, tool_call, selected_tool):
@@ -238,6 +238,7 @@ def stream_user_message(
                         messages,
                         tools=(selected_tool,),
                         tool_call=tool_call,
+                        include_reasoning=True,
                     )
 
             events = run_stream_routed_exchange(
@@ -259,6 +260,8 @@ def stream_user_message(
                     )
                 elif event.kind == "token":
                     yield _sse_event("token", event.payload)
+                elif event.kind in {"reasoning_delta", "reasoning_truncated"}:
+                    yield _sse_event(event.kind, event.payload)
                 elif event.kind == "tool_call_started":
                     yield _sse_event("tool_call_started", event.payload)
                 elif event.kind == "tool_result":

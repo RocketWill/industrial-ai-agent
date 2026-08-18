@@ -170,6 +170,48 @@
 .assistant-markdown > :first-child { margin-top: 0; }
 .assistant-markdown > :last-child { margin-bottom: 0; }
 .assistant-markdown pre { max-width: 100%; overflow-x: auto; }
+.working-notes-disclosure {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  margin-top: 12px;
+  position: relative;
+}
+.working-notes-disclosure[data-status="active"]::before {
+  background-image: radial-gradient(circle, var(--color-dither) 1px, transparent 1px);
+  background-size: 5px 5px;
+  content: "";
+  height: 8px;
+  opacity: 0.55;
+  position: absolute;
+  right: 12px;
+  top: 9px;
+  width: 36px;
+}
+.working-notes-disclosure summary {
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 8px 12px;
+}
+.working-notes-disclosure summary:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.working-notes-status {
+  color: var(--color-text-muted);
+  margin-left: 8px;
+}
+.working-notes-body {
+  border-top: 1px solid var(--color-border-subtle);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  max-height: 220px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  padding: 10px 12px;
+  white-space: pre-wrap;
+}
 .message-copy { color: var(--color-text-muted); margin-top: 4px; opacity: 0; }
 .chat-message:hover .message-copy,
 .chat-message:focus-within .message-copy { opacity: 1; }

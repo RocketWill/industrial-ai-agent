@@ -39,6 +39,10 @@ from industrial_agent.graph.workflow import (
 from industrial_agent.llm.types import (
     ChatMessage,
     CompletionResult,
+    FinalAnswerDelta,
+    ReasoningDelta,
+    ReasoningTruncated,
+    StreamItem,
     ToolResult,
 )
 from industrial_agent.schemas.message import SuggestedAction
@@ -86,31 +90,56 @@ def run_sync_exchange(
     )
 
 
-Stream = Callable[[Sequence[ChatMessage]], Iterator[str]]
+StreamDelta = str | StreamItem
+Stream = Callable[[Sequence[ChatMessage]], Iterator[StreamDelta]]
 ToolComplete = Callable[..., CompletionResult]
-ToolStream = Callable[[Sequence[ChatMessage], ToolResult], Iterator[str]]
-RoutedToolStream = Callable[[Sequence[ChatMessage], ToolResult, object], Iterator[str]]
+ToolStream = Callable[[Sequence[ChatMessage], ToolResult], Iterator[StreamDelta]]
+RoutedToolStream = Callable[
+    [Sequence[ChatMessage], ToolResult, object], Iterator[StreamDelta]
+]
 
 
 class StreamingExecutionCancelled(RuntimeError):
     """Raised when the SSE client disconnects before response persistence."""
 
 
-def _collect_stream_parts(
-    parts: Iterator[str], *, is_cancelled: Callable[[], bool]
-) -> list[str]:
-    collected: list[str] = []
-    for part in parts:
+def _stream_events(
+    items: Iterator[StreamDelta],
+    *,
+    parts: list[str],
+    is_cancelled: Callable[[], bool],
+) -> Iterator[ExecutionEvent]:
+    """Normalize final-answer stream items into existing execution events."""
+    truncation_emitted = False
+    for item in items:
         if is_cancelled():
             raise StreamingExecutionCancelled(
                 "Streaming response cancelled before completion"
             )
-        collected.append(part)
+        if isinstance(item, str):
+            content = item
+        elif isinstance(item, FinalAnswerDelta):
+            content = item.content
+        elif isinstance(item, ReasoningDelta):
+            if item.content:
+                yield ExecutionEvent(
+                    kind="reasoning_delta", payload={"content": item.content}
+                )
+            continue
+        elif isinstance(item, ReasoningTruncated):
+            if not truncation_emitted:
+                yield ExecutionEvent(kind="reasoning_truncated", payload={})
+                truncation_emitted = True
+            continue
+        else:
+            continue
+        if content:
+            parts.append(content)
+            yield ExecutionEvent(kind="token", payload={"text": content})
     if is_cancelled():
         raise StreamingExecutionCancelled(
             "Streaming response cancelled before completion"
         )
-    return collected
 
 
 def run_stream_routed_exchange(
@@ -175,13 +204,13 @@ def run_stream_routed_exchange(
         )
         return
     if decision.intent is RouteIntent.GENERAL:
-        parts = _collect_stream_parts(
-            stream(state["messages"]), is_cancelled=is_cancelled
+        parts: list[str] = []
+        yield from _stream_events(
+            stream(state["messages"]),
+            parts=parts,
+            is_cancelled=is_cancelled,
         )
         content_text = "".join(parts)
-        for part in parts:
-            if part:
-                yield ExecutionEvent(kind="token", payload={"text": part})
         yield from _persist_stream_text(session, state, content_text, emit_token=False)
         return
     if decision.intent is RouteIntent.COMBINED:
@@ -246,6 +275,7 @@ def run_stream_routed_exchange(
         if combined is None:
             raise RuntimeError("combined execution ended without a result")
         parts: list[str] = []
+        generated_events: list[ExecutionEvent] = []
 
         def generate(payload: dict[str, object]) -> str:
             tool_result = ToolResult(
@@ -254,11 +284,12 @@ def run_stream_routed_exchange(
                 arguments={},
                 content=json.dumps(payload, separators=(",", ":")),
             )
-            parts.extend(
-                _collect_stream_parts(
+            generated_events.extend(
+                _stream_events(
                     stream_with_tool_result(
                         state["messages"], tool_result, COMBINED_EVIDENCE_TOOL
                     ),
+                    parts=parts,
                     is_cancelled=is_cancelled,
                 )
             )
@@ -268,9 +299,13 @@ def run_stream_routed_exchange(
             combined, generate=generate, validate=validate_combined_answer
         )
         if answer.status is CombinedAnswerStatus.SUCCEEDED:
-            for part in parts:
-                if part:
-                    yield ExecutionEvent(kind="token", payload={"text": part})
+            yield from generated_events
+        else:
+            yield from (
+                event
+                for event in generated_events
+                if event.kind in {"reasoning_delta", "reasoning_truncated"}
+            )
         combined_state = {
             **state,
             "combined_evidence": CombinedExchangeEvidence(
@@ -322,20 +357,27 @@ def run_stream_routed_exchange(
         arguments=call.arguments,
         content=result_payload.model_dump_json(),
     )
-    parts = _collect_stream_parts(
-        stream_with_tool_result(tool_state["messages"], tool_result, tool),
-        is_cancelled=is_cancelled,
+    parts: list[str] = []
+    generated_events = list(
+        _stream_events(
+            stream_with_tool_result(tool_state["messages"], tool_result, tool),
+            parts=parts,
+            is_cancelled=is_cancelled,
+        )
     )
     answer = "".join(parts)
     post_check = validate_answer(decision, evidence, answer)
     if not post_check.sufficient:
+        yield from (
+            event
+            for event in generated_events
+            if event.kind in {"reasoning_delta", "reasoning_truncated"}
+        )
         yield from _persist_stream_text(
             session, tool_state, post_check.response_text or ""
         )
         return
-    for part in parts:
-        if part:
-            yield ExecutionEvent(kind="token", payload={"text": part})
+    yield from generated_events
     yield from _persist_stream_text(session, tool_state, answer, emit_token=False)
 
 
@@ -496,9 +538,11 @@ def run_stream_tool_exchange(
         content=result_payload.model_dump_json(),
     )
     parts: list[str] = []
-    for delta in stream_with_tool_result(tool_state["messages"], tool_result):
-        parts.append(delta)
-        yield ExecutionEvent(kind="token", payload={"text": delta})
+    yield from _stream_events(
+        stream_with_tool_result(tool_state["messages"], tool_result),
+        parts=parts,
+        is_cancelled=lambda: False,
+    )
     completed = persist_response(
         session, {**tool_state, "assistant_content": "".join(parts)}
     )
@@ -522,11 +566,11 @@ def run_stream_exchange(
     yield ExecutionEvent(kind="user_message", payload=user_message)
 
     parts: list[str] = []
-    for delta in stream(state["messages"]):
-        if not isinstance(delta, str) or not delta:
-            continue
-        parts.append(delta)
-        yield ExecutionEvent(kind="token", payload={"text": delta})
+    yield from _stream_events(
+        stream(state["messages"]),
+        parts=parts,
+        is_cancelled=lambda: False,
+    )
 
     completed_state: GraphState = {
         **state,

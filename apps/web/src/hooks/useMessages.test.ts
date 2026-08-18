@@ -167,4 +167,139 @@ describe("useMessages", () => {
     expect(result.current.messages[result.current.messages.length - 1]?.content).toBe("Generation stopped.");
     expect(result.current.draft).toBe("Question");
   });
+
+  it("keeps working notes undisclosed until reasoning deltas arrive and appends them literally", async () => {
+    let release!: () => void;
+    let releaseFinal!: () => void;
+    const pause = new Promise<void>((resolve) => { release = resolve; });
+    const finalPause = new Promise<void>((resolve) => { releaseFinal = resolve; });
+    const api = {
+      listMessages: vi.fn().mockResolvedValue([]), sendMessage: vi.fn(),
+      streamMessage: vi.fn(async function* () {
+        yield { type: "message_started" as const, user_message: exchange.user_message };
+        await pause;
+        yield { type: "reasoning_delta", content: "inspect <tag>" } as never;
+        yield { type: "reasoning_delta", content: " then compare" } as never;
+        await finalPause;
+        yield { type: "token" as const, text: "Answer" };
+        yield { type: "message_completed" as const, assistant_message: exchange.assistant_message };
+      }),
+    };
+    const { result } = renderHook(() => useMessages(id, api));
+    await waitFor(() => expect(api.listMessages).toHaveBeenCalled());
+    let request!: Promise<boolean>;
+    act(() => { request = result.current.send("Question"); });
+    expect(result.current.workingNotes).toBeNull();
+    release();
+    await waitFor(() => expect(result.current.workingNotes).toEqual({ content: "inspect <tag> then compare", status: "active", open: true }));
+    releaseFinal();
+    await act(async () => { await request; });
+  });
+
+  it("closes working notes on the first final token and retains later reasoning", async () => {
+    const api = {
+      listMessages: vi.fn().mockResolvedValue([]), sendMessage: vi.fn(),
+      streamMessage: vi.fn(async function* () {
+        yield { type: "message_started" as const, user_message: exchange.user_message };
+        yield { type: "reasoning_delta", content: "plan" } as never;
+        yield { type: "token" as const, text: "Answer" };
+        yield { type: "reasoning_delta", content: " after answer" } as never;
+        yield { type: "message_completed" as const, assistant_message: exchange.assistant_message };
+      }),
+    };
+    const { result } = renderHook(() => useMessages(id, api));
+    await waitFor(() => expect(api.listMessages).toHaveBeenCalled());
+    await act(async () => { await result.current.send("Question"); });
+    expect(result.current.workingNotes).toEqual({ content: "plan after answer", status: "complete", open: false });
+  });
+
+  it("retains truncated working notes through the final answer", async () => {
+    const api = {
+      listMessages: vi.fn().mockResolvedValue([]), sendMessage: vi.fn(),
+      streamMessage: vi.fn(async function* () {
+        yield { type: "message_started" as const, user_message: exchange.user_message };
+        yield { type: "reasoning_delta", content: "partial" } as never;
+        yield { type: "reasoning_truncated" } as never;
+        yield { type: "token" as const, text: "Answer" };
+        yield { type: "message_completed" as const, assistant_message: exchange.assistant_message };
+      }),
+    };
+    const { result } = renderHook(() => useMessages(id, api));
+    await waitFor(() => expect(api.listMessages).toHaveBeenCalled());
+    await act(async () => { await result.current.send("Question"); });
+    expect(result.current.workingNotes).toEqual({ content: "partial", status: "truncated", open: false });
+  });
+
+  it("marks working notes interrupted on stream errors and cancellation", async () => {
+    const errorApi = {
+      listMessages: vi.fn().mockResolvedValue([]), sendMessage: vi.fn(),
+      streamMessage: vi.fn(async function* () {
+        yield { type: "message_started" as const, user_message: exchange.user_message };
+        yield { type: "reasoning_delta", content: "before failure" } as never;
+        throw new Error("offline");
+      }),
+    };
+    const errorHook = renderHook(() => useMessages(id, errorApi));
+    await waitFor(() => expect(errorApi.listMessages).toHaveBeenCalled());
+    await act(async () => { await errorHook.result.current.send("Question"); });
+    expect(errorHook.result.current.workingNotes).toEqual({ content: "before failure", status: "interrupted", open: true });
+
+    let release!: () => void;
+    const pause = new Promise<void>((resolve) => { release = resolve; });
+    const cancelApi = {
+      listMessages: vi.fn().mockResolvedValue([]), sendMessage: vi.fn(),
+      streamMessage: vi.fn(async function* (_id: string, _content: string, signal: AbortSignal) {
+        yield { type: "message_started" as const, user_message: exchange.user_message };
+        yield { type: "reasoning_delta", content: "before cancel" } as never;
+        await new Promise<void>((resolve, reject) => { release = resolve; signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true }); });
+        await pause;
+      }),
+    };
+    const cancelHook = renderHook(() => useMessages(id, cancelApi));
+    await waitFor(() => expect(cancelApi.listMessages).toHaveBeenCalled());
+    let request!: Promise<boolean>;
+    act(() => { request = cancelHook.result.current.send("Question"); });
+    await waitFor(() => expect(cancelHook.result.current.workingNotes?.content).toBe("before cancel"));
+    act(() => cancelHook.result.current.cancelStreaming());
+    await act(async () => { await request; });
+    expect(cancelHook.result.current.workingNotes).toEqual({ content: "before cancel", status: "interrupted", open: true });
+    release();
+  });
+
+  it("clears working notes on conversation switch and explicit reload", async () => {
+    const secondId = "22222222-2222-2222-8222-222222222222";
+    const api = {
+      listMessages: vi.fn().mockResolvedValue([]), sendMessage: vi.fn(),
+      streamMessage: vi.fn(async function* () {
+        yield { type: "message_started" as const, user_message: exchange.user_message };
+        yield { type: "reasoning_delta", content: "temporary" } as never;
+      }),
+    };
+    const { result, rerender } = renderHook(({ conversationId }) => useMessages(conversationId, api), { initialProps: { conversationId: id as string | null } });
+    await waitFor(() => expect(api.listMessages).toHaveBeenCalledWith(id));
+    await act(async () => { await result.current.send("Question"); });
+    expect(result.current.workingNotes?.content).toBe("temporary");
+    rerender({ conversationId: secondId });
+    await waitFor(() => expect(result.current.workingNotes).toBeNull());
+    await act(async () => { await result.current.reload(); });
+    expect(result.current.workingNotes).toBeNull();
+  });
+
+  it("leaves working notes null for synchronous and non-reasoning streams", async () => {
+    const syncApi = { listMessages: vi.fn().mockResolvedValue([]), sendMessage: vi.fn().mockResolvedValue(exchange) };
+    const syncHook = renderHook(() => useMessages(id, syncApi));
+    await waitFor(() => expect(syncApi.listMessages).toHaveBeenCalled());
+    await act(async () => { await syncHook.result.current.send("Question"); });
+    expect(syncHook.result.current.workingNotes).toBeNull();
+
+    const streamApi = { listMessages: vi.fn().mockResolvedValue([]), sendMessage: vi.fn(), streamMessage: vi.fn(async function* () {
+      yield { type: "message_started" as const, user_message: exchange.user_message };
+      yield { type: "token" as const, text: "Answer" };
+      yield { type: "message_completed" as const, assistant_message: exchange.assistant_message };
+    }) };
+    const streamHook = renderHook(() => useMessages(id, streamApi));
+    await waitFor(() => expect(streamApi.listMessages).toHaveBeenCalled());
+    await act(async () => { await streamHook.result.current.send("Question"); });
+    expect(streamHook.result.current.workingNotes).toBeNull();
+  });
 });

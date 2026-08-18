@@ -166,6 +166,32 @@ def test_complete_with_tools_sends_schema_and_parses_one_tool_call() -> None:
     assert result.tool_calls[0].arguments == {"equipment_id": "AOI-WAFER-01"}
 
 
+def test_complete_with_tools_without_tool_call_removes_literal_reasoning() -> None:
+    adapter = OpenAICompatibleChatAdapter.from_settings(
+        Settings(LLM_MODEL="test-model"),
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(
+                200,
+                json={
+                    "choices": [
+                        {"message": {"content": "<think>private</think>Answer"}}
+                    ]
+                },
+            )
+        ),
+    )
+
+    with adapter:
+        result = adapter.complete_with_tools(
+            [ChatMessage(role="user", content="What is yield?")],
+            tools=(),
+        )
+
+    assert result.content == "Answer"
+    assert "private" not in result.content
+    assert result.tool_calls == ()
+
+
 def test_complete_with_tools_rejects_multiple_tool_calls() -> None:
     adapter = OpenAICompatibleChatAdapter.from_settings(
         Settings(LLM_MODEL="test-model"),
