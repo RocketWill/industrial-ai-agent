@@ -33,6 +33,8 @@ workbench implemented across the frontend milestones.
 - retrieved Sources evidence with fictional document title, section, excerpt,
   match score, stable source ID, and repository-relative path;
 - SSE streaming assistant responses with a keyboard-accessible Stop action;
+- temporary native `Model working notes` disclosure for supported final-answer
+  reasoning during SSE, with manual reopen and Truncated or Interrupted status;
 - conversation-bound context display and editing;
 - deterministic fictional device selection, lot validation, and time-range
   presets;
@@ -98,6 +100,20 @@ The documented workflow has been verified from a clean git archive copy using
 the committed npm lockfile and frontend test, typecheck, lint, and build
 commands.
 
+The Slice 6 focused frontend checks passed 86 tests, and the complete Web suite
+passed 144 tests. Type checking, linting, and the production build passed with
+the existing Fast Refresh and chunk warnings. Ant Design CLI `info`, `lint`, and
+`doctor` checks remain blocked by the missing
+`@oxc-parser/binding-darwin-arm64` package. A local browser acceptance run also
+passed with an independently created deterministic OpenAI-compatible streaming
+fixture. It verified that the disclosure opened during reasoning, closed on the
+first Final Answer token, reopened through its pointer, and disappeared on
+reload while the persisted answer remained. At a 390px viewport, the page had
+no horizontal overflow; the notes body used a 220px maximum height with
+scrolling, and its focus outline was visible. Keyboard-native behavior remains
+covered by interaction tests; this run does not claim a browser keypress
+observation.
+
 The conversation workflow keeps the synchronous Message API as a stable path
 and uses the streaming endpoint in the browser. Every exchange receives safe
 routing progress before general generation, clarification, or one evidence
@@ -151,6 +167,15 @@ Historical combined-route choices remain keyboard accessible and resolve as
 normal user messages. New explicit combined requests run the bounded v0.9
 workflow and present both evidence paths in one assistant exchange.
 
+During an SSE final-answer exchange, the latest assistant bubble can show a
+plain-text `Model working notes` details disclosure when the provider supplies
+explicit `reasoning_content` or a literal lowercase, non-nesting
+`<think>...</think>` section. It opens when reasoning arrives and closes at the
+first answer token; the user can reopen it. Truncated and Interrupted statuses
+remain visible. Notes are never copied, persisted, restored, or included in
+Message or Evidence data. Providers without either supported form produce no
+disclosure, and routing or tool-selection reasoning is not shown.
+
 The workspace header also opens a Documents drawer. It lists protected
 repository documents and local uploads, validates one `.md` file up to 1 MiB,
 shows indexing and failure states, and confirms local deletion by document
@@ -158,6 +183,8 @@ name. The drawer warns that files remain on local disk and that retrieved text
 may be sent to the configured model.
 
 The browser does not provide an evidence browser, a full evidence timeline,
-manufacturing charts, or pagination. Model Working Notes are not implemented.
+manufacturing charts, or pagination. Model Working Notes remain transient UI
+disclosures rather than persisted history, full traces, replay, or a ThoughtChain
+surface.
 Deterministic routing supports English and Traditional Chinese only; ambiguous
 requests still depend on the configured routing model.

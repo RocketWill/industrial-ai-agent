@@ -46,7 +46,7 @@ matrix. Application README files own setup and contract usage.
 
 **Status: In Progress**
 
-Slices 1 through 5 are implemented.
+Slices 1 through 6 are implemented.
 Slice 1 validates a version-1 typed
 `MessageRead.evidence_snapshot` union for Production Summary, Equipment Status,
 Defect Distribution, Document Search, Combined Evidence, and the explicit
@@ -103,9 +103,34 @@ reasoning, and continues consuming the final-answer stream. Synchronous general
 and post-tool final answers strip recognized wrapper reasoning; initial tool
 selection, default stream behavior, and providers without reasoning remain
 unchanged. Slice 5 focused verification reports 51 passed; the full API suite
-reports 459 passed, with Ruff and `git diff --check` passing. Model Working
-Notes are not yet exposed through SSE or the frontend.
-Model Working Notes and final v2.0 acceptance remain open in Slices 6 and 7.
+reports 459 passed, with Ruff and `git diff --check` passing. Slice 5 itself
+did not expose Model Working Notes through SSE or the frontend.
+
+Slice 6 is implemented for final-answer streams. Final-answer calls opt into
+the internal `StreamItem` union; the runner emits the approved
+`reasoning_delta` and `reasoning_truncated` SSE events while persisting only
+the Final Answer. The frontend validates those events, keeps reasoning in
+ephemeral hook state, and renders it with a native plain-text disclosure. The
+disclosure opens on the first reasoning delta, closes when the first answer
+token arrives, supports manual reopening, represents truncation and
+interruption, clears on reload or conversation switch, excludes notes from
+copy actions, avoids per-delta `aria-live` announcements, and bounds rendered
+overflow. Synchronous responses and routing or tool-selection streams do not
+expose working notes; the tool-selection text fallback strips recognized
+reasoning wrappers. Slice 6 focused verification reports 89 backend and 86
+frontend tests; the full API suite reports 463 passed and the full Web suite
+reports 144 passed, with type checking, linting, builds, Ruff, and
+`git diff --check` passing. The existing Ant Design CLI native-binding block
+remains. Reproducible browser acceptance passed with an independent
+OpenAI-compatible streaming fixture: the disclosure opened during reasoning,
+closed on the first Final Answer token, reopened by pointer interaction, and
+cleared on reload while the answer remained. At 390px there was no horizontal
+page overflow; the reasoning body was bounded at 220px with overflow scrolling,
+and the disclosure showed a visible focus outline. This does not claim a live
+Qwen reasoning pass; its routing delay was excluded from deterministic UI
+acceptance. The browser run upgraded the local Alembic database from `0005` to
+`0006` without deleting data.
+Final v2.0 acceptance remains open in Slice 7.
 
 ## HTTP contracts
 
@@ -149,6 +174,19 @@ The latest full-release verification on 2026-08-15 produced:
 - Slice 5 was verified separately on 2026-08-17: 51 focused provider-reasoning
   tests passed, and the full API suite then passed 459 tests. Ruff and
   `git diff --check` passed.
+- Slice 6 was verified separately on 2026-08-17: 89 focused backend tests and
+  86 focused frontend tests passed. The full API suite then passed 463 tests
+  and the full Web suite passed 144 tests; type checking, linting, builds,
+  Ruff, and `git diff --check` passed. The existing Ant Design CLI
+  native-binding block remains. Reproducible browser acceptance passed with an
+  independent OpenAI-compatible streaming fixture: the disclosure opened
+  during reasoning, closed on the first Final Answer token, reopened by
+  pointer interaction, and cleared on reload while the answer remained. At
+  390px there was no horizontal page overflow; the reasoning body was bounded
+  at 220px with overflow scrolling, and the disclosure showed a visible focus
+  outline. This does not claim a live Qwen reasoning pass; its routing delay
+  was excluded from deterministic UI acceptance. The browser run upgraded the
+  local Alembic database from `0005` to `0006` without deleting data.
 - Browser combined workflow: one explicit production-plus-document request ran
   against saved synthetic AOI context. The final exchange retained a 95.56%
   Production Summary and three cited document sources when model synthesis was

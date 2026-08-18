@@ -21,6 +21,8 @@ evidence visibly separate. Co-occurrence is never presented as proof of cause.
 - FastAPI and SQLite conversation persistence with explicit Alembic migrations;
 - synchronous and SSE assistant exchanges with completed-response persistence
   and canonical Evidence Snapshots attached to assistant messages;
+- temporary SSE Model Working Notes for supported final-answer reasoning, kept
+  separate from assistant messages and Evidence Snapshots;
 - deterministic production summary, recorded equipment status, and defect
   distribution tools over one fictional AOI dataset;
 - structured English and Traditional Chinese routing with bounded retry,
@@ -54,6 +56,11 @@ conversations, messages, workspace context, and canonical completed Evidence
 Snapshots on assistant messages. Current Evidence remains scoped to the active
 request; reloading history returns each completed snapshot with the assistant
 message that produced it.
+
+When the configured provider supplies supported final-answer reasoning, the SSE
+exchange can also show temporary Model Working Notes. They remain separate from
+the answer and deterministic evidence, are not persisted with message history,
+and do not expose routing or tool-selection reasoning.
 
 See [Architecture](docs/architecture.md) for the system boundary and Combined
 Evidence sequence.
@@ -107,6 +114,18 @@ The latest recorded results and release evidence are listed in
 same deterministic boundary on Ubuntu. Model calls and secrets are excluded
 from CI.
 
+The Slice 6 local verification recorded 89 focused backend tests, 86 focused
+frontend tests, 463 full API tests, and 144 full Web tests. Type checking,
+linting, and builds passed; existing Fast Refresh and chunk warnings remain.
+Ant Design CLI `info`, `lint`, and `doctor` checks remain blocked by the missing
+`@oxc-parser/binding-darwin-arm64` package. A local browser acceptance run also
+passed with an independently created deterministic OpenAI-compatible streaming
+fixture: the disclosure opened during reasoning, closed on the first Final
+Answer token, reopened through its pointer, and disappeared on reload while the
+persisted answer remained. At a 390px viewport, the page had no horizontal
+overflow; the notes body used a 220px maximum height with scrolling, and its
+focus outline was visible.
+
 ## Evidence boundaries
 
 - Numeric manufacturing results come from deterministic Python code.
@@ -124,7 +143,8 @@ from CI.
 This is a local, single-user application. It has no authentication,
 multi-tenant isolation, public deployment stack, live equipment integration,
 persistent vector store, PDF/OCR ingestion, an evidence browser or complete
-evidence timeline, pagination, Model Working Notes, or arbitrary
+evidence timeline, pagination, persistent Model Working Notes history, full
+trace or replay, a ThoughtChain surface, or arbitrary
 planner-driven multi-tool execution. Local Markdown uploads may be sent to the
 configured model service when retrieved.
 
