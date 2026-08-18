@@ -16,6 +16,10 @@ evidence visibly separate. Co-occurrence is never presented as proof of cause.
 > verification, browser and screenshot review, public-copy and publication
 > review, two-axis code review, and GitHub Actions on 2026-08-15.
 
+> **v2.0 status: Implemented.** Completed assistant messages now retain typed
+> Evidence Snapshots across reloads. Supported provider working notes remain a
+> temporary, optional UI surface and never become message history or evidence.
+
 ## What the repository demonstrates
 
 - FastAPI and SQLite conversation persistence with explicit Alembic migrations;
@@ -114,17 +118,16 @@ The latest recorded results and release evidence are listed in
 same deterministic boundary on Ubuntu. Model calls and secrets are excluded
 from CI.
 
-The Slice 6 local verification recorded 89 focused backend tests, 86 focused
-frontend tests, 463 full API tests, and 144 full Web tests. Type checking,
-linting, and builds passed; existing Fast Refresh and chunk warnings remain.
+The final v2.0 local verification recorded 466 full API tests and 145 full Web
+tests. Deterministic evaluation, migration, type checking, linting, and builds
+passed; existing Fast Refresh and chunk warnings remain.
 Ant Design CLI `info`, `lint`, and `doctor` checks remain blocked by the missing
 `@oxc-parser/binding-darwin-arm64` package. A local browser acceptance run also
 passed with an independently created deterministic OpenAI-compatible streaming
-fixture: the disclosure opened during reasoning, closed on the first Final
-Answer token, reopened through its pointer, and disappeared on reload while the
-persisted answer remained. At a 390px viewport, the page had no horizontal
-overflow; the notes body used a 220px maximum height with scrolling, and its
-focus outline was visible.
+fixture. Historical production, Combined partial-failure, deleted-upload source,
+missing, and unsupported-version states survived reload. Working Notes opened,
+collapsed at the Final Answer, reopened, showed truncation and interruption,
+and disappeared on reload. At 390 px, the page had no horizontal overflow.
 
 ## Evidence boundaries
 

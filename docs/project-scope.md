@@ -59,8 +59,8 @@ belongs in deterministic domain code rather than an LLM.
 
 ## Current milestone boundary
 
-v2.0 Persistent Evidence and Model Working Notes is **In Progress**. Slices 1
-through 6 are implemented. Slice 1
+v2.0 Persistent Evidence and Model Working Notes is **Implemented**. Slices 1
+through 7 are complete. Slice 1
 defines the version-1 typed
 `MessageRead.evidence_snapshot` union for Production Summary, Equipment Status,
 Defect Distribution, Document Search, Combined Evidence, and the explicit
@@ -145,9 +145,16 @@ Qwen reasoning pass; its routing delay was excluded from deterministic UI
 acceptance. The browser run upgraded the local Alembic database from `0005` to
 `0006` without deleting data.
 
-The following v2.0 work remains:
-
-- Slice 7 — Final v2.0 acceptance.
+Slice 7 completed the bounded v2.0 acceptance without adding another workflow.
+Unreadable stored snapshots preserve message history as Unavailable Evidence,
+deleted uploads do not erase sources already captured in historical snapshots,
+and provider working notes remain absent from SQLite and captured logs. The
+streaming cancel control also remains usable while generation is active. Final
+verification passed 466 API and 145 Web tests, deterministic evaluation,
+migration, linting, type checking, and both builds. Browser acceptance covered
+desktop and 390 px reload plus the approved historical and ephemeral states.
+Ant Design CLI diagnostics remain blocked by the documented missing native
+binding.
 
 v1.0 Portfolio Release is **Implemented**. It packages the verified v0.9
 application as a repository-only release. Corrective validation and responsive
@@ -224,7 +231,8 @@ external embedding service. A registry-only API and read-only Drawer expose
 the complete cited document. Local Markdown management adds persistent,
 Git-ignored single-file uploads, validation, atomic corpus replacement, and
 deletion while protecting built-ins. Multi-tool turns, PDF/OCR, authentication,
-cloud storage, and persisted evidence remain outside the current boundary.
+cloud storage, and persisted evidence were outside the v0.5 boundary; v2.0 later
+added message-owned Evidence Snapshots without changing the retrieval index.
 
 The completed v0.6 milestone adds typed English and Traditional Chinese routing,
 bounded classifier retry and fallback, deterministic clarification, shared

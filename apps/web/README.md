@@ -100,18 +100,17 @@ The documented workflow has been verified from a clean git archive copy using
 the committed npm lockfile and frontend test, typecheck, lint, and build
 commands.
 
-The Slice 6 focused frontend checks passed 86 tests, and the complete Web suite
-passed 144 tests. Type checking, linting, and the production build passed with
+The final v2.0 Web suite passed 145 tests. Type checking, linting, and the
+production build passed with
 the existing Fast Refresh and chunk warnings. Ant Design CLI `info`, `lint`, and
 `doctor` checks remain blocked by the missing
 `@oxc-parser/binding-darwin-arm64` package. A local browser acceptance run also
 passed with an independently created deterministic OpenAI-compatible streaming
-fixture. It verified that the disclosure opened during reasoning, closed on the
-first Final Answer token, reopened through its pointer, and disappeared on
-reload while the persisted answer remained. At a 390px viewport, the page had
-no horizontal overflow; the notes body used a 220px maximum height with
-scrolling, and its focus outline was visible. Keyboard-native behavior remains
-covered by interaction tests; this run does not claim a browser keypress
+fixture. It verified historical Evidence Snapshot reload, Combined partial
+failure, deleted-upload sources, Missing and Unavailable Evidence, Working Notes
+collapse and reopening, truncation, interruption, and cancellation. At 390 px,
+the page had no horizontal overflow. Keyboard-native disclosure behavior remains
+covered by interaction tests; the browser run does not claim a keypress
 observation.
 
 The conversation workflow keeps the synchronous Message API as a stable path

@@ -27,9 +27,11 @@ machine. The operator is responsible for reviewing that service's data policy.
 
 ## Local storage and uploads
 
-SQLite stores conversations, messages, and workspace context on local disk.
-Conversation deletion is permanent. Structured tool and source evidence is not
-persisted with message history.
+SQLite stores conversations, messages, workspace context, and canonical
+Evidence Snapshots on local disk. Conversation deletion permanently removes its
+messages and snapshots. Snapshots may retain excerpts from a local upload after
+that upload is deleted, because historical evidence records what supported the
+completed answer. Model Working Notes are not persisted.
 
 The Documents API accepts one UTF-8 `.md` file up to 1 MiB, validates it before
 atomically replacing the candidate corpus, protects built-in documents, and
@@ -51,7 +53,7 @@ Its safety depends on the local client and process boundary remaining trusted.
 
 ## Dependency observations
 
-Audits were run against the 2026-08-15 locked installations.
+Audits were last checked against the 2026-08-18 locked installations.
 
 - `npm audit --omit=dev` reported two moderate production dependency findings:
   DOMPurify through XMarkdown and Mermaid through Ant Design X. It reported no

@@ -356,7 +356,7 @@ and a clean public repository.
 
 ## v2.0 — Persistent Evidence and Model Working Notes
 
-**Status: In Progress**
+**Status: Implemented**
 
 Open the v2.0 boundary while keeping v1.0 Implemented. Slice 1 adds a
 version-1 typed `MessageRead.evidence_snapshot` union for Production Summary,
@@ -399,6 +399,8 @@ Implemented slices:
 - [x] Expose bounded final-answer reasoning through ephemeral SSE and frontend
   state without persisting Model Working Notes or exposing them on synchronous,
   routing, or tool-selection responses.
+- [x] Complete final v2.0 migration, persistence, reload, browser, accessibility,
+  review, deterministic evaluation, and publication acceptance.
 
 The schema, conversion, message-service, and runtime-persistence boundaries
 above are implemented. Slice 3 persists canonical snapshots for the four
@@ -475,6 +477,13 @@ Qwen reasoning pass; its routing delay was excluded from deterministic UI
 acceptance. The browser run upgraded the local Alembic database from `0005` to
 `0006` without deleting data.
 
-The following v2.0 slices remain open:
-
-- [ ] Slice 7 — Complete final v2.0 acceptance.
+Slice 7 completed final acceptance with 466 API tests and 145 Web tests. Ruff,
+deterministic evaluation, migration, type checking, linting, and both builds
+passed. The acceptance pass also corrected two reachable boundary defects:
+unreadable stored snapshots now preserve their messages as Unavailable Evidence,
+and the visible streaming cancel control remains operable. Browser checks covered
+historical reload at desktop and 390 px, Combined partial failure, a retained
+deleted-upload source, Missing and Unavailable Evidence, Working Notes collapse
+and reopening, truncation, interruption, cancellation, plain-text rendering,
+and reload clearing. Ant Design CLI diagnostics remain blocked by the documented
+missing native binding.

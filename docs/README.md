@@ -26,12 +26,14 @@ contracts.
 
 ## Status
 
-Milestones through v1.0 are implemented. The current boundary includes the
+Milestones through v2.0 are implemented. The current boundary includes the
 full-stack conversation foundation, deterministic manufacturing tools, local
 document retrieval, bounded routing, guided historical choices, local stdio
 MCP, formal offline evaluation, and one combined manufacturing-plus-document
-workflow. Evidence remains current-exchange-only, and production data,
-authentication, causal analysis, and remote deployment remain out of scope.
+workflow. Completed evidence is stored as a typed snapshot on its assistant
+message and restored after reload. Model Working Notes remain temporary and
+untrusted. Production data, authentication, causal analysis, and remote
+deployment remain out of scope.
 The v1.0 release boundary passed local deterministic checks, Combined Evidence
 browser and screenshot review, public-copy and publication review, two-axis
 code review, and remote CI on 2026-08-15.
