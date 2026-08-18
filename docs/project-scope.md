@@ -60,7 +60,7 @@ belongs in deterministic domain code rather than an LLM.
 ## Current milestone boundary
 
 v2.0 Persistent Evidence and Model Working Notes is **In Progress**. Slices 1
-through 5 are implemented. Slice 1
+through 6 are implemented. Slice 1
 defines the version-1 typed
 `MessageRead.evidence_snapshot` union for Production Summary, Equipment Status,
 Defect Distribution, Document Search, Combined Evidence, and the explicit
@@ -117,12 +117,36 @@ reasoning, and continues consuming the final-answer stream. Synchronous general
 and post-tool final answers strip recognized wrapper reasoning; initial tool
 selection, default stream behavior, and providers without reasoning remain
 unchanged. Slice 5 focused verification reports 51 passed; the full API suite
-reports 459 passed, with Ruff and `git diff --check` passing. Model Working
-Notes are not yet exposed through SSE or the frontend.
+reports 459 passed, with Ruff and `git diff --check` passing. Slice 5 itself
+did not expose Model Working Notes through SSE or the frontend.
+
+Slice 6 is implemented for final-answer streams. Final-answer calls opt into
+the internal `StreamItem` union; the runner emits the approved
+`reasoning_delta` and `reasoning_truncated` SSE events while persisting only
+the Final Answer. The frontend validates those events, keeps reasoning in
+ephemeral hook state, and renders it with a native plain-text disclosure. The
+disclosure opens on the first reasoning delta, closes when the first answer
+token arrives, supports manual reopening, represents truncation and
+interruption, clears on reload or conversation switch, excludes notes from
+copy actions, avoids per-delta `aria-live` announcements, and bounds rendered
+overflow. Synchronous responses and routing or tool-selection streams do not
+expose working notes; the tool-selection text fallback strips recognized
+reasoning wrappers. Slice 6 focused verification reports 89 backend and 86
+frontend tests; the full API suite reports 463 passed and the full Web suite
+reports 144 passed, with type checking, linting, builds, Ruff, and
+`git diff --check` passing. The existing Ant Design CLI native-binding block
+remains. Reproducible browser acceptance passed with an independent
+OpenAI-compatible streaming fixture: the disclosure opened during reasoning,
+closed on the first Final Answer token, reopened by pointer interaction, and
+cleared on reload while the answer remained. At 390px there was no horizontal
+page overflow; the reasoning body was bounded at 220px with overflow scrolling,
+and the disclosure showed a visible focus outline. This does not claim a live
+Qwen reasoning pass; its routing delay was excluded from deterministic UI
+acceptance. The browser run upgraded the local Alembic database from `0005` to
+`0006` without deleting data.
 
 The following v2.0 work remains:
 
-- Slice 6 — Model Working Notes.
 - Slice 7 — Final v2.0 acceptance.
 
 v1.0 Portfolio Release is **Implemented**. It packages the verified v0.9

@@ -17,6 +17,8 @@ portfolio project.
 - append-only user Message persistence and chronological history endpoints;
 - database-enforced Message role, content, and cascade-delete constraints;
 - synchronous and SSE assistant-response endpoints;
+- SSE final-answer reasoning events normalized as `reasoning_delta` and
+  `reasoning_truncated`, without exposing routing or tool-selection reasoning;
 - a compiled typed LangGraph workflow for synchronous execution, with the SSE
   runner reusing its state and execution-step boundaries;
 - standalone OpenAI-compatible chat adapter with configurable endpoint,
@@ -229,6 +231,14 @@ transport failure, or invalid structured response; answer and evidence-tool
 requests are not retried. Streaming uses the dedicated Message API
 endpoint and does not persist partial assistant output.
 
+For final-answer streaming, the adapter can separate provider
+`reasoning_content` and literal lowercase, non-nesting `<think>...</think>`
+content from the answer stream. It emits `reasoning_delta` events with a
+`content` field and emits `reasoning_truncated` once after a fixed 16,000
+Unicode-character display cap. Providers without either supported reasoning
+form produce no reasoning events. The synchronous endpoint does not expose
+these events.
+
 ## Workspace Context API
 
 Each Conversation stores synthetic workspace metadata. New records default to
@@ -296,6 +306,12 @@ uv build
 
 The documented workflow has been verified from a clean git archive copy using
 the committed uv lockfile, migrations, and backend test suite.
+
+The Slice 6 focused backend checks passed 89 tests, and the complete API suite
+passed 463 tests. Ruff and the package build passed. A separate local browser
+acceptance run used an independently created deterministic OpenAI-compatible
+streaming fixture to verify the Model Working Notes disclosure, reload behavior,
+and narrow-viewport layout.
 
 ## Non-responsibilities
 
@@ -366,8 +382,11 @@ and returns SSE events for `message_started`, routing progress, `token`,
 `tool_call_started` and `tool_result`. Only a non-empty completed assistant
 response is persisted.
 
-The API does not provide an evidence browser or a persisted evidence timeline,
-and Model Working Notes are not implemented.
+The API does not provide an evidence browser or a persisted evidence timeline.
+Model Working Notes are available only as ephemeral reasoning events on the SSE
+final-answer path. They are not included in synchronous responses, persisted
+Message or Evidence data, routing or tool-selection events, or a complete trace
+and replay surface or ThoughtChain UI.
 
 The conversation-bound Workspace Context contract provides `GET` and `PATCH`
 endpoints at `/conversations/{conversation_id}/context`. It stores optional
