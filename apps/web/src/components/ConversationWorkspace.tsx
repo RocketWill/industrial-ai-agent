@@ -213,7 +213,7 @@ export default function ConversationWorkspace({ conversationId, conversationTitl
           onSubmit={submit}
           onCancel={state.cancelStreaming}
           loading={state.isStreaming}
-          disabled={!conversationId || state.isSending}
+          disabled={!conversationId || (state.isSending && !state.isStreaming)}
           submitType="enter"
           placeholder={conversationId ? "Ask about this synthetic analysis" : "Select a conversation first"}
           autoSize={{ minRows: 2, maxRows: 6 }}
