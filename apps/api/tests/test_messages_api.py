@@ -3,6 +3,7 @@ import socket
 import threading
 import time
 from collections.abc import Generator
+from pathlib import Path
 from uuid import UUID
 
 import httpx
@@ -29,7 +30,15 @@ from industrial_agent.llm.openai_compatible import (
 from industrial_agent.llm.types import CompletionResult, ToolCall
 from industrial_agent.main import create_app
 from industrial_agent.models.message import Message
-from industrial_agent.tools.document_search import DocumentSearchResult
+from industrial_agent.services.documents import (
+    DocumentCorpusService,
+    LocalDocumentStore,
+)
+from industrial_agent.tools.document_search import (
+    DocumentSearchRequest,
+    DocumentSearchResult,
+    search_documents,
+)
 from industrial_agent.tools.production import ProductionSummaryResult
 
 UNKNOWN_CONVERSATION_ID = "00000000-0000-0000-0000-000000000099"
@@ -223,6 +232,7 @@ def test_stream_message_returns_ordered_sse_events(
 def test_stream_general_working_notes_are_ephemeral_and_ordered(
     conversation_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     conversation = create_conversation(conversation_client)
 
@@ -237,7 +247,7 @@ def test_stream_general_working_notes_are_ephemeral_and_ordered(
             assert include_reasoning is True
             from industrial_agent.llm.types import FinalAnswerDelta, ReasoningDelta
 
-            yield ReasoningDelta(content="internal note")
+            yield ReasoningDelta(content="SECRET_REASONING_SHOULD_NOT_BE_LOGGED")
             yield FinalAnswerDelta(content="final answer")
 
     monkeypatch.setattr(
@@ -254,14 +264,20 @@ def test_stream_general_working_notes_are_ephemeral_and_ordered(
     assert response.text.index("event: reasoning_delta") < response.text.index(
         'data: {"text":"final answer"}'
     )
-    assert 'data: {"content":"internal note"}' in response.text
+    assert 'data: {"content":"SECRET_REASONING_SHOULD_NOT_BE_LOGGED"}' in response.text
     history = conversation_client.get(
         f"/conversations/{conversation['id']}/messages"
     ).json()
     assert history[-1]["content"] == "final answer"
-    assert 'data: {"content":"internal note"}' not in response.text.split(
-        "event: message_completed", 1
-    )[1]
+    completed_payload = response.text.split("event: message_completed", 1)[1]
+    assert (
+        'data: {"content":"SECRET_REASONING_SHOULD_NOT_BE_LOGGED"}'
+        not in completed_payload
+    )
+    assert all(
+        "SECRET_REASONING_SHOULD_NOT_BE_LOGGED" not in record.getMessage()
+        for record in caplog.records
+    )
 
 
 def test_stream_post_tool_working_notes_truncate_once_and_do_not_persist(
@@ -520,6 +536,49 @@ def test_sync_production_evidence_is_canonical_and_reloadable(
     ] == snapshot
 
 
+@pytest.mark.parametrize(
+    ("stored_snapshot", "expected_code"),
+    [
+        (
+            {"status": "available", "schema_version": 2, "kind": "production_summary"},
+            "unsupported_snapshot_version",
+        ),
+        (
+            {"status": "available", "schema_version": 1, "kind": "not_a_real_kind"},
+            "invalid_snapshot",
+        ),
+    ],
+)
+def test_history_preserves_messages_for_unavailable_stored_snapshot(
+    conversation_client: TestClient,
+    database_session: Session,
+    stored_snapshot: dict[str, object],
+    expected_code: str,
+) -> None:
+    conversation = create_conversation(conversation_client)
+    database_session.add(
+        Message(
+            conversation_id=UUID(conversation["id"]),
+            role="assistant",
+            content="Stored answer",
+            evidence_snapshot=stored_snapshot,
+        )
+    )
+    database_session.commit()
+
+    response = conversation_client.get(
+        f"/conversations/{conversation['id']}/messages"
+    )
+
+    assert response.status_code == 200
+    history = response.json()
+    assert history[-1]["content"] == "Stored answer"
+    assert history[-1]["evidence_snapshot"] == {
+        "status": "unavailable",
+        "code": expected_code,
+    }
+
+
 def test_stream_equipment_status_message_emits_recorded_status_evidence(
     conversation_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
@@ -701,6 +760,80 @@ def test_stream_document_question_emits_retrieved_source_evidence(
         'OPTICAL-SIGNAL-LOW occurs?"'
     ) in response.text
     assert '"section":"OPTICAL-SIGNAL-LOW"' in response.text
+
+
+def test_history_retains_uploaded_document_source_after_document_deletion(
+    database_engine: Engine,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    corpus = DocumentCorpusService(
+        store=LocalDocumentStore(storage_root=tmp_path / "uploads")
+    )
+    application = create_app(document_corpus_service=corpus)
+    factory = sessionmaker(bind=database_engine)
+
+    def override_db_session() -> Generator[Session, None, None]:
+        session = factory()
+        try:
+            yield session
+        finally:
+            session.close()
+
+    application.dependency_overrides[get_db_session] = override_db_session
+    with TestClient(application) as client:
+        upload = client.post(
+            "/documents",
+            files={
+                "file": (
+                    "Retention Guide.md",
+                    (
+                        b"# Retention Guide\n\n## Recovery\n\n"
+                        b"Capture source-retention-marker.\n"
+                    ),
+                    "text/markdown",
+                )
+            },
+        )
+        assert upload.status_code == 201
+        document_id = upload.json()["document_id"]
+        conversation = create_conversation(client)
+        assert client.patch(
+            f"/conversations/{conversation['id']}/context",
+            json={"device": "AOI-WAFER-01", "time_range": "Last 4 hours"},
+        ).status_code == 200
+
+        result = search_documents(
+            DocumentSearchRequest(query="source-retention-marker"), service=corpus
+        )
+        snapshot = {
+            "status": "available",
+            "schema_version": 1,
+            "kind": "document_search",
+            "document_search": result.model_dump(mode="json"),
+        }
+        with factory() as session:
+            session.add(
+                Message(
+                    conversation_id=UUID(conversation["id"]),
+                    role="assistant",
+                    content="The guide contains the marker.",
+                    evidence_snapshot=snapshot,
+                )
+            )
+            session.commit()
+        source = snapshot["document_search"]["sources"][0]
+        assert source["source_id"].startswith(document_id)
+
+        assert client.delete(f"/documents/{document_id}").status_code == 204
+        assert client.get(f"/documents/{document_id}").status_code == 404
+        history = client.get(
+            f"/conversations/{conversation['id']}/messages"
+        ).json()
+        stored_snapshot = history[-1]["evidence_snapshot"]
+        source = stored_snapshot["document_search"]["sources"][0]
+        assert source["source_id"].startswith(document_id)
+        assert "source-retention-marker" in source["excerpt"]
 
 
 def test_stream_combined_request_emits_both_evidence_paths(
