@@ -307,11 +307,11 @@ uv build
 The documented workflow has been verified from a clean git archive copy using
 the committed uv lockfile, migrations, and backend test suite.
 
-The Slice 6 focused backend checks passed 89 tests, and the complete API suite
-passed 463 tests. Ruff and the package build passed. A separate local browser
-acceptance run used an independently created deterministic OpenAI-compatible
-streaming fixture to verify the Model Working Notes disclosure, reload behavior,
-and narrow-viewport layout.
+The final v2.0 API suite passed 466 tests. Ruff, the package build, migration
+from the v1.0 schema, and all 45 deterministic evaluation scenarios passed.
+Acceptance also verifies that deleted uploads do not erase captured historical
+sources, unreadable stored snapshots become Unavailable Evidence without hiding
+their messages, and Model Working Notes do not enter SQLite or captured logs.
 
 ## Non-responsibilities
 

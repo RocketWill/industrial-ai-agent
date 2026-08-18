@@ -43,7 +43,7 @@
       <text x="368" y="416" text-anchor="middle" fill="#4b5563" font-family="IBM Plex Mono" font-size="8" letter-spacing="1">ALT</text>
       <text x="404" y="436" fill="#4b5563" font-family="IBM Plex Mono" font-size="8">[grounded non-empty answer]</text>
       <line x1="388" y1="468" x2="1144" y2="468" stroke="#4b5563" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <rect x="680" y="444" width="172" height="12" rx="2" fill="#fafaf7"/><text x="766" y="452" text-anchor="middle" fill="#4b5563" font-family="IBM Plex Mono" font-size="8">PERSIST ASSISTANT</text>
+      <rect x="656" y="444" width="220" height="12" rx="2" fill="#fafaf7"/><text x="766" y="452" text-anchor="middle" fill="#4b5563" font-family="IBM Plex Mono" font-size="8">PERSIST ANSWER + SNAPSHOT</text>
       <line x1="388" y1="516" x2="136" y2="516" stroke="#3b82f6" stroke-width="1.2" marker-end="url(#arrow-accent)"/>
       <rect x="184" y="492" width="156" height="12" rx="2" fill="#fafaf7"/><text x="262" y="500" text-anchor="middle" fill="#3b82f6" font-family="IBM Plex Mono" font-size="8">ANSWER + EVIDENCE</text>
       <line x1="352" y1="536" x2="1180" y2="536" stroke="rgba(17,24,39,.20)" stroke-dasharray="4 3"/>
@@ -57,14 +57,14 @@
       <rect x="888" y="312" width="8" height="72" fill="rgba(17,24,39,.06)" stroke="#4b5563" stroke-width=".8"/>
       <rect x="1140" y="464" width="8" height="16" fill="rgba(17,24,39,.06)" stroke="#4b5563" stroke-width=".8"/>
 
-      <g><rect x="56" y="64" width="160" height="64" rx="6" fill="#fff" stroke="#111827"/><text x="136" y="92" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">Workbench</text><text x="136" y="112" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">current exchange</text></g>
+      <g><rect x="56" y="64" width="160" height="64" rx="6" fill="#fff" stroke="#111827"/><text x="136" y="92" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">Workbench</text><text x="136" y="112" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">evidence + ephemeral notes</text></g>
       <g><rect x="308" y="64" width="160" height="64" rx="6" fill="rgba(59,130,246,.10)" stroke="#3b82f6" stroke-width="1.2"/><text x="388" y="92" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">API / SSE runner</text><text x="388" y="112" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">application boundary</text></g>
       <g><rect x="560" y="64" width="160" height="64" rx="6" fill="rgba(17,24,39,.02)" stroke="rgba(17,24,39,.28)" stroke-dasharray="4 3"/><text x="640" y="92" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">Optional model</text><text x="640" y="112" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">untrusted prose</text></g>
       <g><rect x="812" y="64" width="160" height="64" rx="6" fill="#fff" stroke="#111827"/><text x="892" y="92" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">Validator</text><text x="892" y="112" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">deterministic checks</text></g>
-      <g><rect x="1064" y="64" width="160" height="64" rx="6" fill="rgba(17,24,39,.05)" stroke="#4b5563"/><text x="1144" y="92" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">SQLite</text><text x="1144" y="112" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">completed message</text></g>
+      <g><rect x="1064" y="64" width="160" height="64" rx="6" fill="rgba(17,24,39,.05)" stroke="#4b5563"/><text x="1144" y="92" text-anchor="middle" fill="#111827" font-family="Open Sans" font-size="12" font-weight="600">SQLite</text><text x="1144" y="112" text-anchor="middle" fill="#6b7280" font-family="IBM Plex Mono" font-size="8">message + snapshot</text></g>
 
       <line x1="40" y1="648" x2="1240" y2="648" stroke="rgba(17,24,39,.12)"/>
-      <text x="40" y="676" fill="#6b7280" font-family="IBM Plex Mono" font-size="8" letter-spacing="1.2">MODEL TEXT IS VALIDATED BEFORE COMPLETED PERSISTENCE</text>
+      <text x="40" y="676" fill="#6b7280" font-family="IBM Plex Mono" font-size="8" letter-spacing="1.2">MODEL TEXT IS VALIDATED BEFORE PERSISTENCE · WORKING NOTES ARE NOT STORED</text>
     </svg>
   </main>
 </body>

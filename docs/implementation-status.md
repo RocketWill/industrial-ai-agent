@@ -44,9 +44,9 @@ matrix. Application README files own setup and contract usage.
 
 ## v2.0 — Persistent Evidence and Model Working Notes
 
-**Status: In Progress**
+**Status: Implemented**
 
-Slices 1 through 6 are implemented.
+Slices 1 through 7 are implemented.
 Slice 1 validates a version-1 typed
 `MessageRead.evidence_snapshot` union for Production Summary, Equipment Status,
 Defect Distribution, Document Search, Combined Evidence, and the explicit
@@ -130,7 +130,22 @@ and the disclosure showed a visible focus outline. This does not claim a live
 Qwen reasoning pass; its routing delay was excluded from deterministic UI
 acceptance. The browser run upgraded the local Alembic database from `0005` to
 `0006` without deleting data.
-Final v2.0 acceptance remains open in Slice 7.
+Slice 7 completed final acceptance. Stored unsupported or invalid snapshots now
+preserve their assistant messages and return explicit Unavailable Evidence on
+history reads while direct schema and write validation remain strict. A focused
+integration also verifies that deleting a local upload does not erase the
+captured source from a historical snapshot, and captured logs do not contain
+provider working-note text. The visible streaming cancel control remains usable
+while a request is active.
+
+The final local run passed 466 API tests and 145 Web tests, Ruff, deterministic
+evaluation, migration, API and Web builds, TypeScript checking, and ESLint with
+the existing Fast Refresh warning. Browser acceptance covered historical reload
+at desktop and 390 px, Combined partial failure, retained deleted-upload source,
+Missing and Unavailable Evidence, Working Notes collapse and reopening,
+truncation, interruption, cancellation, plain-text rendering, and reset on
+reload. Ant Design CLI diagnostics remain blocked by the existing missing native
+binding; the existing Vite chunk warning also remains.
 
 ## HTTP contracts
 
@@ -187,6 +202,11 @@ The latest full-release verification on 2026-08-15 produced:
   outline. This does not claim a live Qwen reasoning pass; its routing delay
   was excluded from deterministic UI acceptance. The browser run upgraded the
   local Alembic database from `0005` to `0006` without deleting data.
+- Slice 7 completed final local acceptance on 2026-08-18: the full API suite
+  passed 466 tests and the full Web suite passed 145 tests. Migration, Ruff,
+  deterministic evaluation, API and Web builds, TypeScript checking, ESLint,
+  browser reload and responsive checks, and both review axes passed. Ant Design
+  CLI diagnostics remained blocked by the documented missing native binding.
 - Browser combined workflow: one explicit production-plus-document request ran
   against saved synthetic AOI context. The final exchange retained a 95.56%
   Production Summary and three cited document sources when model synthesis was

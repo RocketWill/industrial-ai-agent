@@ -81,3 +81,19 @@ That observation led to a narrower contract: deterministic manufacturing
 claims remain strict, while formatting numbers and omitted inline citations no
 longer cause an otherwise grounded answer to fail. A later run with the revised
 contract produced the accepted observation recorded above.
+
+## v2.0 reload and Working Notes observation
+
+The final v2.0 browser acceptance used an independently created deterministic
+OpenAI-compatible fixture and repository-owned synthetic data. A completed
+Production Summary reappeared under its assistant message after desktop and
+390 px reloads. The same run displayed a Combined partial failure, a retained
+source excerpt from a deleted synthetic upload, a legacy message without a
+snapshot, and an unsupported snapshot version without hiding its message.
+
+When the fixture supplied final-answer reasoning, Model Working Notes opened
+during generation, collapsed when the Final Answer began, and could be reopened.
+Truncation remained plain text, and cancellation produced an Interrupted state.
+Reload removed the notes while preserving completed assistant text and Evidence
+Snapshots. Provider wording and the presence of reasoning are not release
+assertions.
